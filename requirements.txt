@@ -1,0 +1,10 @@
+disnake
+rethinkdb
+aiofiles
+aiohttp_client_cache
+python-dotenv
+loguru
+Google-Images-Search
+lxml
+cssselect
+Pillow
