@@ -9,4 +9,4 @@ nyah-bot
 __title__ = 'nyah-bot'
 __author__ = 'notchum'
 __license__ = 'GNU General Public License v3.0'
-__version__ = '0.1.2'
+__version__ = '0.1.3'

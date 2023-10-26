@@ -15,7 +15,6 @@ intents.members = True
 intents.message_content = True
 
 bot = commands.InteractionBot(
-    reload=True,
     test_guilds=TEST_GUILDS,
     intents=intents
 )
