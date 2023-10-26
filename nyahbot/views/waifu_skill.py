@@ -23,10 +23,10 @@ class WaifuSkillView(disnake.ui.View):
     
     @disnake.ui.button(label="Reroll Skills", emoji="🎲", style=disnake.ButtonStyle.green)
     async def reroll(self, button: disnake.ui.Button, inter: disnake.MessageInteraction) -> None:
-        war_user = await reql_helpers.get_nyah_user(inter.author)
+        nyah_player = await reql_helpers.get_nyah_player(inter.author)
         
-        if war_user.money < Money.SKILL_COST.value:
-            price_diff = Money.SKILL_COST.value - war_user.money
+        if nyah_player.money < Money.SKILL_COST.value:
+            price_diff = Money.SKILL_COST.value - nyah_player.money
             confirmation_embed = disnake.Embed(
                 description=f"{inter.author.mention}\nYou need `{price_diff:,}` {Emojis.COINS}",
                 color=disnake.Color.fuchsia()
@@ -37,8 +37,8 @@ class WaifuSkillView(disnake.ui.View):
                         f"{inter.author}[{inter.author.id}] | "
                         f"Failed to reroll skills {self.claim.slug}[{self.claim.id}]")
         else:
-            war_user.money -= Money.SKILL_COST.value
-            await reql_helpers.set_nyah_user(war_user)
+            nyah_player.money -= Money.SKILL_COST.value
+            await reql_helpers.set_nyah_player(nyah_player)
 
             # TODO re-assess how to best assign base stats, here is just completely random
             # TODO but i left price using stats calculated via waifu rank, since that seemed fine

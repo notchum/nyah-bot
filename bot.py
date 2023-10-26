@@ -49,9 +49,9 @@ async def on_ready():
         r.db("waifus").table("core").index_create("name").run(conn)
     if "nyah" not in db_list:
         r.db("nyah").table_create("guilds", primary_key="guild_id").run(conn)
-        r.db("nyah").table_create("users").run(conn)
-        r.db("nyah").table("users").index_create("guild_id").run(conn)
-        r.db("nyah").table("users").index_create("guild_user", [r.row["guild_id"], r.row["user_id"]]).run(conn)
+        r.db("nyah").table_create("players").run(conn)
+        r.db("nyah").table("players").index_create("guild_id").run(conn)
+        r.db("nyah").table("players").index_create("guild_user", [r.row["guild_id"], r.row["user_id"]]).run(conn)
     if "wars" not in db_list:
         r.db_create("wars").run(conn)
         r.db("wars").table_create("core").run(conn)

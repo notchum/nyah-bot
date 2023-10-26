@@ -8,7 +8,7 @@ from nyahbot.util.globals import conn
 from nyahbot.util.constants import WaifuState
 from nyahbot.util.dataclasses import (
     NyahGuild,
-    WarUser,
+    NyahPlayer,
     Waifu,
     Claim,
 )
@@ -37,34 +37,34 @@ async def set_nyah_guild(nyah_guild: NyahGuild) -> None:
     return
 
 ##*************************************************##
-##********             WarUser              *******##
+##********             NyahPlayer              *******##
 ##*************************************************##
 
-async def get_nyah_user(user: disnake.Member) -> WarUser | None:
-    result = r.db("wars") \
-                .table("users") \
+async def get_nyah_player(user: disnake.Member) -> NyahPlayer | None:
+    result = r.db("nyah") \
+                .table("players") \
                 .get_all([str(user.guild.id), str(user.id)], index="guild_user") \
                 .nth(0) \
                 .run(conn)
     if result == None:
         return None
-    return WarUser(**result)
+    return NyahPlayer(**result)
 
-async def get_nyah_users_guild(guild: disnake.Guild) -> List[WarUser] | None:
-    result = r.db("wars") \
-                .table("users") \
+async def get_nyah_player_guild(guild: disnake.Guild) -> List[NyahPlayer] | None:
+    result = r.db("nyah") \
+                .table("players") \
                 .get_all(str(guild.id), index="guild_id") \
                 .order_by(r.desc("score")) \
                 .run(conn)
     if result == None:
         return None
-    return [WarUser(**doc) for doc in result]
+    return [NyahPlayer(**doc) for doc in result]
 
-async def set_nyah_user(war_user: WarUser) -> None:
-    result = r.db("wars") \
-                .table("users") \
-                .get_all([war_user.guild_id, war_user.user_id], index="guild_user") \
-                .update(war_user.__dict__) \
+async def set_nyah_player(nyah_player: NyahPlayer) -> None:
+    result = r.db("nyah") \
+                .table("players") \
+                .get_all([nyah_player.guild_id, nyah_player.user_id], index="guild_user") \
+                .update(nyah_player.__dict__) \
                 .run(conn)
     if result["errors"] > 0:
         raise Exception # TODO create custom exception

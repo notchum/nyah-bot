@@ -8,7 +8,7 @@ from loguru import logger
 from disnake.ext import commands
 
 from nyahbot.util.globals import conn
-from nyahbot.util.dataclasses import NyahGuild, WarUser
+from nyahbot.util.dataclasses import NyahGuild, NyahPlayer
 from nyahbot.util import (
     utilities,
     reql_helpers,
@@ -113,13 +113,13 @@ class Events(commands.Cog):
 
             for member in guild.members:
                 user_exists = r.db("nyah") \
-                                .table("users") \
+                                .table("players") \
                                 .get_all([str(guild.id), str(member.id)], index="guild_user") \
                                 .count() \
                                 .eq(1) \
                                 .run(conn)
                 if not user_exists:
-                    new_nyah_user = WarUser(
+                    new_nyah_player = NyahPlayer(
                         id=r.uuid().run(conn),
                         user_id=str(member.id),
                         guild_id=str(member.guild.id),
@@ -128,14 +128,13 @@ class Events(commands.Cog):
                         money=0,
                         xp=0,
                         level=0,
-                        skill_points=0,
                         wishlist=[],
                         season_results=[],
                         timestamp_last_duel=None,
                         timestamp_last_claim=None,
                         timestamp_last_minigame=None
                     )
-                    r.db("nyah").table("users").insert(new_nyah_user.__dict__).run(conn)
+                    r.db("nyah").table("players").insert(new_nyah_player.__dict__).run(conn)
                     logger.info(f"{guild.name}[{guild.id}] | "
                                 f"Created database entry for member '{member.name}'[{member.id}]")
 
@@ -158,7 +157,7 @@ class Events(commands.Cog):
     async def on_member_join(self, member: disnake.Member):
         """ Guild event when someone joins. """
         user_exists = r.db("nyah") \
-                        .table("users") \
+                        .table("players") \
                         .get_all([str(member.guild.id), str(member.id)], index="guild_user") \
                         .count() \
                         .eq(1) \
@@ -168,7 +167,7 @@ class Events(commands.Cog):
                         f"{member.name}#{member.discriminator}[{member.id}] | "
                         f"Re-joined server")
         else:
-            new_war_user = WarUser(
+            new_nyah_player = NyahPlayer(
                 id=r.uuid().run(conn),
                 user_id=str(member.id),
                 guild_id=str(member.guild.id),
@@ -177,14 +176,13 @@ class Events(commands.Cog):
                 money=0,
                 xp=0,
                 level=0,
-                skill_points=0,
                 wishlist=[],
                 season_results=[],
                 timestamp_last_duel=None,
                 timestamp_last_claim=None,
                 timestamp_last_minigame=None
             )
-            r.db("nyah").table("users").insert(new_war_user.__dict__).run(conn)
+            r.db("nyah").table("players").insert(new_nyah_player.__dict__).run(conn)
             logger.info(f"{member.guild.name}[{member.guild.id}] | "
                         f"{member.name}[{member.id}] | "
                         f"Initially joined server")
@@ -197,9 +195,9 @@ class Events(commands.Cog):
                         f"Changed username to {after.name}")
             for guild in after.mutual_guilds:
                 member = await guild.fetch_member(after.id)
-                nyah_user = await reql_helpers.get_nyah_user(member) #TODO change name to NyahPlayer/nyah_player... should always be a member (if still using guild_user)
-                nyah_user.name = after.name
-                await reql_helpers.set_nyah_user(nyah_user)
+                nyah_player = await reql_helpers.get_nyah_player(member)
+                nyah_player.name = after.name
+                await reql_helpers.set_nyah_player(nyah_player)
 
     @commands.Cog.listener()
     async def on_guild_scheduled_event_create(self, event: disnake.GuildScheduledEvent):

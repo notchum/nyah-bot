@@ -50,38 +50,33 @@ def calculate_accumulated_xp(level: int) -> int:
     return xp_accumulated
 
 async def add_user_xp(user: disnake.Member | disnake.User, xp: int) -> None:
-    war_user = await reql_helpers.get_nyah_user(user)
-    war_user.xp += xp
-    logger.info(f"{user.name}[{user.id}] gained {xp}XP ({war_user.xp}XP)")
+    nyah_player = await reql_helpers.get_nyah_player(user)
+    nyah_player.xp += xp
+    logger.info(f"{user.name}[{user.id}] gained {xp}XP ({nyah_player.xp}XP)")
 
     # check if they leveled up
-    if war_user.xp > calculate_accumulated_xp(war_user.level + 1):
-        war_user.level += 1
-        war_user.money += (Money.PER_LEVEL.value * war_user.level)
-        logger.info(f"{user.name}[{user.id}] leveled up to level {war_user.level} ({war_user.skill_points}SP)")
+    if nyah_player.xp > calculate_accumulated_xp(nyah_player.level + 1):
+        nyah_player.level += 1
+        nyah_player.money += (Money.PER_LEVEL.value * nyah_player.level)
+        logger.info(f"{user.name}[{user.id}] leveled up to level {nyah_player.level}")
     
-    await reql_helpers.set_nyah_user(war_user)
-
-async def add_user_skill_points(user: disnake.Member | disnake.User, skill_points: int) -> None:
-    war_user = await reql_helpers.get_nyah_user(user)
-    war_user.skill_points += skill_points
-    await reql_helpers.set_nyah_user(war_user)
+    await reql_helpers.set_nyah_player(nyah_player)
 
 async def add_user_mmr(user: disnake.Member | disnake.User, mmr: int) -> None:
-    war_user = await reql_helpers.get_nyah_user(user)
-    if war_user.score + mmr <= 0:
-        war_user.score = 0
+    nyah_player = await reql_helpers.get_nyah_player(user)
+    if nyah_player.score + mmr <= 0:
+        nyah_player.score = 0
     else:
-        war_user.score += mmr
-    await reql_helpers.set_nyah_user(war_user)
+        nyah_player.score += mmr
+    await reql_helpers.set_nyah_player(nyah_player)
 
 async def add_user_money(user: disnake.Member | disnake.User, money: int) -> None:
-    war_user = await reql_helpers.get_nyah_user(user)
-    if war_user.money + money <= 0:
-        war_user.money = 0
+    nyah_player = await reql_helpers.get_nyah_player(user)
+    if nyah_player.money + money <= 0:
+        nyah_player.money = 0
     else:
-        war_user.money += money
-    await reql_helpers.set_nyah_user(war_user)
+        nyah_player.money += money
+    await reql_helpers.set_nyah_player(nyah_player)
 
 async def sell_waifu(user: disnake.Member | disnake.User, claim: Claim) -> None:
     claim.state = WaifuState.SOLD.name
@@ -91,10 +86,10 @@ async def sell_waifu(user: disnake.Member | disnake.User, claim: Claim) -> None:
 
 async def user_is_on_cooldown(user: disnake.Member | disnake.User, cooldown_type: Cooldowns) -> bool:
     nyah_guild = await reql_helpers.get_nyah_guild(user.guild)
-    nyah_user = await reql_helpers.get_nyah_user(user)
+    nyah_player = await reql_helpers.get_nyah_player(user)
     
     interval: int = nyah_guild.__dict__[cooldown_attribute_map[cooldown_type]["interval"]]
-    timestamp: datetime.datetime = nyah_user.__dict__[cooldown_attribute_map[cooldown_type]["timestamp"]]
+    timestamp: datetime.datetime = nyah_player.__dict__[cooldown_attribute_map[cooldown_type]["timestamp"]]
 
     if timestamp == None:
         return False # user not on cooldown
@@ -107,19 +102,19 @@ async def user_is_on_cooldown(user: disnake.Member | disnake.User, cooldown_type
 
 async def user_cooldown_expiration_time(user: disnake.Member | disnake.User, cooldown_type: Cooldowns) -> datetime.datetime:
     nyah_guild = await reql_helpers.get_nyah_guild(user.guild)
-    nyah_user = await reql_helpers.get_nyah_user(user)
+    nyah_player = await reql_helpers.get_nyah_player(user)
     
     interval: int = nyah_guild.__dict__[cooldown_attribute_map[cooldown_type]["interval"]]
-    timestamp: datetime.datetime = nyah_user.__dict__[cooldown_attribute_map[cooldown_type]["timestamp"]]
+    timestamp: datetime.datetime = nyah_player.__dict__[cooldown_attribute_map[cooldown_type]["timestamp"]]
 
     return timestamp + datetime.timedelta(minutes=interval)
 
 async def reset_user_cooldown(user: disnake.Member | disnake.User, cooldown_type: str) -> None:
-    nyah_user = await reql_helpers.get_nyah_user(user)
+    nyah_player = await reql_helpers.get_nyah_player(user)
 
-    nyah_user.__dict__[cooldown_attribute_map[cooldown_type]["timestamp"]] = None
+    nyah_player.__dict__[cooldown_attribute_map[cooldown_type]["timestamp"]] = None
 
-    await reql_helpers.set_nyah_user(nyah_user)
+    await reql_helpers.set_nyah_player(nyah_player)
 
 async def reindex_guild_user_harem(guild: disnake.Guild, user: disnake.User | disnake.Member) -> None:
     nyah_guild = await reql_helpers.get_nyah_guild(guild)

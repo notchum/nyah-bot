@@ -19,7 +19,6 @@ from nyahbot.util.dataclasses import (
     Claim,
     Waifu,
     NyahGuild,
-    WarUser,
     War,
 )
 from nyahbot.util.constants import (
@@ -115,8 +114,8 @@ class Waifus(commands.Cog):
         score_mapping = {}
         rank_one_member_id = 0
         top_score = 0
-        result = r.db("wars") \
-                    .table("users") \
+        result = r.db("nyah") \
+                    .table("players") \
                     .get_all(str(guild.id), index="guild_id") \
                     .run(conn)
         for user in result.items:
@@ -498,8 +497,8 @@ class Waifus(commands.Cog):
 
     async def find_duel_opponent(self, guild: disnake.Guild, user: disnake.User | disnake.Member) -> disnake.User:
         # Select user directly above you in score, else select user below
-        rankings = r.db("wars") \
-                    .table("users") \
+        rankings = r.db("nyah") \
+                    .table("players") \
                     .get_all(str(guild.id), index="guild_id") \
                     .order_by(r.desc("score")) \
                     .pluck("user_id", "score", "level") \
@@ -583,14 +582,14 @@ class Waifus(commands.Cog):
             embeds=[msg_embed, leaderboard_embed],
         )
 
-        r.db("wars") \
-            .table("users") \
+        r.db("nyah") \
+            .table("players") \
             .get_all(str(guild.id), index="guild_id") \
             .update({
                 "score": 0
             }) \
             .run(conn)
-        r.db("wars") \
+        r.db("nyah") \
             .table("guilds") \
             .get(str(guild.id)) \
             .update({
@@ -779,7 +778,7 @@ class Waifus(commands.Cog):
 
             # Create the initial bracket
             bracket = Bracket(war_uuid)
-            rankings = await reql_helpers.get_nyah_users_guild(guild)
+            rankings = await reql_helpers.get_nyah_player_guild(guild)
             event_user_ids = await self.get_waifu_war_event_users(waifu_war_event)
             
             # Add users to the bracket if they are part of the event
@@ -1216,8 +1215,8 @@ class Waifus(commands.Cog):
                 ephemeral=True
             )
         elif user and new_score:
-            r.db("wars") \
-                .table("users") \
+            r.db("nyah") \
+                .table("players") \
                 .get_all([str(inter.guild.id), str(user.id)], index="guild_user") \
                 .update({
                     "score": new_score
@@ -1245,23 +1244,21 @@ class Waifus(commands.Cog):
         user: disnake.User,
         level: int = None,
         xp: int = None,
-        sp: int = None,
         mmr: int = None,
         money: int = None
     ):
-        if level == None and xp == None and sp == None and mmr == None and money == None:
+        if level == None and xp == None and mmr == None and money == None:
             return await inter.response.send_message(
                 embed=utilities.get_error_embed("No attributes provided!"),
                 ephemeral=True
             )
         
-        war_user = await reql_helpers.get_nyah_user(user)
-        if level != None: war_user.level = level
-        if xp != None: war_user.xp = xp
-        if sp != None: war_user.skill_points = sp
-        if mmr != None: war_user.score = mmr
-        if money != None: war_user.money = money
-        await reql_helpers.set_nyah_user(war_user)
+        nyah_player = await reql_helpers.get_nyah_player(user)
+        if level != None: nyah_player.level = level
+        if xp != None: nyah_player.xp = xp
+        if mmr != None: nyah_player.score = mmr
+        if money != None: nyah_player.money = money
+        await reql_helpers.set_nyah_player(nyah_player)
 
         return await inter.response.send_message(
             embed=utilities.get_success_embed("Updated user attributes!"),
@@ -1287,8 +1284,8 @@ class Waifus(commands.Cog):
                 The cooldown field name to reset.
         """
         if user:
-            r.db("wars") \
-                .table("users") \
+            r.db("nyah") \
+                .table("players") \
                 .get_all([str(inter.guild.id), str(user.id)], index="guild_user") \
                 .update({
                     cooldown: None
@@ -1300,8 +1297,8 @@ class Waifus(commands.Cog):
                 ephemeral=True
             )
         else:
-            r.db("wars") \
-                .table("users") \
+            r.db("nyah") \
+                .table("players") \
                 .get_all(str(inter.guild.id), index="guild_id") \
                 .update({
                     cooldown: None
@@ -1325,7 +1322,7 @@ class Waifus(commands.Cog):
         """ View your level, XP, and balance. """
         await inter.response.defer()
 
-        user = await reql_helpers.get_nyah_user(inter.author)
+        user = await reql_helpers.get_nyah_player(inter.author)
 
         embed = disnake.Embed(
             color=disnake.Color.random(),
@@ -1341,14 +1338,14 @@ class Waifus(commands.Cog):
     async def minigame(self, inter: disnake.ApplicationCommandInteraction):
         """ Play a random waifu minigame for money! """
         # Get user's db info
-        author_war_user = await reql_helpers.get_nyah_user(inter.author)
+        nyah_player = await reql_helpers.get_nyah_player(inter.author)
 
         # Check if user's duel on cooldown
-        if author_war_user.timestamp_last_minigame:
-            last_minigame_timedelta = disnake.utils.utcnow() - author_war_user.timestamp_last_minigame
-        minigame_available = not author_war_user.timestamp_last_minigame or last_minigame_timedelta > datetime.timedelta(hours=1) #TODO add interval for minigames
+        if nyah_player.timestamp_last_minigame:
+            last_minigame_timedelta = disnake.utils.utcnow() - nyah_player.timestamp_last_minigame
+        minigame_available = not nyah_player.timestamp_last_minigame or last_minigame_timedelta > datetime.timedelta(hours=1) #TODO add interval for minigames
         if not minigame_available:
-            next_minigame_at = author_war_user.timestamp_last_minigame + datetime.timedelta(hours=1) #TODO add interval for minigames
+            next_minigame_at = nyah_player.timestamp_last_minigame + datetime.timedelta(hours=1) #TODO add interval for minigames
             return await inter.response.send_message(
                 content=f"{inter.author.mention} you are on a minigame cooldown now.\n"
                         f"Try again {utilities.get_dyn_time_relative(next_minigame_at)}",
@@ -1432,8 +1429,8 @@ class Waifus(commands.Cog):
         await inter.edit_original_response(embed=embed, view=minigame_view)
 
         # Set timestamp in db
-        author_war_user.timestamp_last_minigame = disnake.utils.utcnow()
-        await reql_helpers.set_nyah_user(author_war_user)
+        nyah_player.timestamp_last_minigame = disnake.utils.utcnow()
+        await reql_helpers.set_nyah_player(nyah_player)
 
         # Wait for the user to answer
         await minigame_view.wait()
@@ -1529,13 +1526,13 @@ class Waifus(commands.Cog):
     async def show(self, inter: disnake.ApplicationCommandInteraction):
         """ Show your wishlist. """
         await inter.response.defer()
-        author_war_user = await reql_helpers.get_nyah_user(inter.author)
-        if not author_war_user.wishlist:
+        nyah_player = await reql_helpers.get_nyah_player(inter.author)
+        if not nyah_player.wishlist:
             return await inter.edit_original_response(
                 embed=utilities.get_error_embed(f"{inter.author.mention} your wishlist is empty!\n\n"
                                       f"Use `/wishlist add` to add a waifu to your wishlist to increase odds of getting it with `/getmywaifu`")
             )
-        return await inter.edit_original_response("\n".join([f"`{s}`" for s in author_war_user.wishlist]))
+        return await inter.edit_original_response("\n".join([f"`{s}`" for s in nyah_player.wishlist]))
 
 
     @commands.slash_command()
@@ -1654,35 +1651,8 @@ class Waifus(commands.Cog):
     @commands.slash_command()
     async def getmywaifu(self, inter: disnake.ApplicationCommandInteraction):
         """ Get a random waifu! """       
-        # Insert default user info in db
-        # TODO move to events, all users have will have entry
-        exists = r.db("wars") \
-                    .table("users") \
-                    .get_all([str(inter.guild.id), str(inter.author.id)], index="guild_user") \
-                    .count() \
-                    .eq(1) \
-                    .run(conn)
-        if not exists:
-            new_war_user = WarUser(
-                id=r.uuid().run(conn),
-                user_id=str(inter.author.id),
-                guild_id=str(inter.guild.id),
-                name=f"{inter.author.name}#{inter.author.discriminator}",
-                score=0,
-                money=0,
-                xp=0,
-                level=0,
-                skill_points=0,
-                wishlist=[],
-                season_results=[],
-                timestamp_last_duel=None,
-                timestamp_last_claim=None,
-                timestamp_last_minigame=None
-            )
-            r.db("wars").table("users").insert(new_war_user.__dict__).run(conn)
-
         # Gather war guild and user information
-        user_info = await reql_helpers.get_nyah_user(inter.author)
+        user_info = await reql_helpers.get_nyah_player(inter.author)
         
         # Check if user's waifu is available to claim
         if await helpers.user_is_on_cooldown(inter.author, Cooldowns.CLAIM):
@@ -1848,7 +1818,7 @@ class Waifus(commands.Cog):
 
         # Update user info in db
         user_info.timestamp_last_claim = disnake.utils.utcnow()
-        await reql_helpers.set_nyah_user(user_info)
+        await reql_helpers.set_nyah_player(user_info)
         await helpers.add_user_xp(inter.author, Experience.CLAIM.value)
         return
 
@@ -2073,17 +2043,17 @@ class Waifus(commands.Cog):
             return claim
         
         # Get user's db info
-        author_war_user = await reql_helpers.get_nyah_user(inter.author)
+        author_nyah_player = await reql_helpers.get_nyah_player(inter.author)
 
         # Parse string input for waifu select
         index = int(waifu.split(".")[0])
 
         # Check if user's duel on cooldown
-        if author_war_user.timestamp_last_duel:
-            last_duel_timedelta = disnake.utils.utcnow() - author_war_user.timestamp_last_duel
-        duel_available = not author_war_user.timestamp_last_duel or last_duel_timedelta > datetime.timedelta(hours=1) #TODO add interval for duels
+        if author_nyah_player.timestamp_last_duel:
+            last_duel_timedelta = disnake.utils.utcnow() - author_nyah_player.timestamp_last_duel
+        duel_available = not author_nyah_player.timestamp_last_duel or last_duel_timedelta > datetime.timedelta(hours=1) #TODO add interval for duels
         if not duel_available:
-            next_duel_at = author_war_user.timestamp_last_duel + datetime.timedelta(hours=1) #TODO add interval for duels
+            next_duel_at = author_nyah_player.timestamp_last_duel + datetime.timedelta(hours=1) #TODO add interval for duels
             return await inter.response.send_message(
                 content=f"{inter.author.mention} you are on a duel cooldown now.\n"
                         f"Try again {utilities.get_dyn_time_relative(next_duel_at)}",
@@ -2128,8 +2098,8 @@ class Waifus(commands.Cog):
         )
         
         # Set timestamp in db
-        author_war_user.timestamp_last_duel = disnake.utils.utcnow()
-        await reql_helpers.set_nyah_user(author_war_user)
+        author_nyah_player.timestamp_last_duel = disnake.utils.utcnow()
+        await reql_helpers.set_nyah_player(author_nyah_player)
 
         # Generate the results of the duel for the user to choose from
         duel_choices = []

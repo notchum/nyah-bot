@@ -24,7 +24,7 @@ class NyahGuild():
     timestamp_last_season_end: datetime.datetime
 
 @dataclass(kw_only=True)
-class WarUser():
+class NyahPlayer():
     # rethink uuid's
     id: str
     # compound secondary index called 'guild_user' == [guild_id, user_id]
@@ -37,7 +37,6 @@ class WarUser():
     money: int
     xp: int
     level: int
-    skill_points: int
     wishlist: List[str]
     season_results: List[dict]
     timestamp_last_duel: datetime.datetime

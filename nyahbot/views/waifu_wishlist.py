@@ -17,10 +17,10 @@ class WaifuWishlistView(disnake.ui.View):
 
     @disnake.ui.button(label="Wishlist", emoji="🌠", style=disnake.ButtonStyle.green)
     async def wishlist(self, button: disnake.ui.Button, inter: disnake.MessageInteraction) -> None:
-        war_user = await reql_helpers.get_nyah_user(inter.author)
+        nyah_player = await reql_helpers.get_nyah_player(inter.author)
         
-        if war_user.money < Money.WISHLIST_COST.value:
-            price_diff = Money.WISHLIST_COST.value - war_user.money
+        if nyah_player.money < Money.WISHLIST_COST.value:
+            price_diff = Money.WISHLIST_COST.value - nyah_player.money
             confirmation_embed = disnake.Embed(
                 description=f"{inter.author.mention}\nYou need `{price_diff:,}` {Emojis.COINS}",
                 color=disnake.Color.fuchsia()
@@ -31,10 +31,10 @@ class WaifuWishlistView(disnake.ui.View):
                         f"{inter.author}[{inter.author.id}] | "
                         f"Failed to wishlist '{self.waifu.slug}'")
         else:
-            war_user.money -= Money.WISHLIST_COST.value
-            war_user.wishlist.append(self.waifu.slug)
-            num_wishlists = war_user.wishlist.count(self.waifu.slug)
-            await reql_helpers.set_nyah_user(war_user)
+            nyah_player.money -= Money.WISHLIST_COST.value
+            nyah_player.wishlist.append(self.waifu.slug)
+            num_wishlists = nyah_player.wishlist.count(self.waifu.slug)
+            await reql_helpers.set_nyah_player(nyah_player)
         
             confirmation_embed = disnake.Embed(
                 description=f"{inter.author.mention}\n__**{self.waifu.name}**__ has been wishlisted for `{Money.WISHLIST_COST.value:,}` {Emojis.COINS}.\n"
