@@ -23,7 +23,17 @@ class WaifuWishlistView(disnake.ui.View):
             price_diff = Money.WISHLIST_COST.value - nyah_player.money
             confirmation_embed = disnake.Embed(
                 description=f"{inter.author.mention}\nYou need `{price_diff:,}` {Emojis.COINS}",
-                color=disnake.Color.fuchsia()
+                color=disnake.Color.red()
+            )
+
+            logger.info(f"{inter.guild.name}[{inter.guild.id}] | "
+                        f"{inter.channel.name}[{inter.channel.id}] | "
+                        f"{inter.author}[{inter.author.id}] | "
+                        f"Failed to wishlist '{self.waifu.slug}'")
+        elif int(0.05 * nyah_player.wishlist.count(self.waifu.slug) * 100) == 100:
+            confirmation_embed = disnake.Embed(
+                description=f"{inter.author.mention}\nYou have already wishlisted **__{self.waifu.name}__** the maximum number of times!",
+                color=disnake.Color.red()
             )
 
             logger.info(f"{inter.guild.name}[{inter.guild.id}] | "

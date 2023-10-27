@@ -18,7 +18,6 @@ from nyahbot.util.bracket import Bracket
 from nyahbot.util.dataclasses import (
     Claim,
     Waifu,
-    NyahGuild,
     War,
 )
 from nyahbot.util.constants import (
@@ -43,7 +42,7 @@ from nyahbot.views.waifu_claim import WaifuClaimView
 from nyahbot.views.waifu_skill import WaifuSkillView
 from nyahbot.views.waifu_menu import WaifuMenuView
 from nyahbot.views.waifu_paginator import WaifuPaginator
-from nyahbot.views.waifu_wishlist import WaifuWishlistView
+
 from nyahbot.views.waifu_minigames import WaifuSmashOrPassView, WaifuNameGuessView, WaifuBustGuessView
 
 class Waifus(commands.Cog):
@@ -1454,79 +1453,6 @@ class Waifus(commands.Cog):
 
 
     @commands.slash_command()
-    async def wishlist(self, inter: disnake.ApplicationCommandInteraction):
-        """ Top-level command group for wishlisting waifus. """
-        pass
-    
-    @wishlist.sub_command()
-    async def add(
-        self,
-        inter: disnake.ApplicationCommandInteraction,
-        waifu: str
-    ):
-        """ Wishlist a waifu!
-        
-            Parameters
-            ----------
-            waifu: `str`
-                The waifu to wishlist.
-        """
-        await inter.response.defer()
-
-        if re.search(r"\[.*\]", waifu):
-            match = re.match(r"^(.*?)\s*\[(.*?)\]$", waifu)
-            name = match.group(1).strip()
-            series = match.group(2).strip()
-
-            result = r.db("waifus") \
-                        .table("core") \
-                        .get_all(name, index="name") \
-                        .filter(
-                            r.row["series"].contains(series)
-                        ) \
-                        .order_by("popularity_rank") \
-                        .nth(0) \
-                        .run(conn)
-        else:
-            result = r.db("waifus") \
-                        .table("core") \
-                        .filter(
-                            r.row["name"].match(f"(?i){waifu}")
-                        ) \
-                        .order_by("popularity_rank") \
-                        .nth(0) \
-                        .run(conn)
-        waifu = Waifu(**result)
-
-        if not result:
-            return await inter.edit_original_response(
-                embed=utilities.get_error_embed(f"Couldn't find `{name}` in the waifu database!")
-            )
-        
-        embed = await helpers.get_waifu_base_embed(waifu)
-        embed.description = f"Wishlist __**{waifu.name}**__ for `{Money.WISHLIST_COST.value:,}` {Emojis.COINS}?"
-        
-        wishlist_view = WaifuWishlistView(
-            embed=embed,
-            waifu=waifu,
-            author=inter.author
-        )
-        return await inter.edit_original_response(embed=embed, view=wishlist_view)
-
-    @wishlist.sub_command()
-    async def show(self, inter: disnake.ApplicationCommandInteraction):
-        """ Show your wishlist. """
-        await inter.response.defer()
-        nyah_player = await reql_helpers.get_nyah_player(inter.author)
-        if not nyah_player.wishlist:
-            return await inter.edit_original_response(
-                embed=utilities.get_error_embed(f"{inter.author.mention} your wishlist is empty!\n\n"
-                                      f"Use `/wishlist add` to add a waifu to your wishlist to increase odds of getting it with `/getmywaifu`")
-            )
-        return await inter.edit_original_response("\n".join([f"`{s}`" for s in nyah_player.wishlist]))
-
-
-    @commands.slash_command()
     async def waifudex(
         self,
         inter: disnake.ApplicationCommandInteraction,
@@ -2147,7 +2073,7 @@ class Waifus(commands.Cog):
         return await inter.edit_original_response(embeds=[duel_embed, result_embed])
 
     ##*************************************************##
-    ##********          AUTOCOMPLETES           *******##   
+    ##********          AUTOCOMPLETES           *******##
     ##*************************************************##
 
     @skillmywaifu.autocomplete("waifu")
@@ -2178,7 +2104,6 @@ class Waifus(commands.Cog):
         return deque(waifu_names, maxlen=25)
 
     @waifudex.autocomplete("name")
-    @add.autocomplete("waifu")
     async def waifu_name_autocomplete(
         self,
         inter: disnake.ApplicationCommandInteraction,
