@@ -8,7 +8,10 @@ class Emojis:
     NEXT_PAGE  = "<:rightWaifu:1158460837359538186>"
     FIRST_PAGE = "<a:remspin:1159723782047551510>"
     LAST_PAGE  = "<a:ramspin:1159723691698044968>"
-    CLAIM      = "<a:_:1167319600472531015>"
+    
+    CLAIM    = "<a:_:1167319600472531015>"
+    MINIGAME = "🎮"
+    DUEL     = "🎌"
 
     SKILL_ATTACK  = "🗡️"
     SKILL_DEFENSE = "🛡️"

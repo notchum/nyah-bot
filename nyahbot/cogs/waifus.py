@@ -1289,7 +1289,7 @@ class Waifus(commands.Cog):
         # Duel cooldowns
         if await helpers.user_is_on_cooldown(inter.author, Cooldowns.DUEL):
             next_duel_at = await helpers.user_cooldown_expiration_time(inter.author, Cooldowns.DUEL)
-            if now < next_claim_at:
+            if now < next_duel_at:
                 fmt_duel_times = f"❄️ {utilities.get_dyn_time_relative(next_duel_at)} ({utilities.get_dyn_time_short(next_duel_at)})"
             else:
                 fmt_duel_times = "🟢 **Ready**"
@@ -1299,7 +1299,7 @@ class Waifus(commands.Cog):
         # Minigame cooldowns
         if await helpers.user_is_on_cooldown(inter.author, Cooldowns.MINIGAME):
             next_minigame_at = await helpers.user_cooldown_expiration_time(inter.author, Cooldowns.MINIGAME)
-            if now < next_claim_at:
+            if now < next_minigame_at:
                 fmt_minigame_times = f"❄️ {utilities.get_dyn_time_relative(next_minigame_at)} ({utilities.get_dyn_time_short(next_minigame_at)})"
             else:
                 fmt_minigame_times = "🟢 **Ready**"
@@ -1315,8 +1315,8 @@ class Waifus(commands.Cog):
         .add_field(name=f"Balance", value=f"`{nyah_player.money:,}` {Emojis.COINS}") \
         .add_field(name="Cooldowns:", value="", inline=False) \
         .add_field(name=f"{Emojis.CLAIM} Drop", value=fmt_claim_times, inline=False) \
-        .add_field(name="🎮 Minigame", value=fmt_minigame_times, inline=False) \
-        .add_field(name="🎌 Duel", value=fmt_duel_times, inline=False)
+        .add_field(name=f"{Emojis.MINIGAME} Minigame", value=fmt_minigame_times, inline=False) \
+        .add_field(name=f"{Emojis.DUEL} Duel", value=fmt_duel_times, inline=False)
         
         return await inter.edit_original_response(embed=embed)
 
