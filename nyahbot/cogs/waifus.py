@@ -1314,18 +1314,38 @@ class Waifus(commands.Cog):
 
     @commands.slash_command()
     async def profile(self, inter: disnake.ApplicationCommandInteraction):
-        """ View your level, XP, and balance. """
+        """ View your level, XP, balance and cooldowns. """
         await inter.response.defer()
 
-        user = await reql_helpers.get_nyah_player(inter.author)
+        nyah_player = await reql_helpers.get_nyah_player(inter.author)
+        next_claim_at = await helpers.user_cooldown_expiration_time(inter.author, Cooldowns.CLAIM)
+        next_duel_at = await helpers.user_cooldown_expiration_time(inter.author, Cooldowns.DUEL)
+        next_minigame_at = await helpers.user_cooldown_expiration_time(inter.author, Cooldowns.MINIGAME)
+        now = disnake.utils.utcnow()
 
         embed = disnake.Embed(
             color=disnake.Color.random(),
         ) \
         .set_author(name=f"{inter.author.name}'s Profile", icon_url=inter.author.display_avatar.url) \
-        .add_field(name="Level", value=f"{user.level}") \
-        .add_field(name="XP", value=f"{user.xp}/{helpers.calculate_accumulated_xp(user.level + 1)}") \
-        .add_field(name=f"Balance", value=f"`{user.money:,}` {Emojis.COINS}")
+        .add_field(name="Level", value=f"{nyah_player.level}") \
+        .add_field(name="XP", value=f"{nyah_player.xp}/{helpers.calculate_accumulated_xp(nyah_player.level + 1)}") \
+        .add_field(name=f"Balance", value=f"`{nyah_player.money:,}` {Emojis.COINS}") \
+        .add_field(name="Cooldowns:", value="", inline=False) \
+        .add_field(
+            name=f"{Emojis.CLAIM} Drop",
+            value=f"❄️ {utilities.get_dyn_time_relative(next_claim_at)} ({utilities.get_dyn_time_short(next_claim_at)})" if now < next_claim_at else "🟢 **Ready**",
+            inline=False,
+        ) \
+        .add_field(
+            name="🎮 Minigame",
+            value=f"❄️ {utilities.get_dyn_time_relative(next_minigame_at)} ({utilities.get_dyn_time_short(next_minigame_at)})" if now < next_minigame_at else "🟢 **Ready**",
+            inline=False,
+        ) \
+        .add_field(
+            name="🎌 Duel",
+            value=f"❄️ {utilities.get_dyn_time_relative(next_duel_at)} ({utilities.get_dyn_time_short(next_duel_at)})" if now < next_duel_at else "🟢 **Ready**",
+            inline=False,
+        )
         
         return await inter.edit_original_response(embed=embed)
 
