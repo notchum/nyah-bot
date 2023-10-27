@@ -1829,10 +1829,9 @@ class Waifus(commands.Cog):
             )
         
         embeds: typing.List[disnake.Embed] = list()
-        for h in harem:
-            harem_waifu = Claim(**dict(h))
-            embed = await helpers.get_waifu_harem_embed(harem_waifu)
-            embed.set_footer(text=harem_waifu.id)
+        for claim in harem:
+            embed = await helpers.get_waifu_harem_embed(claim)
+            embed.set_footer(text=claim.id)
             embeds.append(embed)
 
         waifu_war_event = await self.get_waifu_war_event(inter.guild)
