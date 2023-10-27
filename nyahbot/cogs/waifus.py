@@ -1316,12 +1316,39 @@ class Waifus(commands.Cog):
     async def profile(self, inter: disnake.ApplicationCommandInteraction):
         """ View your level, XP, balance and cooldowns. """
         await inter.response.defer()
+        now = disnake.utils.utcnow()
 
         nyah_player = await reql_helpers.get_nyah_player(inter.author)
-        next_claim_at = await helpers.user_cooldown_expiration_time(inter.author, Cooldowns.CLAIM)
-        next_duel_at = await helpers.user_cooldown_expiration_time(inter.author, Cooldowns.DUEL)
-        next_minigame_at = await helpers.user_cooldown_expiration_time(inter.author, Cooldowns.MINIGAME)
-        now = disnake.utils.utcnow()
+        
+        # Claim cooldowns
+        if await helpers.user_is_on_cooldown(inter.author, Cooldowns.CLAIM):
+            next_claim_at = await helpers.user_cooldown_expiration_time(inter.author, Cooldowns.CLAIM)
+            if now < next_claim_at:
+                fmt_claim_times = f"❄️ {utilities.get_dyn_time_relative(next_claim_at)} ({utilities.get_dyn_time_short(next_claim_at)})"
+            else:
+                fmt_claim_times = "🟢 **Ready**"
+        else:
+            fmt_claim_times = "🟢 **Ready**"
+        
+        # Duel cooldowns
+        if await helpers.user_is_on_cooldown(inter.author, Cooldowns.DUEL):
+            next_duel_at = await helpers.user_cooldown_expiration_time(inter.author, Cooldowns.DUEL)
+            if now < next_claim_at:
+                fmt_duel_times = f"❄️ {utilities.get_dyn_time_relative(next_duel_at)} ({utilities.get_dyn_time_short(next_duel_at)})"
+            else:
+                fmt_duel_times = "🟢 **Ready**"
+        else:
+            fmt_duel_times = "🟢 **Ready**"
+        
+        # Minigame cooldowns
+        if await helpers.user_is_on_cooldown(inter.author, Cooldowns.MINIGAME):
+            next_minigame_at = await helpers.user_cooldown_expiration_time(inter.author, Cooldowns.MINIGAME)
+            if now < next_claim_at:
+                fmt_minigame_times = f"❄️ {utilities.get_dyn_time_relative(next_minigame_at)} ({utilities.get_dyn_time_short(next_minigame_at)})"
+            else:
+                fmt_minigame_times = "🟢 **Ready**"
+        else:
+            fmt_minigame_times = "🟢 **Ready**"
 
         embed = disnake.Embed(
             color=disnake.Color.random(),
@@ -1331,21 +1358,9 @@ class Waifus(commands.Cog):
         .add_field(name="XP", value=f"{nyah_player.xp}/{helpers.calculate_accumulated_xp(nyah_player.level + 1)}") \
         .add_field(name=f"Balance", value=f"`{nyah_player.money:,}` {Emojis.COINS}") \
         .add_field(name="Cooldowns:", value="", inline=False) \
-        .add_field(
-            name=f"{Emojis.CLAIM} Drop",
-            value=f"❄️ {utilities.get_dyn_time_relative(next_claim_at)} ({utilities.get_dyn_time_short(next_claim_at)})" if now < next_claim_at else "🟢 **Ready**",
-            inline=False,
-        ) \
-        .add_field(
-            name="🎮 Minigame",
-            value=f"❄️ {utilities.get_dyn_time_relative(next_minigame_at)} ({utilities.get_dyn_time_short(next_minigame_at)})" if now < next_minigame_at else "🟢 **Ready**",
-            inline=False,
-        ) \
-        .add_field(
-            name="🎌 Duel",
-            value=f"❄️ {utilities.get_dyn_time_relative(next_duel_at)} ({utilities.get_dyn_time_short(next_duel_at)})" if now < next_duel_at else "🟢 **Ready**",
-            inline=False,
-        )
+        .add_field(name=f"{Emojis.CLAIM} Drop", value=fmt_claim_times, inline=False) \
+        .add_field(name="🎮 Minigame", value=fmt_minigame_times, inline=False) \
+        .add_field(name="🎌 Duel", value=fmt_duel_times, inline=False)
         
         return await inter.edit_original_response(embed=embed)
 
@@ -1451,23 +1466,23 @@ class Waifus(commands.Cog):
                 title="Correct!",
                 description=correct_description + 
                             f"- You earned `{Money.MINIGAME_WIN.value}` {Emojis.COINS} "
-                            f"and `{Experience.MINIGAME.value}` XP",
+                            f"and `{Experience.MINIGAME_WIN.value}` XP",
                 color=disnake.Color.green(),
             )
             logger.debug(f"{inter.author.name} beat minigame '{minigame}'")
             await helpers.add_user_money(inter.author, Money.MINIGAME_WIN.value)
-            await helpers.add_user_xp(inter.author, Experience.MINIGAME.value)
+            await helpers.add_user_xp(inter.author, Experience.MINIGAME_WIN.value, inter.channel)
         else:
             result_embed = disnake.Embed(
                 title="Wrong!",
                 description=wrong_description +
                             f"- You earned `{Money.MINIGAME_LOSS.value}` {Emojis.COINS} "
-                            f"and `{Experience.MINIGAME.value}` XP",
+                            f"and `{Experience.MINIGAME_LOSS.value}` XP",
                 color=disnake.Color.red(),
             )
             logger.debug(f"{inter.author.name} lost minigame '{minigame}'")
             await helpers.add_user_money(inter.author, Money.MINIGAME_LOSS.value)
-            await helpers.add_user_xp(inter.author, Experience.MINIGAME.value)
+            await helpers.add_user_xp(inter.author, Experience.MINIGAME_LOSS.value, inter.channel)
 
         return await inter.edit_original_response(embeds=[embed, result_embed], view=None)
 
@@ -1756,7 +1771,7 @@ class Waifus(commands.Cog):
         # Update user info in db
         nyah_player.timestamp_last_claim = disnake.utils.utcnow()
         await reql_helpers.set_nyah_player(nyah_player)
-        await helpers.add_user_xp(inter.author, Experience.CLAIM.value)
+        await helpers.add_user_xp(inter.author, Experience.CLAIM.value, inter.channel)
         return
 
     @commands.slash_command()
@@ -2075,7 +2090,7 @@ class Waifus(commands.Cog):
             )
             logger.debug(f"{inter.author.name} beat {opponent.name} & gained {MMR.DUEL_WIN.value} MMR")
             await helpers.add_user_mmr(inter.author, MMR.DUEL_WIN.value)
-            await helpers.add_user_xp(inter.author, Experience.DUEL_WIN.value)
+            await helpers.add_user_xp(inter.author, Experience.DUEL_WIN.value, inter.channel)
 
         # If user lost, they lose MMR but gain XP
         else:
@@ -2087,7 +2102,7 @@ class Waifus(commands.Cog):
             )
             logger.debug(f"{inter.author.name} lost to {opponent.name} & lost {MMR.DUEL_LOSS.value} MMR")
             await helpers.add_user_mmr(inter.author, MMR.DUEL_LOSS.value)
-            await helpers.add_user_xp(inter.author, Experience.DUEL_LOSS.value)
+            await helpers.add_user_xp(inter.author, Experience.DUEL_LOSS.value, inter.channel)
 
         # Edit message to add embed with the result of the match
         return await inter.edit_original_response(embeds=[duel_embed, result_embed])

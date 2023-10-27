@@ -19,7 +19,8 @@ class Experience(Enum):
     CLAIM      = 5  # gained from claiming a waifu
     DUEL_WIN   = 12 # gained from winning a duel
     DUEL_LOSS  = 8  # gained from losing a duel
-    MINIGAME   = 2  # gained from playing a minigame
+    MINIGAME_WIN  = 4  # gained from beating a minigame
+    MINIGAME_LOSS = 2  # gained from losting a minigame
     WAR_ROUND  = 15 # gained from each round of a war
     WAR_WIN    = 50 # gained from winning a war
 

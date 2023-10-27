@@ -4,6 +4,7 @@ import disnake
 from loguru import logger
 
 from nyahbot.util.constants import (
+    Emojis,
     WaifuState,
     Experience,
     Money,
@@ -49,7 +50,7 @@ def calculate_accumulated_xp(level: int) -> int:
         xp_accumulated += xp_needed
     return xp_accumulated
 
-async def add_user_xp(user: disnake.Member | disnake.User, xp: int) -> None:
+async def add_user_xp(user: disnake.Member | disnake.User, xp: int, channel: disnake.TextChannel = None) -> None:
     nyah_player = await reql_helpers.get_nyah_player(user)
     nyah_player.xp += xp
     logger.info(f"{user.name}[{user.id}] gained {xp}XP ({nyah_player.xp}XP)")
@@ -57,7 +58,15 @@ async def add_user_xp(user: disnake.Member | disnake.User, xp: int) -> None:
     # check if they leveled up
     if nyah_player.xp > calculate_accumulated_xp(nyah_player.level + 1):
         nyah_player.level += 1
-        nyah_player.money += (Money.PER_LEVEL.value * nyah_player.level)
+        level_money = Money.PER_LEVEL.value * nyah_player.level
+        nyah_player.money += level_money
+        if channel:
+            level_up_embed = disnake.Embed(
+                description=f"{user.mention} leveled up to level `{nyah_player.level}` ㊗️\n\n"
+                            f"You have been awarded `{level_money:,}` {Emojis.COINS}",
+                color=disnake.Color.dark_teal()
+            )
+            await channel.send(embed=level_up_embed)
         logger.info(f"{user.name}[{user.id}] leveled up to level {nyah_player.level}")
     
     await reql_helpers.set_nyah_player(nyah_player)
