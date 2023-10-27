@@ -10,6 +10,21 @@ class Emojis:
     LAST_PAGE  = "<a:ramspin:1159723691698044968>"
     CLAIM      = "<a:_:1167319600472531015>"
 
+    SKILL_ATTACK  = "🗡️"
+    SKILL_DEFENSE = "🛡️"
+    SKILL_HEALTH  = "❤️"
+    SKILL_SPEED   = "🌀"
+    SKILL_MAGIC   = "✨"
+    
+    TRAIT_COMMON    = "🟢"
+    TRAIT_UNCOMMON  = "🔵"
+    TRAIT_RARE      = "🟣"
+    TRAIT_LEGENDARY = "🟠"
+
+    STATE_MARRIED   = "💕"
+    STATE_COOLDOWN  = "❄️"
+    STATE_UNMARRIED = "💔"
+
 class MMR(Enum):
     DUEL_LOSS = -15 # gained from losing a duel
     DUEL_WIN  = 15 # gained from winning a duel

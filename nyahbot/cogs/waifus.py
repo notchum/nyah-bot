@@ -1189,50 +1189,6 @@ class Waifus(commands.Cog):
         )
 
     @waifuadmin.sub_command()
-    async def set_waifu_scores(
-        self,
-        inter: disnake.ApplicationCommandInteraction,
-        user: disnake.User = None,
-        new_score: int = None
-    ):
-        """ Set the waifu score for a specific member or reset scores for all guild members.
-
-            Parameters
-            ----------
-            user: `disnake.User`
-                The user to set waifu score for - must be used with `new_score`. (Default: All guild members)
-            new_score: `int`
-                The waifu score that will be set for the user - must be used with `user`. (Default: None)
-        """
-        if (user and not new_score) or (not user and new_score):
-            return await inter.response.send_message(
-                embed=utilities.get_error_embed("`user` and `new_score` must both be used for setting a single user's score!"),
-                ephemeral=True
-            )
-        elif user and new_score:
-            r.db("nyah") \
-                .table("players") \
-                .get_all([str(inter.guild.id), str(user.id)], index="guild_user") \
-                .update({
-                    "score": new_score
-                }) \
-                .run(conn)
-            logger.success(f"{inter.guild.name}[{inter.guild.id}] | "
-                           f"Set waifu score for {user.name}#{user.discriminator}[{user.id}] to {new_score}!")
-            return await inter.response.send_message(
-                embed=utilities.get_success_embed(f"Set waifu score for {user.name}#{user.discriminator}[{user.id}] to {new_score}!"),
-                ephemeral=True
-            )
-        else:
-            await self.end_waifu_war_season(inter.guild)
-            logger.success(f"{inter.guild.name}[{inter.guild.id}] | "
-                           f"Reset all waifu scores!")
-            return await inter.response.send_message(
-                embed=utilities.get_success_embed("Reset all waifu scores!"),
-                ephemeral=True
-            )
-    
-    @waifuadmin.sub_command()
     async def set_user_attributes(
         self,
         inter: disnake.ApplicationCommandInteraction,
@@ -1779,42 +1735,45 @@ class Waifus(commands.Cog):
         """ List your harem! """
         await inter.response.defer()
 
-        harem = r.db("waifus") \
-                    .table("claims") \
-                    .get_all([str(inter.guild.id), str(inter.author.id)], index="guild_user") \
-                    .has_fields(["state", "index"]) \
-                    .filter(
-                        r.or_(
-                            r.row["state"].ne(WaifuState.NULL.name),
-                            r.row["state"].ne(WaifuState.SOLD.name),
-                        )
-                    ) \
-                    .order_by("index") \
-                    .run(conn)
+        harem = await reql_helpers.get_harem(inter.guild, inter.author)
         
         if not harem:
-            return await inter.edit_original_response(content="How about you get some bitches?")
+            return await inter.edit_original_response(
+                embed=utilities.get_error_embed(f"{inter.author.mention} your harem is empty!\n\nUse `/getmywaifu` to get started")
+            )
         
         embed = disnake.Embed(
             description="",
             color=disnake.Color.dark_red()
         )
         embeds = []
-        for i, h in enumerate(harem, 1):
-            harem_waifu = Claim(**dict(h))
-            result = r.db("waifus") \
-                        .table("core") \
-                        .get(harem_waifu.slug) \
-                        .run(conn)
-            waifu = Waifu(**result)
+        for i, claim in enumerate(harem, 1):
+            waifu = await reql_helpers.get_waifu_core(claim.slug)
             if i == 1:
-                embed.set_thumbnail(url=harem_waifu.image_url)
-            if harem_waifu.state == WaifuState.ACTIVE.name:
-                embed.description += f"`{i}` 💕 **__{waifu.name}__**\n"
-            elif harem_waifu.state == WaifuState.COOLDOWN.name:
-                embed.description += f"`{i}` ❄️ {waifu.name}\n"
-            elif harem_waifu.state == WaifuState.INACTIVE.name:
-                embed.description += f"`{i}` 💔 {waifu.name}\n"
+                embed.set_thumbnail(url=claim.image_url)
+            
+            embed.description += f"`{i}` "
+            
+            if claim.state == WaifuState.ACTIVE.name:
+                embed.description += Emojis.STATE_MARRIED
+            elif claim.state == WaifuState.COOLDOWN.name:
+                embed.description += Emojis.STATE_COOLDOWN
+            elif claim.state == WaifuState.INACTIVE.name:
+                embed.description += Emojis.STATE_UNMARRIED
+            
+            embed.description += f" {waifu.name} ({claim.stats_str()}) "
+            
+            if claim.trait_common:
+                embed.description += Emojis.TRAIT_COMMON
+            if claim.trait_uncommon:
+                embed.description += Emojis.TRAIT_UNCOMMON
+            if claim.trait_rare:
+                embed.description += Emojis.TRAIT_RARE
+            if claim.trait_legendary:
+                embed.description += Emojis.TRAIT_LEGENDARY
+            
+            embed.description += "\n"
+
             if i % 10 == 0:
                 embed.set_author(name=f"{inter.author.name}'s Harem", icon_url=inter.author.display_avatar.url)
                 embeds.append(embed)
@@ -1848,18 +1807,7 @@ class Waifus(commands.Cog):
         """
         await inter.response.defer()
 
-        harem = r.db("waifus") \
-                    .table("claims") \
-                    .get_all([str(inter.guild.id), str(inter.author.id)], index="guild_user") \
-                    .has_fields(["state", "index"]) \
-                    .filter(
-                        r.or_(
-                            r.row["state"].ne(WaifuState.NULL.name),
-                            r.row["state"].ne(WaifuState.SOLD.name),
-                        )
-                    ) \
-                    .order_by("index") \
-                    .run(conn)
+        harem = await reql_helpers.get_harem(inter.guild, inter.author)
 
         if waifu:
             try:
@@ -1876,7 +1824,9 @@ class Waifus(commands.Cog):
             harem = [harem.pop(index - 1)]
                 
         if not harem:
-            return await inter.edit_original_response(content="How about you get some bitches?")
+            return await inter.edit_original_response(
+                embed=utilities.get_error_embed(f"{inter.author.mention} your harem is empty!\n\nUse `/getmywaifu` to get started")
+            )
         
         embeds: typing.List[disnake.Embed] = list()
         for h in harem:
