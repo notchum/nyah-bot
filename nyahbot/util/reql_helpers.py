@@ -2,7 +2,6 @@ from typing import List
 
 import disnake
 from rethinkdb import r
-from loguru import logger
 
 from nyahbot.util.globals import conn
 from nyahbot.util.constants import WaifuState
@@ -14,7 +13,14 @@ from nyahbot.util.dataclasses import (
 )
 
 ##*************************************************##
-##********             NyahGuild             *******##
+##********              General             *******##
+##*************************************************##
+
+async def get_rethink_uuid() -> str:
+    return r.uuid().run(conn)
+
+##*************************************************##
+##********             NyahGuild            *******##
 ##*************************************************##
 
 async def get_nyah_guild(guild: disnake.Guild) -> NyahGuild | None:
@@ -37,7 +43,7 @@ async def set_nyah_guild(nyah_guild: NyahGuild) -> None:
     return
 
 ##*************************************************##
-##********             NyahPlayer              *******##
+##********             NyahPlayer           *******##
 ##*************************************************##
 
 async def get_nyah_player(user: disnake.Member) -> NyahPlayer | None:
@@ -74,6 +80,12 @@ async def set_nyah_player(nyah_player: NyahPlayer) -> None:
 ##********             Waifu                *******##
 ##*************************************************##
 
+async def get_waifu_core_size() -> int:
+    return r.db("waifus") \
+            .table("core") \
+            .count() \
+            .run(conn)
+
 async def get_waifu_core(slug: str) -> Waifu | None:
     result = r.db("waifus") \
                 .table("core") \
@@ -92,9 +104,26 @@ async def get_waifu_core_name(name: str) -> List[Waifu]:
                 .run(conn)
     return [Waifu(**doc) for doc in result]
 
+async def get_waifu_core_random(number: int) -> Waifu | List[Waifu]:
+    result = r.db("waifus") \
+                .table("core") \
+                .has_fields(["popularity_rank", "like_rank", "trash_rank"]) \
+                .sample(number) \
+                .run(conn)
+    if number > 1:
+        return [Waifu(**doc) for doc in result]
+    return Waifu(**result[0])
+
 ##*************************************************##
 ##********             Claim                *******##
 ##*************************************************##
+
+async def get_waifu_claim_size(user: disnake.Member) -> int:
+    return  r.db("waifus") \
+                .table("claims") \
+                .get_all(str(user.id), index="user_id") \
+                .count() \
+                .run(conn)
 
 async def get_waifu_claim(id: str) -> Claim | None:
     result = r.db("waifus") \
@@ -131,6 +160,15 @@ async def set_waifu_claim(claim: Claim) -> None:
                 .table("claims") \
                 .get(claim.id) \
                 .update(claim.__dict__) \
+                .run(conn)
+    if result["errors"] > 0:
+        raise Exception # TODO create custom exception
+    return
+
+async def insert_waifu_claim(claim: Claim) -> None:
+    result = r.db("waifus") \
+                .table("claims") \
+                .insert(claim.__dict__) \
                 .run(conn)
     if result["errors"] > 0:
         raise Exception # TODO create custom exception

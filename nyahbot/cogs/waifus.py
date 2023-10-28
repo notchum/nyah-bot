@@ -89,11 +89,10 @@ class Waifus(commands.Cog):
             `disnake.GuildScheduledEvent`
                 The Waifu War event of the guild. `None` if it doesn't exist.
         """
+        # TODO, guild.scheduled_events seem to be cached or something, only fetch can get the latest users
         # events = await guild.fetch_scheduled_events(with_user_count=True)
         for event in guild.scheduled_events:
-            if event.creator_id != self.bot.user.id:
-                continue
-            if event.name == "Waifu War":
+            if event.name == "Waifu War": #TODO add better check - events in database?
                 return event
         return None
 
@@ -1121,27 +1120,38 @@ class Waifus(commands.Cog):
                 await self.end_waifu_war_event(waifu_war_event)
 
                 # Put winner's waifus on cooldown
-                r.db("waifus") \
-                    .table("claims") \
-                    .get_all([str(guild.id), winner_id], index="guild_user") \
-                    .has_fields(["state", "index"]) \
-                    .filter(
-                        r.row["state"].eq(WaifuState.ACTIVE.name)
-                    ) \
-                    .update({
-                        "state": WaifuState.COOLDOWN.name,
-                        "timestamp_cooldown": disnake.utils.utcnow(),
-                    }) \
-                    .run(conn)
+                # r.db("waifus") \
+                #     .table("claims") \
+                #     .get_all([str(guild.id), winner_id], index="guild_user") \
+                #     .has_fields(["state", "index"]) \
+                #     .filter(
+                #         r.row["state"].eq(WaifuState.ACTIVE.name)
+                #     ) \
+                #     .update({
+                #         "state": WaifuState.COOLDOWN.name,
+                #         "timestamp_cooldown": disnake.utils.utcnow(),
+                #     }) \
+                #     .run(conn)
                 
                 # Give the winner and runner-up awards
+                ending_embed = disnake.Embed(
+                    color=disnake.Color.random()
+                )
                 for user_id in bracket.get_round_participant_ids(current_round):
                     user = await guild.fetch_member(int(user_id))
                     if user_id == winner_id:
                         await helpers.add_user_money(user, Money.WAR_FIRST.value)
+                        await helpers.add_user_xp(user, Experience.WAR_FIRST.value)
+                        ending_embed.title = f"Congratulations to {user.name} for winning the Waifu War!"
+                        ending_embed.description += f"- {user.mention} won `{Money.WAR_FIRST.value:,}` {Money.EMOJI} and `{Experience.WAR_FIRST.value}` XP!"
+                        ending_embed.set_thumbnail(url=user.display_avatar.url)
                     else:
                         await helpers.add_user_money(user, Money.WAR_SECOND.value)
-                
+                        await helpers.add_user_xp(user, Experience.WAR_SECOND.value)
+                        ending_embed.description += f"- {user.mention} won `{Money.WAR_SECOND.value:,}` {Money.EMOJI} and `{Experience.WAR_SECOND.value}` XP!"
+                # TODO test this
+                await waifu_war_channel.send(embed=ending_embed)
+
                 # Reindex all participant's waifus
                 for participant in bracket.participants:
                     if participant.user_id == "BYE":
@@ -1470,11 +1480,7 @@ class Waifus(commands.Cog):
 
         # Return the total number of waifus that the user has claimed
         if not name and not series and not tag and not birthday:
-            n_total_claims = r.db("waifus") \
-                                .table("claims") \
-                                .get_all(str(inter.author.id), index="user_id") \
-                                .count() \
-                                .run(conn)
+            n_total_claims = await reql_helpers.get_waifu_claim_size(inter.author)
             embed = disnake.Embed(
                 description=f"You've gotten {n_total_claims} waifus!",
                 color=disnake.Color.teal()
@@ -1586,42 +1592,22 @@ class Waifus(commands.Cog):
             wishlist_slug = random.choice(nyah_player.wishlist)
             wishlist_chance = 0.05 * nyah_player.wishlist.count(wishlist_slug)
             if random.random() < wishlist_chance:
-                result = r.db("waifus") \
-                            .table("core") \
-                            .get(wishlist_slug) \
-                            .run(conn)
-                result["popularity_rank"] = random.randint(1000, 5000) #!!! REMOVE
-                result["like_rank"] = random.randint(1000, 5000) #!!! REMOVE
-                result["trash_rank"] = random.randint(1000, 5000) #!!! REMOVE
+                new_waifu = await reql_helpers.get_waifu_core(wishlist_slug)
+                new_waifu.popularity_rank = random.randint(1000, 5000) #!!! REMOVE
+                new_waifu.like_rank = random.randint(1000, 5000) #!!! REMOVE
+                new_waifu.trash_rank = random.randint(1000, 5000) #!!! REMOVE
                 nyah_player.wishlist = [item for item in nyah_player.wishlist if item != wishlist_slug]
             else:
-                result = r.db("waifus") \
-                            .table("core") \
-                            .has_fields(["popularity_rank", "like_rank", "trash_rank"]) \
-                            .filter(
-                                r.row["husbando"].eq(False)
-                            ) \
-                            .sample(1) \
-                            .nth(0) \
-                            .run(conn)
+                new_waifu = await reql_helpers.get_waifu_core_random(1)
         else:
-            result = r.db("waifus") \
-                        .table("core") \
-                        .has_fields(["popularity_rank", "like_rank", "trash_rank"]) \
-                        .filter(
-                            r.row["husbando"].eq(False)
-                        ) \
-                        .sample(1) \
-                        .nth(0) \
-                        .run(conn)
-        new_waifu = Waifu(**result)
+            new_waifu = await reql_helpers.get_waifu_core_random(1)
 
         # Roll traits
         trait_dropper = traits.CharacterTraitDropper(nyah_player.level)
         rolled_traits = trait_dropper.roll_all_traits()
 
         # Normalize each ranking, adding some various permutations to a list
-        num_ranks = r.db("waifus").table("core").count().run(conn)
+        num_ranks = await reql_helpers.get_waifu_core_size()
         normalized_popularity_rank = 1 - (new_waifu.popularity_rank - 1) / (num_ranks - 1)
         normalized_like_rank = 1 - (new_waifu.like_rank - 1) / (num_ranks - 1)
         normalized_trash_rank = (new_waifu.trash_rank - 1) / (num_ranks - 1)
@@ -1647,14 +1633,15 @@ class Waifus(commands.Cog):
 
         # TODO re-assess how to best assign base stats, here is just completely random
         # TODO but i left price using stats calculated via waifu rank, since that seemed fine
-        attack = random.randint(0, 100)
-        defense = random.randint(0, 100)
-        health = random.randint(0, 100)
-        speed = random.randint(0, 100)
-        magic = random.randint(0, 100)
+        max_stat = min(100, nyah_player.level * 10)
+        attack = random.randint(0, max_stat)
+        defense = random.randint(0, max_stat)
+        health = random.randint(0, max_stat)
+        speed = random.randint(0, max_stat)
+        magic = random.randint(0, max_stat)
 
         # Generate the claim object
-        new_waifu_uuid = r.uuid().run(conn)
+        new_waifu_uuid = await reql_helpers.get_rethink_uuid()
         index = await reql_helpers.get_harem_size(inter.guild, inter.author)
         claim = Claim(
             id=new_waifu_uuid,
@@ -1721,7 +1708,7 @@ class Waifus(commands.Cog):
         claim.message_id=str(message.id)
         claim.jump_url=message.jump_url
         claim.timestamp=message.created_at
-        r.db("waifus").table("claims").insert(claim.__dict__).run(conn)
+        await reql_helpers.insert_waifu_claim(claim)
         await helpers.reindex_guild_user_harem(inter.guild, inter.author)
 
         # Update user info in db

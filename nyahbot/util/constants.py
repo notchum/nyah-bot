@@ -40,7 +40,8 @@ class Experience(Enum):
     MINIGAME_WIN  = 4  # gained from beating a minigame
     MINIGAME_LOSS = 2  # gained from losting a minigame
     WAR_ROUND  = 15 # gained from each round of a war
-    WAR_WIN    = 50 # gained from winning a war
+    WAR_FIRST  = 50 # gained from winning a war
+    WAR_SECOND = 25 # gained from being runner-up in a war
 
 class Money(Enum):
     PER_LEVEL     = 1000  # gained from leveling up (multiplied by the new level)

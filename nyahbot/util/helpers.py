@@ -62,10 +62,10 @@ async def add_user_xp(user: disnake.Member | disnake.User, xp: int, channel: dis
         nyah_player.money += level_money
         if channel:
             level_up_embed = disnake.Embed(
-                description=f"{user.mention} leveled up to level `{nyah_player.level}` ㊗️\n\n"
+                description=f"### ㊗️ Congratulations {user.mention}! You are now level {nyah_player.level}!\n\n"
                             f"You have been awarded `{level_money:,}` {Emojis.COINS}",
                 color=disnake.Color.dark_teal()
-            )
+            ).set_thumbnail(url=user.avatar.url)
             await channel.send(embed=level_up_embed)
         logger.info(f"{user.name}[{user.id}] leveled up to level {nyah_player.level}")
     

@@ -5,7 +5,10 @@ from loguru import logger
 
 from nyahbot.util.constants import Money, Emojis
 from nyahbot.util.dataclasses import Claim
-from nyahbot.util import reql_helpers
+from nyahbot.util import (
+    reql_helpers,
+    traits,
+)
 
 class WaifuSkillView(disnake.ui.View):
     message: disnake.Message
@@ -41,12 +44,27 @@ class WaifuSkillView(disnake.ui.View):
             await reql_helpers.set_nyah_player(nyah_player)
 
             # TODO re-assess how to best assign base stats, here is just completely random
-            # TODO but i left price using stats calculated via waifu rank, since that seemed fine
-            self.claim.attack = random.randint(0, 100)
-            self.claim.defense = random.randint(0, 100)
-            self.claim.health = random.randint(0, 100)
-            self.claim.speed = random.randint(0, 100)
-            self.claim.magic = random.randint(0, 100)
+            max_stat = min(100, nyah_player.level * 10)
+            self.claim.attack = random.randint(0, max_stat)
+            self.claim.defense = random.randint(0, max_stat)
+            self.claim.health = random.randint(0, max_stat)
+            self.claim.speed = random.randint(0, max_stat)
+            self.claim.magic = random.randint(0, max_stat)
+            
+            # Apply trait modifiers
+            if self.claim.trait_common:
+                trait = traits.CharacterTraitsCommon.get_trait_by_name(self.claim.trait_common)
+                trait.apply_modifiers(self.claim)
+            if self.claim.trait_uncommon:
+                trait = traits.CharacterTraitsUncommon.get_trait_by_name(self.claim.trait_uncommon)
+                trait.apply_modifiers(self.claim)
+            if self.claim.trait_rare:
+                trait = traits.CharacterTraitsRare.get_trait_by_name(self.claim.trait_rare)
+                trait.apply_modifiers(self.claim)
+            if self.claim.trait_legendary:
+                trait = traits.CharacterTraitsLegendary.get_trait_by_name(self.claim.trait_legendary)
+                trait.apply_modifiers(self.claim)
+            
             await reql_helpers.set_waifu_claim(self.claim)
 
             waifu = await reql_helpers.get_waifu_core(self.claim.slug)
