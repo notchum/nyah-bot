@@ -32,25 +32,25 @@ class CharacterTrait:
         for modifier, value in self.modifiers.items():
             value = value / 100
             if modifier == StatModifiers.ATTACK_UP:
-                claim.attack_mod += int(value * claim.attack)
+                claim.attack_mod = int(value * claim.attack)
             elif modifier == StatModifiers.ATTACK_DOWN:
-                claim.attack_mod -= int(value * claim.attack)
+                claim.attack_mod = int(value * claim.attack)
             elif modifier == StatModifiers.DEFENSE_UP:
-                claim.defense_mod += int(value * claim.defense)
+                claim.defense_mod = int(value * claim.defense)
             elif modifier == StatModifiers.DEFENSE_DOWN:
-                claim.defense_mod -= int(value * claim.defense)
+                claim.defense_mod = int(value * claim.defense)
             elif modifier == StatModifiers.HEALTH_UP:
-                claim.health_mod += int(value * claim.health)
+                claim.health_mod = int(value * claim.health)
             elif modifier == StatModifiers.HEALTH_DOWN:
-                claim.health_mod -= int(value * claim.health)
+                claim.health_mod = int(value * claim.health)
             elif modifier == StatModifiers.SPEED_UP:
-                claim.speed_mod += int(value * claim.speed)
+                claim.speed_mod = int(value * claim.speed)
             elif modifier == StatModifiers.SPEED_DOWN:
-                claim.speed_mod -= int(value * claim.speed)
+                claim.speed_mod = int(value * claim.speed)
             elif modifier == StatModifiers.MAGIC_UP:
-                claim.magic_mod += int(value * claim.magic)
+                claim.magic_mod = int(value * claim.magic)
             elif modifier == StatModifiers.MAGIC_DOWN:
-                claim.magic_mod -= int(value * claim.magic)
+                claim.magic_mod = int(value * claim.magic)
     
     def get_trait_value(self):
         if self.trait_type == TraitTypes.COMMON:
