@@ -3,11 +3,12 @@ import os
 import disnake
 from disnake.ext import commands
 
+from bot import NyahBot
 from nyahbot.util import utilities
 
 class Fun(commands.Cog):
     def __init__(self, bot: commands.Bot):
-        self.bot = bot
+        self.bot: NyahBot = bot
 
     ##*************************************************##
     ##********           ABSTRACTIONS           *******##
@@ -51,8 +52,4 @@ class Fun(commands.Cog):
     ##*************************************************##
 
 def setup(bot: commands.Bot):
-    # required_env_vars = ['IMGFLIP_USERNAME', 'IMGFLIP_PASSWORD']
-    # for env_var in required_env_vars:
-    #     if env_var not in os.environ or not os.environ[env_var]:
-    #         return logger.error(f"Cannot load cog 'TextGen' | {env_var} not in environment!")
     bot.add_cog(Fun(bot))

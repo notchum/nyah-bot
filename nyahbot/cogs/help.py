@@ -3,10 +3,10 @@ import datetime
 import disnake
 from disnake.ext import commands
 
+from bot import NyahBot
 from nyahbot.util.constants import Money, Emojis
 from nyahbot.util import (
     utilities,
-    reql_helpers,
     traits,
 )
 
@@ -14,7 +14,7 @@ from nyahbot.views.waifu_paginator import WaifuPaginator
 
 class Help(commands.Cog):
     def __init__(self, bot: commands.Bot):
-        self.bot = bot
+        self.bot: NyahBot = bot
 
     ##*************************************************##
     ##********           ABSTRACTIONS           *******##
@@ -57,7 +57,7 @@ class Help(commands.Cog):
         """ Everything you need to know! """
         await inter.response.defer()
 
-        nyah_guild = await reql_helpers.get_nyah_guild(inter.guild)
+        nyah_guild = await utilities.get_nyah_guild(inter.guild)
         start_time = datetime.datetime.combine(
             date=disnake.utils.utcnow().date(),
             time=datetime.time(nyah_guild.waifu_war_hour, 0), #??? should this be hour in UTC? it is MDT now...
@@ -150,7 +150,6 @@ class Help(commands.Cog):
         await inter.response.defer()
 
         embeds = []
-
         for i, title, color in [(traits.CharacterTraitsCommon, "🟢 Common Traits", disnake.Color.green()),
                                 (traits.CharacterTraitsUncommon, "🔵 Uncommon Traits", disnake.Color.blue()),
                                 (traits.CharacterTraitsRare, "🟣 Rare Traits", disnake.Color.purple()),

@@ -1,22 +1,15 @@
-import os
 import re
 
 import disnake
-from   disnake.ext import commands, tasks
-
+from disnake.ext import commands, tasks
 from lxml import html
-from loguru import logger
-from rethinkdb import r
 
-from nyahbot.util import utilities
-from nyahbot.util.globals import conn, session
-from nyahbot.util.dataclasses import (
-    Waifu,
-)
+from bot import NyahBot
+from models import Waifu
 
 class Scraper(commands.Cog):
     def __init__(self, bot: commands.Bot):
-        self.bot = bot
+        self.bot: NyahBot = bot
         # self.waifu_scraper.start()
         #!!! REMOVE
         self.scraper_index = 10000
@@ -38,7 +31,7 @@ class Scraper(commands.Cog):
     @tasks.loop(seconds=15.0)
     async def waifu_scraper(self):
         """ Scrapes waifu info from the site. """
-        logger.debug(f"Scraping waifu... [loop #{self.waifu_scraper.current_loop}]")
+        self.bot.logger.debug(f"Scraping waifu... [loop #{self.waifu_scraper.current_loop}]")
         
         unranked_str = "This waifu has not been ranked site-wide yet"
         days_suffix = ["st", "nd", "rd", "th"]
@@ -63,7 +56,7 @@ class Scraper(commands.Cog):
         }
 
         #!!! REMOVE
-        waifu_core_count = r.db("waifus").table("core").count().run(conn)
+        waifu_core_count = await self.bot.mongo.fetch_waifu_count()
         if self.last_check_unranked:
             self.scraper_index += 1
             self.last_check_unranked = False
@@ -72,36 +65,43 @@ class Scraper(commands.Cog):
         else:
             entry_needs_updated = False
             while not entry_needs_updated:
-                result = r.db("waifus").table("core").nth(self.scraper_index).run(conn)
-                entry = Waifu(**result)
+                entry = await self.bot.mongo.fetch_waifu_by_index(self.scraper_index)
                 if not entry.popularity_rank:
                     entry_needs_updated = True
                 else:
                     self.scraper_index += 1
 
         try:
-            response = await session.get(url=f"{os.environ['WEBSCRAPE_URL']}{entry.slug}", headers=h, proxy=os.environ["PROXY_HTTP_URL"])
+            response = await self.bot.session.get(
+                url=f"{self.bot.config.WEBSCRAPE_URL}{entry.slug}",
+                headers=h,
+                proxy=self.bot.config.PROXY_HTTP_URL
+            )
         except Exception as e:
             self.scraper_index += 1 #!!! REMOVE
-            return logger.error(e)
+            return self.bot.logger.error(e)
         #!!! REMOVE
 
         # try:
-        #     response = await session.get(url=os.environ["WEBSCRAPE_URL"], headers=h, proxy=os.environ["PROXY_HTTP_URL"])
+        #     response = await self.bot.session.get(
+        #         url=self.bot.config.WEBSCRAPE_URL,
+        #         headers=h,
+        #         proxy=self.bot.config.PROXY_HTTP_URL
+        #     )
         # except Exception as e:
-        #     return logger.error(e)
+        #     return self.bot.logger.error(e)
 
         try:
             if response.status != 200:
                 self.scraper_index += 1 #!!! REMOVE
-                return logger.error(f"{response.url} returned status {response.status}!")
+                return self.bot.logger.error(f"{response.url} returned status {response.status}!")
 
             # get slug
             slug = response.real_url.name
             if len(slug) > 127:
                 self.scraper_index += 1 #!!! REMOVE
-                return logger.error(f"RethinkDB cannot insert primary key '{slug}' due to too many characters")
-            logger.info(f"Retrieved webpage for '{slug}'")
+                return self.bot.logger.error(f"RethinkDB cannot insert primary key '{slug}' due to too many characters")
+            self.bot.logger.info(f"Retrieved webpage for '{slug}'")
 
             # parse html
             body = await response.text()
@@ -110,7 +110,7 @@ class Scraper(commands.Cog):
             # scrape
             core_info = elem.cssselect("#waifu-core-information")[0]
             new_waifu = Waifu(
-                url=f"{os.environ['WEBSCRAPE_URL']}{slug}",
+                url=f"{self.bot.config.WEBSCRAPE_URL}{slug}",
                 source="mywaifulist",
                 name=elem.cssselect("h1.my-3")[0].text,
                 original_name=core_info.cssselect("#alternate-name")[0].text,
@@ -162,59 +162,37 @@ class Scraper(commands.Cog):
                         new_waifu.birthday_year = int(value)
             
             # if it exists in db, then update it
-            exists = r.db("waifus") \
-                        .table("core") \
-                        .get_all(slug) \
-                        .count() \
-                        .eq(1) \
-                        .run(conn)
+            exists = await self.bot.mongo.check_waifu_exists(slug)
             if exists:
-                logger.info(f"'{slug}' already exists in the database; checking for updates...")
-                result = r.db("waifus") \
-                            .table("core") \
-                            .get(slug) \
-                            .run(conn)
-                db_waifu = Waifu(**result)
+                self.bot.logger.info(f"'{slug}' already exists in the database; checking for updates...")
+                db_waifu = await self.bot.mongo.fetch_waifu(slug)
                 if new_waifu == db_waifu:
-                    logger.info(f"'{slug}' is up-to-date in the database; moving on...")
+                    self.bot.logger.info(f"'{slug}' is up-to-date in the database; moving on...")
                     return
-                logger.info(f"'{slug}' is not up-to-date in the database; attempting to update...")
+                self.bot.logger.info(f"'{slug}' is not up-to-date in the database; attempting to update...")
 
                 differences = Waifu.compare(db_waifu, new_waifu)
                 for field, value in differences.items():
                     old = value["old"]
                     new = value["new"]
-                    logger.info(f"    ├─'{field}' ({old} -> {new})")
+                    self.bot.logger.info(f"    ├─'{field}' ({old} -> {new})")
 
-                result = r.db("waifus") \
-                            .table("core") \
-                            .get(slug) \
-                            .update(new_waifu.__dict__) \
-                            .run(conn)
-                if result["replaced"]:
-                    logger.success(f"Updated database entry for '{slug}'")
-                else:
-                    logger.error(f"Failed to replace database entry for '{slug}'")
+                await self.bot.mongo.update_waifu(new_waifu)
+                self.bot.logger.success(f"Updated database entry for '{slug}'")
 
             # insert the new waifu in the db
             else:
-                logger.warning(f"'{slug}' doesn't exist in the database; attempting to create an entry...")
-                result = r.db("waifus") \
-                            .table("core") \
-                            .insert(new_waifu.__dict__) \
-                            .run(conn)
-                if result["inserted"]:
-                    logger.success(f"Created database entry for '{slug}'")
-                else:
-                    logger.error(f"Failed to create database entry for '{slug}'")
+                self.bot.logger.warning(f"'{slug}' doesn't exist in the database; attempting to create an entry...")
+                await self.bot.mongo.insert_waifu(new_waifu)
+                self.bot.logger.success(f"Created database entry for '{slug}'")
         
         except Exception as e:
-            logger.exception(e)
+            self.bot.logger.exception(e)
 
             # await self.bot.owner.send(
             #     embed=disnake.Embed(
             #         title=slug,
-            #         url=f"{os.environ["WEBSCRAPE_URL"]}{slug}",
+            #         url=f"{self.bot.config.WEBSCRAPE_URL}{slug}",
             #         color=disnake.Color.random(),
             #         description=f"{utilities.get_dyn_time_long(disnake.utils.utcnow())}"
             #                     f"{utilities.create_trace(e)}",
@@ -249,8 +227,4 @@ class Scraper(commands.Cog):
     ##*************************************************##
 
 def setup(bot: commands.Bot):
-    required_env_vars = ["PROXY_HTTP_URL", "WEBSCRAPE_URL"]
-    for env_var in required_env_vars:
-        if env_var not in os.environ or not os.environ[env_var]:
-            return logger.error(f"Cannot load cog 'Scraper' | {env_var} not in environment!")
     bot.add_cog(Scraper(bot))

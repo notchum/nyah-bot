@@ -3,14 +3,11 @@ from collections import deque
 
 import disnake
 from disnake.ext import commands
-from rethinkdb import r
 
-from nyahbot.util.globals import conn
+from bot import NyahBot
 from nyahbot.util.constants import Money, Emojis
-from nyahbot.util.dataclasses import Waifu
 from nyahbot.util import (
     utilities,
-    reql_helpers,
     helpers,
 )
 
@@ -18,7 +15,7 @@ from nyahbot.views.waifu_wishlist import WaifuWishlistView
 
 class Wishlist(commands.Cog):
     def __init__(self, bot: commands.Bot):
-        self.bot = bot
+        self.bot: NyahBot = bot
 
     ##*************************************************##
     ##********           ABSTRACTIONS           *******##
@@ -61,25 +58,10 @@ class Wishlist(commands.Cog):
             name = match.group(1).strip()
             series = match.group(2).strip()
 
-            result = r.db("waifus") \
-                        .table("core") \
-                        .get_all(name, index="name") \
-                        .filter(
-                            r.row["series"].contains(series)
-                        ) \
-                        .order_by("popularity_rank") \
-                        .nth(0) \
-                        .run(conn)
+            result = await self.bot.mongo.fetch_waifu_by_name_series(name, series)
         else:
-            result = r.db("waifus") \
-                        .table("core") \
-                        .filter(
-                            r.row["name"].match(f"(?i){waifu}")
-                        ) \
-                        .order_by("popularity_rank") \
-                        .nth(0) \
-                        .run(conn)
-        waifu = Waifu(**result)
+            result = await self.bot.mongo.fetch_waifu_by_name(waifu)
+        waifu = result[0]
 
         if not result:
             return await inter.edit_original_response(
@@ -101,7 +83,7 @@ class Wishlist(commands.Cog):
         """ Show your wishlist. """
         await inter.response.defer()
         
-        nyah_player = await reql_helpers.get_nyah_player(inter.author)
+        nyah_player = await self.bot.mongo.fetch_nyah_player(inter.author)
         if not nyah_player.wishlist:
             return await inter.edit_original_response(
                 embed=utilities.get_error_embed(f"{inter.author.mention} your wishlist is empty!\n\n"
@@ -112,7 +94,7 @@ class Wishlist(commands.Cog):
         waifu_name_field = ""
         for i, slug in enumerate(set(nyah_player.wishlist), 1):
             drop_chance = int(0.05 * nyah_player.wishlist.count(slug) * 100)
-            waifu = await reql_helpers.get_waifu_core(slug)
+            waifu = await self.bot.mongo.fetch_waifu(slug)
             waifu_name_field += f"`{i}` {waifu.name}\n"
             drop_chance_field += f"`{drop_chance: >3}%`\n"
 
@@ -135,7 +117,7 @@ class Wishlist(commands.Cog):
         inter: disnake.ApplicationCommandInteraction,
         user_input: str
     ) -> list:
-        waifus = await reql_helpers.get_waifu_core_name(user_input)
+        waifus = await self.bot.mongo.fetch_waifu_by_name(user_input)
         return deque([f"{waifu.name} [{waifu.series[0]}]" for waifu in waifus if len(waifu.series)], maxlen=25)
 
 def setup(bot: commands.Bot):

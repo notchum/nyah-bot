@@ -1,22 +1,21 @@
 import os
 
 import disnake
-from loguru import logger
 from disnake.ext import commands
 
-from nyahbot.util.globals import session
+from bot import NyahBot
 from nyahbot.util import utilities
+
+nsfw_map = {
+    "white": "SFW",
+    "gray": "Maybe NSFW",
+    "black": "NSFW"
+}
 
 class MyAnimeList(commands.Cog):
     def __init__(self, bot: commands.Bot):
-        self.bot = bot
-        self.nsfw = {
-            "white": "SFW",
-            "gray": "Maybe NSFW",
-            "black": "NSFW"
-        }
-        self.mal_client_id = os.environ["MAL_CLIENT_ID"]
-
+        self.bot: NyahBot = bot
+    
     ##*************************************************##
     ##********           ABSTRACTIONS           *******##
     ##*************************************************##
@@ -47,14 +46,14 @@ class MyAnimeList(commands.Cog):
                 Name of the anime to retrieve.
         """
         await inter.response.defer()
-        headers = {"X-MAL-CLIENT-ID": self.mal_client_id}
+        headers = {"X-MAL-CLIENT-ID": self.bot.config.MAL_CLIENT_ID}
         params  = {"fields" : "id,title,main_picture,start_date,end_date,synopsis,mean,genres,status,num_episodes,media_type,rating,nsfw"}
         try:
-            async with session.get(url=f"https://api.myanimelist.net/v2/anime?q={anime_name}", headers=headers) as response:
+            async with self.bot.session.get(url=f"https://api.myanimelist.net/v2/anime?q={anime_name}", headers=headers) as response:
                 if response.status != 200:
                     return await inter.edit_original_response(embed=utilities.get_error_embed(f"MAL API returned status code `{response.status}`"))
                 body = await response.json()
-            async with session.get(url=f"https://api.myanimelist.net/v2/anime/{body['data'][0]['node']['id']}", params=params, headers=headers) as response:
+            async with self.bot.session.get(url=f"https://api.myanimelist.net/v2/anime/{body['data'][0]['node']['id']}", params=params, headers=headers) as response:
                 if response.status != 200:
                     return await inter.edit_original_response(embed=utilities.get_error_embed(f"MAL API returned status code `{response.status}`"))
                 ani_details = await response.json()
@@ -63,7 +62,7 @@ class MyAnimeList(commands.Cog):
                 embed=utilities.get_error_embed(f"MAL API returned invalid data! It might be broken right now - try again later.\n```\n{err}```")
             )
         embed = disnake.Embed(
-            title=f"{ani_details['title']} [{ani_details['rating'].upper() if 'rating' in ani_details else 'N/A'}] [{self.nsfw[ani_details['nsfw']]}]",
+            title=f"{ani_details['title']} [{ani_details['rating'].upper() if 'rating' in ani_details else 'N/A'}] [{nsfw_map[ani_details['nsfw']]}]",
             description=ani_details['synopsis'],
             color=disnake.Color.magenta()
         )
@@ -110,14 +109,14 @@ class MyAnimeList(commands.Cog):
                 Name of the manga to retrieve.
         """
         await inter.response.defer()
-        headers = {"X-MAL-CLIENT-ID": self.mal_client_id}
+        headers = {"X-MAL-CLIENT-ID": self.bot.config.MAL_CLIENT_ID}
         params  = {"fields" : "id,title,main_picture,start_date,end_date,synopsis,mean,genres,status,num_chapters,num_volumes,media_type,nsfw"}
         try:
-            async with session.get(url=f"https://api.myanimelist.net/v2/manga?q={manga_name}", headers=headers) as response:
+            async with self.bot.session.get(url=f"https://api.myanimelist.net/v2/manga?q={manga_name}", headers=headers) as response:
                 if response.status != 200:
                     return await inter.edit_original_response(embed=utilities.get_error_embed(f"MAL API returned status code `{response.status}`"))
                 body = await response.json()
-            async with session.get(url=f"https://api.myanimelist.net/v2/manga/{body['data'][0]['node']['id']}", params=params, headers=headers) as response:
+            async with self.bot.session.get(url=f"https://api.myanimelist.net/v2/manga/{body['data'][0]['node']['id']}", params=params, headers=headers) as response:
                 if response.status != 200:
                     return await inter.edit_original_response(embed=utilities.get_error_embed(f"MAL API returned status code `{response.status}`"))
                 mga_details = await response.json()
@@ -126,7 +125,7 @@ class MyAnimeList(commands.Cog):
                 embed=utilities.get_error_embed(f"MAL API returned invalid data! It might be broken right now - try again later.\n```\n{err}```")
             )
         embed = disnake.Embed(
-            title=f"{mga_details['title']} [{self.nsfw[mga_details['nsfw']]}]",
+            title=f"{mga_details['title']} [{nsfw_map[mga_details['nsfw']]}]",
             description=mga_details['synopsis'],
             color=disnake.Color.magenta()
         )
@@ -165,8 +164,4 @@ class MyAnimeList(commands.Cog):
     ##*************************************************##
 
 def setup(bot: commands.Bot):
-    required_env_vars = ["MAL_CLIENT_ID"]
-    for env_var in required_env_vars:
-        if env_var not in os.environ or not os.environ[env_var]:
-            return logger.error(f"Cannot load cog 'MyAnimeList' | {env_var} not in environment!")
     bot.add_cog(MyAnimeList(bot))

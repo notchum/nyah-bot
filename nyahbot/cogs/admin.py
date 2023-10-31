@@ -3,15 +3,13 @@ import asyncio
 
 import disnake
 from disnake.ext import commands
-from rethinkdb import r
-from loguru import logger
 
-from nyahbot.util.globals import conn, session
+from bot import NyahBot
 from nyahbot.util import utilities
 
 class Admin(commands.Cog):
     def __init__(self, bot: commands.Bot):
-        self.bot = bot
+        self.bot: NyahBot = bot
 
     ##*************************************************##
     ##********           ABSTRACTIONS           *******##
