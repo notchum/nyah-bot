@@ -12,10 +12,6 @@ async def main():
     # Load the environment variables
     load_dotenv()
 
-    # Assets folder
-    if not os.path.exists("assets"): os.mkdir("assets")
-    if not os.path.exists("assets/images"): os.mkdir("assets/images")
-
     # Create config
     config = Config(
         DEBUG=os.environ["DEBUG"] in ("1", "True", "true"),

@@ -1,15 +1,5 @@
 # Project-specific ignores
-*.mp3
-*.mp4
-*.jpg
-*.jpeg
-*.png
-*.mbtree
 log/
-sounds/
-videos/
-images/
-assets/
 .vscode/
 
 # Byte-compiled / optimized / DLL files
