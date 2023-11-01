@@ -7,9 +7,7 @@ from disnake.ext import commands
 
 from bot import NyahBot
 from models import NyahGuild, NyahPlayer
-from nyahbot.util import (
-    utilities,
-)
+from helpers import SuccessEmbed, ErrorEmbed
 
 class Events(commands.Cog):
     def __init__(self, bot: commands.Bot):
@@ -30,7 +28,7 @@ class Events(commands.Cog):
                                 .run(conn)
         if not guild_exists_in_db:
             return await inter.guild.system_channel.send(
-                embed=utilities.get_error_embed(f"A database entry doesn't exist for this guild! Please contact {self.bot.owner.mention}")
+                embed=ErrorEmbed(f"A database entry doesn't exist for this guild! Please contact {self.bot.owner.mention}")
             )
         setup_finished = r.db("nyah") \
                             .table("guilds") \
@@ -39,7 +37,7 @@ class Events(commands.Cog):
                             .run(conn) 
         if not setup_finished:         
             return await inter.guild.system_channel.send(
-                embed=utilities.get_error_embed("Use `/setup` to ensure all bot functions are available!")
+                embed=ErrorEmbed("Use `/setup` to ensure all bot functions are available!")
             )
 
     @commands.Cog.listener()
@@ -99,13 +97,6 @@ class Events(commands.Cog):
             guild_id=guild.id,
             name=guild.name,
             waifu_war_channel_id=guild.system_channel.id,
-            waifu_war_hour=18,
-            waifu_max_marriages=3,
-            interval_claim_mins=60,
-            interval_duel_mins=180,
-            interval_minigame_mins=60,
-            interval_season_days=28,
-            timestamp_last_season_end=None,
         )
         await self.bot.mongo.insert_nyah_guild(nyah_guild)
         self.bot.logger.success(f"Created database entry for guild '{guild.name}'[{guild.id}]")

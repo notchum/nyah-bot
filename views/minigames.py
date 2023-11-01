@@ -1,11 +1,13 @@
 import random
+import logging
 from typing import List
 
 import disnake
-from rethinkdb import r
-from loguru import logger
 
-from nyahbot.util.globals import conn
+from helpers import Mongo
+
+logger = logging.getLogger("nyahbot")
+mongo = Mongo()
 
 class MinigameButton(disnake.ui.Button):
     def __init__(self, label: str, row:int):
@@ -47,23 +49,26 @@ class WaifuNameGuessView(disnake.ui.View):
         self.author_won = None
 
         num_buttons = 3
-        choices = r.db("waifus") \
-                    .table("core") \
-                    .filter(
-                        r.row["name"].ne(answer)
-                    ) \
-                    .sample(num_buttons - 1) \
-                    .get_field("name") \
-                    .run(conn)
-        choices.append(answer)
-        random.shuffle(choices)
-            
-        row = 0
-        num_buttons_per_row = 3
-        for i, choice in enumerate(choices, 1):
-            self.add_item(MinigameButton(label=choice, row=row))
-            if i % num_buttons_per_row == 0:
-                row += 1
+
+        async def fetch_and_shuffle_choices() -> List[str]:
+            result = await mongo.fetch_random_waifus(num_buttons - 1, {"name": {"$ne": answer}})
+            choices = [waifu.name for waifu in result]
+            choices.append(answer)
+            random.shuffle(choices)
+            return choices
+
+        async def initialize():
+            choices = await fetch_and_shuffle_choices()
+            row = 0
+            num_buttons_per_row = 3
+            for i, choice in enumerate(choices, 1):
+                self.add_item(MinigameButton(label=choice, row=row))
+                if i % num_buttons_per_row == 0:
+                    row += 1
+
+        # You need to call the async initialize function here using an event loop
+        import asyncio
+        asyncio.get_event_loop().run_until_complete(initialize())
     
     async def interaction_check(self, interaction: disnake.MessageInteraction) -> bool:
         return interaction.author.id == self.original_author.id
@@ -78,15 +83,8 @@ class WaifuBustGuessView(disnake.ui.View):
         self.author_won = None
 
         num_buttons = 3
-        choices = r.db("waifus") \
-                    .table("core") \
-                    .has_fields("bust") \
-                    .filter(
-                        r.row["bust"].ne(answer)
-                    ) \
-                    .sample(num_buttons - 1) \
-                    .get_field("bust") \
-                    .run(conn)
+        result = await mongo.fetch_random_waifus(num_buttons - 1, {"bust": {"$ne": answer}})
+        choices = [waifu.name for waifu in result]
         choices.append(answer)
         random.shuffle(choices)
             

@@ -1,9 +1,14 @@
+import logging
 from typing import List
 
 import disnake
 
-from nyahbot.util.constants import Emojis
-from nyahbot.util import reql_helpers
+from models import Claim
+from helpers import Mongo
+from utils import Emojis
+
+logger = logging.getLogger("nyahbot")
+mongo = Mongo()
 
 class WaifuDexView(disnake.ui.View):
     message: disnake.Message
@@ -48,9 +53,9 @@ class WaifuDexView(disnake.ui.View):
     async def interaction_check(self, interaction: disnake.MessageInteraction) -> bool:
         return interaction.author.id == self.author.id
     
-    async def author_claimed_before(self, embed: disnake.Embed) -> bool:
+    async def author_claimed_before(self, embed: disnake.Embed) -> List[Claim]:
         slug = embed.url.split("/")[-1].strip()
-        return await reql_helpers.get_waifu_claims_slug(self.author, slug)
+        return await mongo.fetch_claims_by_slug(self.author, slug)
     
     @disnake.ui.button(emoji=Emojis.FIRST_PAGE, style=disnake.ButtonStyle.blurple)
     async def first_page(self, button: disnake.ui.Button, interaction: disnake.MessageInteraction) -> None:

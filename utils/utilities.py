@@ -8,73 +8,14 @@ import disnake
 ##********          DISCORD UTILS           *******##
 ##*************************************************##
 
-def get_success_embed(description: str) -> disnake.Embed:
-    """ Creates a simple embed for successful Discord bot commands.
-
-        Parameters
-        ----------
-        description: `str`
-            The description to add to the embed; usually the
-            error message of what was successful.
-
-        Returns
-        -------
-        `disnake.Embed`: The embed created.          
-    """
-    return disnake.Embed(
-        title="Success! ✅",
-        description=description,
-        color=disnake.Color.green()
-    )
-
-def get_error_embed(description: str) -> disnake.Embed:
-    """ Creates a simple embed for Discord bot command errors.
-
-        Parameters
-        ----------
-        description: `str`
-            The description to add to the embed; usually the
-            error message of what went wrong.
-
-        Returns
-        -------
-        `disnake.Embed`: The embed created.          
-    """
-    return disnake.Embed(
-        title="Error! 💢",
-        description=description,
-        color=disnake.Color.red()
-    )
-
-def get_dyn_time_relative(t: datetime.datetime) -> str:
-    """ Get a dynamic date-time display in your Discord messages. 
-    
-        Parameters
-        ----------
-        t: `datetime:datetime`
-            The time to get a timestamp for.
-    """
-    return f"<t:{int(t.timestamp())}:R>"
-
-def get_dyn_time_long(t: datetime.datetime) -> str:
-    """ Get a dynamic date-time display in your Discord messages. 
-    
-        Parameters
-        ----------
-        t: `datetime:datetime`
-            The time to get a timestamp for.
-    """
-    return f"<t:{int(t.timestamp())}:F>"
-
-def get_dyn_time_short(t: datetime.datetime) -> str:
-    """ Get a dynamic date-time display in your Discord messages. 
-    
-        Parameters
-        ----------
-        t: `datetime:datetime`
-            The time to get a timestamp for.
-    """
-    return f"<t:{int(t.timestamp())}:t>"
+""" Get a dynamic date-time display in your Discord messages. """
+get_dyn_time_short = lambda t: f"<t:{int(t.timestamp())}:t>"
+get_dyn_time_long = lambda t: f"<t:{int(t.timestamp())}:T>"
+get_dyn_date_short = lambda t: f"<t:{int(t.timestamp())}:d>"
+get_dyn_date_long = lambda t: f"<t:{int(t.timestamp())}:D>"
+get_dyn_date_long_time_short = lambda t: f"<t:{int(t.timestamp())}:f>"
+get_dyn_date_long_time_long = lambda t: f"<t:{int(t.timestamp())}:F>"
+get_dyn_time_relative = lambda t: f"<t:{int(t.timestamp())}:R>"
 
 ##*************************************************##
 ##********          GENERAL UTILS           *******##

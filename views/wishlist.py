@@ -1,9 +1,13 @@
-import disnake
-from loguru import logger
+import logging
 
-from nyahbot.util.dataclasses import Waifu
-from nyahbot.util.constants import Money, Emojis
-from nyahbot.util import reql_helpers
+import disnake
+
+from models import Waifu
+from helpers import Mongo
+from utils import Emojis, Money
+
+logger = logging.getLogger("nyahbot")
+mongo = Mongo()
 
 class WaifuWishlistView(disnake.ui.View):
     def __init__(self, embed: disnake.Embed, waifu: Waifu, author: disnake.User | disnake.Member) -> None:
@@ -17,7 +21,7 @@ class WaifuWishlistView(disnake.ui.View):
 
     @disnake.ui.button(label="Wishlist", emoji="🌠", style=disnake.ButtonStyle.green)
     async def wishlist(self, button: disnake.ui.Button, inter: disnake.MessageInteraction) -> None:
-        nyah_player = await reql_helpers.get_nyah_player(inter.author)
+        nyah_player = await mongo.fetch_nyah_player(inter.author)
         
         if nyah_player.money < Money.WISHLIST_COST.value:
             price_diff = Money.WISHLIST_COST.value - nyah_player.money
@@ -44,7 +48,7 @@ class WaifuWishlistView(disnake.ui.View):
             nyah_player.money -= Money.WISHLIST_COST.value
             nyah_player.wishlist.append(self.waifu.slug)
             num_wishlists = nyah_player.wishlist.count(self.waifu.slug)
-            await reql_helpers.set_nyah_player(nyah_player)
+            await mongo.update_nyah_player(nyah_player)
         
             confirmation_embed = disnake.Embed(
                 description=f"{inter.author.mention}\n__**{self.waifu.name}**__ has been wishlisted for `{Money.WISHLIST_COST.value:,}` {Emojis.COINS}.\n"

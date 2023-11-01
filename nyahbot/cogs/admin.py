@@ -5,7 +5,7 @@ import disnake
 from disnake.ext import commands
 
 from bot import NyahBot
-from nyahbot.util import utilities
+from helpers import SuccessEmbed, ErrorEmbed
 
 class Admin(commands.Cog):
     def __init__(self, bot: commands.Bot):
@@ -105,7 +105,7 @@ class Admin(commands.Cog):
             channel = self.bot.get_channel(int(channel_id))
             description += f"{clean_channel_role}: {channel.mention} [{channel.id}]\n"
         if not description:
-            return await inter.response.send_message(embed=utilities.get_error_embed("No channels binded! Use `/setup` to get started."), ephemeral=True)
+            return await inter.response.send_message(embed=ErrorEmbed("No channels binded! Use `/setup` to get started."), ephemeral=True)
         embed.description = description
         return await inter.response.send_message(embed=embed, ephemeral=True)
 
@@ -127,7 +127,7 @@ class Admin(commands.Cog):
         """
         await self.bot.get_channel(channel.id).send(codecs.decode(text, "unicode_escape"))
         return await inter.response.send_message(
-            embed=utilities.get_success_embed(""),
+            embed=SuccessEmbed(),
             ephemeral=True
         )
 
@@ -155,16 +155,16 @@ class Admin(commands.Cog):
             avatar_url = image_url.strip("<>") if image_url else None
 
         try:
-            async with session.get(url=avatar_url) as response:
+            async with self.bot.session.get(url=avatar_url) as response:
                 if response.status != 200:
                     return await inter.response.send_message(
-                        embed=utilities.get_error_embed(f"That avatar URL returned status code `{response.status}`")
+                        embed=ErrorEmbed(f"That avatar URL returned status code `{response.status}`")
                     )
                 av = response.content
                 await self.bot.user.edit(avatar=av)
                 return await inter.response.send_message(f"Successfully changed the avatar to:\n{avatar_url}")
         except disnake.HTTPException as err:
-            return await inter.response.send_message(embed=utilities.get_error_embed(f"{err}"), ephemeral=True)
+            return await inter.response.send_message(embed=ErrorEmbed(f"{err}"), ephemeral=True)
 
     @admin.sub_command()
     async def download_log(self, inter: disnake.ApplicationCommandInteraction):

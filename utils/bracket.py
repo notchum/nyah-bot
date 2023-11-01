@@ -1,13 +1,12 @@
 import math
+import uuid
 import random
 import datetime
 from typing import List, Optional
 from dataclasses import dataclass
 
-from rethinkdb import r
 
-from nyahbot.util.globals import conn
-from nyahbot.util.dataclasses import (
+from models import (
     Claim,
     Vote,
     Battle,
@@ -22,7 +21,7 @@ class BracketTeam():
     name: Optional[str] = None
     ranking: Optional[int] = None
 
-class Bracket:
+class Bracket():
     def __init__(
         self,
         war_id: str,
@@ -190,7 +189,7 @@ class Bracket:
         num_matches_in_round = self.num_teams // 2 
         first_round_seed_order = gen_optimal_seed_order(self.num_rounds)
         for round_num in range(self.num_rounds):
-            round_uuid = r.uuid().run(conn)
+            round_uuid = uuid.uuid4()
             round = Round(
                 id=round_uuid,
                 war_id=self.war_id,
@@ -200,7 +199,7 @@ class Bracket:
                 timestamp_end=None
             )
             for match_num in range(num_matches_in_round):
-                match_uuid = r.uuid().run(conn)
+                match_uuid = uuid.uuid4()
                 if round_num == 0:
                     # first round should have each match filled
                     now = datetime.datetime.now(datetime.timezone.utc)

@@ -1,13 +1,15 @@
 import copy
+import logging
 from typing import List
 
 import disnake
-from rethinkdb import r
-from loguru import logger
 
-from nyahbot.util.globals import conn
-from nyahbot.util.dataclasses import Claim
-from nyahbot.util import utilities
+from models import Claim
+from helpers import Mongo
+import utils.utilities as utils
+
+logger = logging.getLogger("nyahbot")
+mongo = Mongo()
 
 class WaifuSwapView(disnake.ui.View):
     def __init__(self, embeds: List[disnake.Embed], embed_index: int, author: disnake.User | disnake.Member, reference_view: disnake.ui.View) -> None:
@@ -86,17 +88,12 @@ class WaifuSwapView(disnake.ui.View):
     async def confirm(self, button: disnake.ui.Button, interaction: disnake.MessageInteraction) -> None:
         old_embed = self.embeds[self.selected_index]
         new_embed = self.embeds[self.embed_index]
+        
+        old_uuid = utils.extract_uuid(old_embed.footer.text)
+        new_uuid = utils.extract_uuid(new_embed.footer.text)
 
-        result = r.db("waifus") \
-                    .table("claims") \
-                    .get(utilities.extract_uuid(old_embed.footer.text)) \
-                    .run(conn)
-        old_claim = Claim(**result)
-        result = r.db("waifus") \
-                    .table("claims") \
-                    .get(utilities.extract_uuid(new_embed.footer.text)) \
-                    .run(conn)
-        new_claim = Claim(**result)
+        old_claim = await mongo.fetch_claim(old_uuid)
+        new_claim = await mongo.fetch_claim(new_uuid)
 
         old_claim_state = old_claim.state
         new_claim_state = new_claim.state
@@ -109,11 +106,7 @@ class WaifuSwapView(disnake.ui.View):
         del self.embeds[self.embed_index + 1]
         old_claim.index = self.embed_index
         old_claim.state = new_claim_state
-        r.db("waifus") \
-            .table("claims") \
-            .get(old_claim.id) \
-            .update(old_claim.__dict__) \
-            .run(conn)
+        await mongo.update_claim(old_claim)
 
         # insert a copy of the new embed at old index, then delete old embed
         e = copy.deepcopy(new_embed)
@@ -123,11 +116,7 @@ class WaifuSwapView(disnake.ui.View):
         del self.embeds[self.selected_index + 1]
         new_claim.index = self.selected_index
         new_claim.state = old_claim_state
-        r.db("waifus") \
-            .table("claims") \
-            .get(new_claim.id) \
-            .update(new_claim.__dict__) \
-            .run(conn)
+        await mongo.update_claim(new_claim)
 
         logger.info(f"{interaction.guild.name}[{interaction.guild.id}] | "
                     f"{interaction.channel.name}[{interaction.channel.id}] | "

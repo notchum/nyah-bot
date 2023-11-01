@@ -1,13 +1,13 @@
-import disnake
-from rethinkdb import r
+import uuid
+import logging
 
-from nyahbot.util.globals import conn
-from nyahbot.util.dataclasses import (
-    Waifu,
-    Claim,
-    Battle,
-    Vote,
-)
+import disnake
+
+from models import Battle, Vote
+from helpers import Mongo
+
+logger = logging.getLogger("nyahbot")
+mongo = Mongo()
 
 class WarVoteView(disnake.ui.View):
     def __init__(self, battle: Battle) -> None:
@@ -31,18 +31,16 @@ class WarVoteView(disnake.ui.View):
                         style=disnake.ButtonStyle.red)
     async def vote_red(self, button: disnake.ui.Button, inter: disnake.MessageInteraction) -> None:
         vote = Vote(
-            id=r.uuid().run(conn),
+            id=uuid.uuid4(),
             battle_id=self.battle.id,
             waifu_vote_id=self.battle.waifu_red_id,
             user_id=str(inter.author.id),
             timestamp=disnake.utils.utcnow()
         )
-        r.db("wars").table("votes").insert(vote.__dict__).run(conn)
+        await vote.insert()
 
-        result = r.db("waifus").table("claims").get(vote.waifu_vote_id).run(conn)
-        claim = Claim(**result)
-        result = r.db("waifus").table("core").get(claim.slug).run(conn)
-        waifu = Waifu(**result)
+        claim = await mongo.fetch_claim(claim.id)
+        waifu = await mongo.fetch_waifu(claim.slug)
 
         embed = disnake.Embed(
             title="Thanks for voting!",
@@ -56,18 +54,15 @@ class WarVoteView(disnake.ui.View):
                         style=disnake.ButtonStyle.blurple)
     async def vote_blue(self, button: disnake.ui.Button, inter: disnake.MessageInteraction) -> None:
         vote = Vote(
-            id=r.uuid().run(conn),
             battle_id=self.battle.id,
             waifu_vote_id=self.battle.waifu_blue_id,
             user_id=str(inter.author.id),
             timestamp=disnake.utils.utcnow()
         )
-        r.db("wars").table("votes").insert(vote.__dict__).run(conn)
+        await vote.insert()
 
-        result = r.db("waifus").table("claims").get(vote.waifu_vote_id).run(conn)
-        claim = Claim(**result)
-        result = r.db("waifus").table("core").get(claim.slug).run(conn)
-        waifu = Waifu(**result)
+        claim = await mongo.fetch_claim(claim.id)
+        waifu = await mongo.fetch_waifu(claim.slug)
 
         embed = disnake.Embed(
             title="Thanks for voting!",

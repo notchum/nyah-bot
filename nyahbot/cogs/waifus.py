@@ -13,6 +13,8 @@ from PIL import Image
 from disnake.ext import commands, tasks
 
 from bot import NyahBot
+from views import *
+from helpers import SuccessEmbed, ErrorEmbed
 from nyahbot.util.bracket import Bracket
 from nyahbot.util.dataclasses import (
     Claim,
@@ -30,17 +32,7 @@ from nyahbot.util.constants import (
 from nyahbot.util import (
     helpers,
     traits,
-    utilities,
 )
-
-from nyahbot.views.war_vote import WarVoteView
-from nyahbot.views.waifu_dex import WaifuDexView
-from nyahbot.views.waifu_duel import WaifuDuelView
-from nyahbot.views.waifu_claim import WaifuClaimView
-from nyahbot.views.waifu_skill import WaifuSkillView
-from nyahbot.views.waifu_menu import WaifuMenuView
-from nyahbot.views.waifu_paginator import WaifuPaginator
-from nyahbot.views.waifu_minigames import WaifuSmashOrPassView, WaifuNameGuessView, WaifuBustGuessView
 
 class Waifus(commands.Cog):
     def __init__(self, bot: commands.Bot):
@@ -176,7 +168,7 @@ class Waifus(commands.Cog):
         embed = disnake.Embed(
             title="⚔️ THE WAIFU WAR IS SCHEDULED ⚔️",
             description=f"- {ww_role.mention} __**mark yourself as interested**__ to this event to enter this war!\n"
-                        f"- Starts: {utilities.get_dyn_time_long(start_time)}\n\n"
+                        f"- Starts: {utilities.get_dyn_date_long_time_long(start_time)}\n\n"
                         f"{quote}",
             color=disnake.Color.random(),
         )
@@ -1111,7 +1103,7 @@ class Waifus(commands.Cog):
         start_time = disnake.utils.utcnow() + datetime.timedelta(minutes=time_delta_min)
         await self.schedule_waifu_war_event(inter.guild, start_time)
         return await inter.edit_original_response(
-            embed=utilities.get_success_embed(f"Scheduled event for {utilities.get_dyn_time_long(start_time)}")
+            embed=Succ(f"Scheduled event for {utilities.get_dyn_date_long_time_long(start_time)}")
         )
 
     @waifuadmin.sub_command()
@@ -1126,7 +1118,7 @@ class Waifus(commands.Cog):
     ):
         if level == None and xp == None and mmr == None and money == None:
             return await inter.response.send_message(
-                embed=utilities.get_error_embed("No attributes provided!"),
+                embed=ErrorEmbed("No attributes provided!"),
                 ephemeral=True
             )
         
@@ -1138,7 +1130,7 @@ class Waifus(commands.Cog):
         await self.bot.mongo.update_nyah_player(nyah_player)
 
         return await inter.response.send_message(
-            embed=utilities.get_success_embed("Updated user attributes!"),
+            embed=SuccessEmbed("Updated user attributes!"),
             ephemeral=True
         )
 
@@ -1162,12 +1154,11 @@ class Waifus(commands.Cog):
         """
         if user:
             nyah_player = await self.bot.mongo.fetch_nyah_player(user)
-            nyah_player.cooldown = None
-            await self.bot.mongo.update_nyah_player(nyah_player)
+            nyah_player.reset_cooldown(cooldown)
             self.bot.logger.success(f"{inter.guild.name}[{inter.guild.id}] | "
                                     f"Reset `{cooldown}` for {user.name}#{user.discriminator}[{user.id}]!")
             return await inter.response.send_message(
-                embed=utilities.get_success_embed(f"Reset `{cooldown}` for {user.name}#{user.discriminator}[{user.id}]!"),
+                embed=SuccessEmbed(f"Reset `{cooldown}` for {user.name}#{user.discriminator}[{user.id}]!"),
                 ephemeral=True
             )
         else:
@@ -1175,7 +1166,7 @@ class Waifus(commands.Cog):
             self.bot.logger.success(f"{inter.guild.name}[{inter.guild.id}] | "
                                     f"Reset `{cooldown}` for all members!")
             return await inter.response.send_message(
-                embed=utilities.get_success_embed(f"Reset `{cooldown}` for all members!"),
+                embed=SuccessEmbed(f"Reset `{cooldown}` for all members!"),
                 ephemeral=True
             )
 
@@ -1520,7 +1511,7 @@ class Waifus(commands.Cog):
         normalized_total_stats = ((attack + defense + health + speed + magic) / 500)
         popularity_price = int(round(normalized_popularity_rank * 1000))
         stats_price = int(round(0.2 * normalized_total_stats * 100))
-        traits_price = sum([t.get_trait_value() for t in rolled_traits.values() if t != None])
+        traits_price = sum([t.money_value for t in rolled_traits.values() if t != None])
         price = max(100, popularity_price + stats_price + traits_price)
 
         # TODO re-assess how to best assign base stats, here is just completely random
@@ -1640,7 +1631,7 @@ class Waifus(commands.Cog):
             elif claim.state == WaifuState.INACTIVE.name:
                 embed.description += Emojis.STATE_UNMARRIED
             
-            embed.description += f" {waifu.name} ({claim.stats_str()}) "
+            embed.description += f" {waifu.name} ({claim.stats_str}) "
             
             if claim.trait_common:
                 embed.description += Emojis.TRAIT_COMMON
@@ -1831,7 +1822,7 @@ class Waifus(commands.Cog):
         users_claim = await self.bot.mongo.fetch_claim_by_index(inter.author, index)
         if opponent.id == self.bot.user.id:
             w = await self.bot.mongo.fetch_random_waifu([{"$limit": 100}])
-            opps_claim = generate_bot_claim(w, users_claim.calculate_total_stats())
+            opps_claim = generate_bot_claim(w, users_claim.total_stats)
         else:
             opps_married_harem = await self.bot.mongo.fetch_harem_married(opponent)
             opps_claim = random.choice(opps_married_harem)
@@ -1851,12 +1842,12 @@ class Waifus(commands.Cog):
         ) \
         .set_image(url=duel_image_url) \
         .add_field(
-            name=f"{red_name} ({users_claim.stats_str()})",
-            value=users_claim.skill_str()
+            name=f"{red_name} ({users_claim.stats_str})",
+            value=users_claim.still_str
         ) \
         .add_field(
-            name=f"{blue_name} ({opps_claim.stats_str()})",
-            value=opps_claim.skill_str()
+            name=f"{blue_name} ({opps_claim.stats_str})",
+            value=opps_claim.still_str
         )
         
         # Set timestamp in db
@@ -1951,7 +1942,7 @@ class Waifus(commands.Cog):
             waifu_names = []
             for claim in harem:
                 waifu = await self.bot.mongo.fetch_waifu(claim.slug)
-                formatted_name = f"{claim.index + 1}. {waifu.name} ({claim.stats_str()})"
+                formatted_name = f"{claim.index + 1}. {waifu.name} ({claim.stats_str})"
                 waifu_names.append(formatted_name)
         
         return deque(waifu_names, maxlen=25)

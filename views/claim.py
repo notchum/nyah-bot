@@ -1,15 +1,13 @@
-import disnake
-from loguru import logger
+import logging
 
-from nyahbot.util.dataclasses import Claim
-from nyahbot.util.constants import (
-    Emojis,
-    WaifuState,
-)
-from nyahbot.util import (
-    helpers,
-    reql_helpers,
-)
+import disnake
+
+from models import Claim
+from helpers import Mongo
+from utils import Emojis, WaifuState
+
+logger = logging.getLogger("nyahbot")
+mongo = Mongo()
 
 class WaifuClaimView(disnake.ui.View):
     message: disnake.Message
@@ -17,29 +15,22 @@ class WaifuClaimView(disnake.ui.View):
     def __init__(self, claim: Claim, author: disnake.User | disnake.Member) -> None:
         super().__init__()
         self.claim = claim
-        self.original_author = author
-
-        # self.add_item(
-        #     item=disnake.ui.Button(
-        #         label="View Waifu",
-        #         style=disnake.ButtonStyle.link,
-        #         url=f"https://mywaifulist.moe/waifu/{self.claim.slug}"
-        #     )
-        # )
+        self.author = author
 
     async def on_timeout(self) -> None:
         await self.message.edit(view=None)
 
     async def interaction_check(self, interaction: disnake.MessageInteraction) -> bool:
-        return interaction.author.id == self.original_author.id
+        return interaction.author.id == self.author.id
 
     @disnake.ui.button(label="Sell", emoji=Emojis.COINS)
     async def sell(self, button: disnake.ui.Button, inter: disnake.MessageInteraction) -> None:
-        await helpers.sell_waifu(inter.author, self.claim)
+        nyah_player = await mongo.fetch_nyah_player(inter.author)
+        await nyah_player.sell_waifu(self.claim)
         
-        waifu = await reql_helpers.get_waifu_core(self.claim.slug)
+        waifu = await mongo.fetch_waifu(self.claim.slug)
         sold_embed = disnake.Embed(
-            description=f"Sold **__{waifu.name}__** for {self.claim.price_str()}",
+            description=f"Sold **__{waifu.name}__** for {self.claim.price_str}",
             color=disnake.Color.gold()
         )
         await inter.response.edit_message(embeds=[self.message.embeds[0], sold_embed], view=None)
@@ -51,10 +42,10 @@ class WaifuClaimView(disnake.ui.View):
     
     @disnake.ui.button(label="Marry", emoji="💕")
     async def marry(self, button: disnake.ui.Button, inter: disnake.MessageInteraction) -> None:
-        nyah_guild = await reql_helpers.get_nyah_guild(inter.guild)
-        num_marriages = await reql_helpers.get_harem_married_size(inter.guild, inter.author)
+        nyah_config = await mongo.fetch_nyah_config()
+        num_marriages = await mongo.fetch_harem_married_count(inter.author)
 
-        if num_marriages >= nyah_guild.waifu_max_marriages:
+        if num_marriages >= nyah_config.waifu_max_marriages:
             result_embed = disnake.Embed(
                 description=f"You are already at the maximum amount of marriages!",
                 color=disnake.Color.red()
@@ -66,10 +57,10 @@ class WaifuClaimView(disnake.ui.View):
                         f"Failed to marry {self.claim.slug}[{self.claim.id}]")
         else:
             self.claim.state = WaifuState.ACTIVE.name
-            await reql_helpers.set_waifu_claim(self.claim)
+            await mongo.update_claim(self.claim)
             await helpers.reindex_guild_user_harem(inter.guild, inter.author)
 
-            waifu = await reql_helpers.get_waifu_core(self.claim.slug)
+            waifu = await mongo.fetch_waifu(self.claim.slug)
             result_embed = disnake.Embed(
                 description=f"Married **__{waifu.name}__** 💕",
                 color=disnake.Color.green()

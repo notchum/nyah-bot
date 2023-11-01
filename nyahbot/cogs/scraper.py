@@ -194,7 +194,7 @@ class Scraper(commands.Cog):
             #         title=slug,
             #         url=f"{self.bot.config.WEBSCRAPE_URL}{slug}",
             #         color=disnake.Color.random(),
-            #         description=f"{utilities.get_dyn_time_long(disnake.utils.utcnow())}"
+            #         description=f"{utilities.get_dyn_date_long_time_long(disnake.utils.utcnow())}"
             #                     f"{utilities.create_trace(e)}",
             #     ),
             # )

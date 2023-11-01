@@ -1,8 +1,11 @@
+import logging
 from typing import List
 
 import disnake
 
-from nyahbot.util.constants import Emojis
+from utils import Emojis
+
+logger = logging.getLogger("nyahbot")
 
 class WaifuPaginator(disnake.ui.View):
     message: disnake.Message

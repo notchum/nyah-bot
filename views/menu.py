@@ -1,27 +1,19 @@
 import os
 import copy
+import logging
 from typing import List
 
 import disnake
-from rethinkdb import r
-from loguru import logger
 from google_images_search import GoogleImagesSearch
 
-from nyahbot.util.globals import conn
-from nyahbot.util.constants import Emojis
-from nyahbot.util.dataclasses import (
-    Claim,
-    Waifu,
-    NyahGuild,
-)
-from nyahbot.util import (
-    helpers,
-    utilities,
-    reql_helpers,
-)
+from models import Claim, Waifu, NyahGuild
+from helpers import Mongo
+from utils import Emojis
+from views import WaifuSwapView, WaifuImageSelectView
+import utils.utilities as utils
 
-from nyahbot.views.waifu_swap import WaifuSwapView
-from nyahbot.views.waifu_image import WaifuImageSelectView
+logger = logging.getLogger("nyahbot")
+mongo = Mongo()
 
 class WaifuMenuView(disnake.ui.View):
     message: disnake.Message
@@ -90,13 +82,14 @@ class WaifuMenuView(disnake.ui.View):
     @disnake.ui.button(label="Sell", emoji=Emojis.COINS, row=1)
     async def sell(self, button: disnake.ui.Button, inter: disnake.MessageInteraction) -> None:
         current_embed = self.embeds[self.embed_index]
-        uuid = utilities.extract_uuid(current_embed.footer.text)
+        uuid = utils.extract_uuid(current_embed.footer.text)
 
-        claim = await reql_helpers.get_waifu_claim(uuid)
-        waifu = await reql_helpers.get_waifu_core(claim.slug)
+        claim = await mongo.fetch_claim(uuid)
+        waifu = await mongo.fetch_waifu(claim.slug)
+        nyah_player = await mongo.fetch_nyah_player(inter.author)
 
         # update the sold waifu in the db
-        await helpers.sell_waifu(inter.author, claim)
+        await nyah_player.sell_waifu(claim)
         logger.info(f"{inter.guild.name}[{inter.guild.id}] | "
                     f"{inter.channel.name}[{inter.channel.id}] | "
                     f"{inter.author}[{inter.author.id}] | "
@@ -151,7 +144,7 @@ class WaifuMenuView(disnake.ui.View):
         if self.embed_index == len(self.embeds) - 1:
             self.next_page.disabled = True
         
-        sold_message = f"Sold **__{waifu.name}__** for {claim.price_str()}"
+        sold_message = f"Sold **__{waifu.name}__** for {claim.price_str}"
         if len(self.embeds) == 0:
             return await inter.response.edit_message(
                 content=sold_message,
@@ -166,10 +159,10 @@ class WaifuMenuView(disnake.ui.View):
     @disnake.ui.button(label="Image", emoji="📸", row=1)
     async def select_image(self, button: disnake.ui.Button, interaction: disnake.MessageInteraction) -> None:
         current_embed = self.embeds[self.embed_index]
-        uuid = utilities.extract_uuid(current_embed.footer.text)
+        uuid = utils.extract_uuid(current_embed.footer.text)
         
-        claim = await reql_helpers.get_waifu_claim(uuid)
-        waifu = await reql_helpers.get_waifu_core(claim.slug)
+        claim = await mongo.fetch_claim(uuid)
+        waifu = await mongo.fetch_waifu(claim.slug)
 
         if not claim.cached_images_urls:
             # search for 3 extra images
@@ -182,11 +175,7 @@ class WaifuMenuView(disnake.ui.View):
 
             # store the images in db
             claim.cached_images_urls = [image.url for image in self.gis.results()]
-            r.db("waifus") \
-                .table("claims") \
-                .get(claim.id) \
-                .update(claim.__dict__) \
-                .run(conn)
+            await mongo.update_claim(claim)
             logger.info(f"{interaction.guild.name}[{interaction.guild.id}] | "
                         f"{interaction.channel.name}[{interaction.channel.id}] | "
                         f"{interaction.author}[{interaction.author.id}] | "

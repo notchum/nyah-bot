@@ -1,14 +1,15 @@
 import random
+import logging
 
 import disnake
-from loguru import logger
 
-from nyahbot.util.constants import Money, Emojis
-from nyahbot.util.dataclasses import Claim
-from nyahbot.util import (
-    reql_helpers,
-    traits,
-)
+from models import Claim
+from helpers import Mongo
+from utils import Emojis, Money
+import utils.traits as traits
+
+logger = logging.getLogger("nyahbot")
+mongo = Mongo()
 
 class WaifuSkillView(disnake.ui.View):
     message: disnake.Message
@@ -26,7 +27,7 @@ class WaifuSkillView(disnake.ui.View):
     
     @disnake.ui.button(label="Reroll Skills", emoji="🎲", style=disnake.ButtonStyle.green)
     async def reroll(self, button: disnake.ui.Button, inter: disnake.MessageInteraction) -> None:
-        nyah_player = await reql_helpers.get_nyah_player(inter.author)
+        nyah_player = await mongo.fetch_nyah_player(inter.author)
         
         if nyah_player.money < Money.SKILL_COST.value:
             price_diff = Money.SKILL_COST.value - nyah_player.money
@@ -41,7 +42,7 @@ class WaifuSkillView(disnake.ui.View):
                         f"Failed to reroll skills {self.claim.slug}[{self.claim.id}]")
         else:
             nyah_player.money -= Money.SKILL_COST.value
-            await reql_helpers.set_nyah_player(nyah_player)
+            await mongo.update_nyah_player(nyah_player)
 
             # TODO re-assess how to best assign base stats, here is just completely random
             max_stat = min(100, nyah_player.level * 10)
@@ -65,15 +66,15 @@ class WaifuSkillView(disnake.ui.View):
                 trait = traits.CharacterTraitsLegendary.get_trait_by_name(self.claim.trait_legendary)
                 trait.apply_modifiers(self.claim)
             
-            await reql_helpers.set_waifu_claim(self.claim)
+            await mongo.update_claim(self.claim)
 
-            waifu = await reql_helpers.get_waifu_core(self.claim.slug)
+            waifu = await mongo.fetch_claims_by_slug(self.claim.slug)
 
             confirmation_embed = disnake.Embed(
                 description=f"Successfully rerolled skills for **__{waifu.name}__**!",
                 color=disnake.Color.green()
             )
-            confirmation_embed.add_field(name=f"New Skills ({self.claim.stats_str()})", value=self.claim.skill_str())
+            confirmation_embed.add_field(name=f"New Skills ({self.claim.stats_str})", value=self.claim.still_str)
 
             logger.info(f"{inter.guild.name}[{inter.guild.id}] | "
                         f"{inter.channel.name}[{inter.channel.id}] | "

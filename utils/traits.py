@@ -1,8 +1,8 @@
 import random
 from enum import Enum
 
-from nyahbot.util.constants import Money
-from nyahbot.util.dataclasses import Claim
+from models import Claim
+from utils import Money
 
 class TraitTypes(Enum):
     COMMON = 0
@@ -52,7 +52,8 @@ class CharacterTrait:
             elif modifier == StatModifiers.MAGIC_DOWN:
                 claim.magic_mod -= int(value * claim.magic)
     
-    def get_trait_value(self):
+    @property
+    def money_value(self):
         if self.trait_type == TraitTypes.COMMON:
             return Money.COMMON_TRAIT_PRICE.value
         elif self.trait_type == TraitTypes.UNCOMMON:

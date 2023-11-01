@@ -5,13 +5,9 @@ import disnake
 from disnake.ext import commands
 
 from bot import NyahBot
+from views import WaifuWishlistView
+from helpers import SuccessEmbed, ErrorEmbed
 from nyahbot.util.constants import Money, Emojis
-from nyahbot.util import (
-    utilities,
-    helpers,
-)
-
-from nyahbot.views.waifu_wishlist import WaifuWishlistView
 
 class Wishlist(commands.Cog):
     def __init__(self, bot: commands.Bot):
@@ -65,7 +61,7 @@ class Wishlist(commands.Cog):
 
         if not result:
             return await inter.edit_original_response(
-                embed=utilities.get_error_embed(f"Couldn't find `{name}` in the waifu database!")
+                embed=ErrorEmbed(f"Couldn't find `{name}` in the waifu database!")
             )
         
         embed = await helpers.get_waifu_base_embed(waifu)
@@ -86,7 +82,7 @@ class Wishlist(commands.Cog):
         nyah_player = await self.bot.mongo.fetch_nyah_player(inter.author)
         if not nyah_player.wishlist:
             return await inter.edit_original_response(
-                embed=utilities.get_error_embed(f"{inter.author.mention} your wishlist is empty!\n\n"
+                embed=ErrorEmbed(f"{inter.author.mention} your wishlist is empty!\n\n"
                                       f"Use `/wishlist add` to add a waifu to your wishlist to increase odds of getting it with `/getmywaifu`")
             )
         

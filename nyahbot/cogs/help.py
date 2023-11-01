@@ -4,13 +4,12 @@ import disnake
 from disnake.ext import commands
 
 from bot import NyahBot
+from views import WaifuPaginator
 from nyahbot.util.constants import Money, Emojis
 from nyahbot.util import (
     utilities,
     traits,
 )
-
-from nyahbot.views.waifu_paginator import WaifuPaginator
 
 class Help(commands.Cog):
     def __init__(self, bot: commands.Bot):

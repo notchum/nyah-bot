@@ -1,12 +1,14 @@
+import logging
 from typing import List
 
 import disnake
-from rethinkdb import r
-from loguru import logger
 
-from nyahbot.util.globals import conn
-from nyahbot.util.constants import Emojis
-from nyahbot.util.dataclasses import Claim
+from models import Claim
+from helpers import Mongo
+from utils import Emojis
+
+logger = logging.getLogger("nyahbot")
+mongo = Mongo()
 
 class WaifuImageSelectView(disnake.ui.View):
     def __init__(self, embeds: List[disnake.Embed], claim: Claim, author: disnake.User | disnake.Member, reference_view: disnake.ui.View) -> None:
@@ -59,13 +61,8 @@ class WaifuImageSelectView(disnake.ui.View):
     async def choose_image(self, button: disnake.ui.Button, interaction: disnake.MessageInteraction) -> None:
         current_embed = self.embeds[self.embed_index]
         
-        r.db("waifus") \
-            .table("claims") \
-            .get(self.claim.id) \
-            .update({
-                "image_url": current_embed.image.url
-            }) \
-            .run(conn)
+        self.claim.image_url = current_embed.image.url
+        await mongo.update_claim(self.claim)
         
         logger.info(f"{interaction.guild.name}[{interaction.guild.id}] | "
                     f"{interaction.channel.name}[{interaction.channel.id}] | "

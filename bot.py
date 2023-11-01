@@ -10,7 +10,7 @@ from disnake.ext import commands
 from beanie import init_beanie
 from motor.motor_asyncio import AsyncIOMotorClient
 
-from helpers import Mongo
+from helpers import Mongo, API
 from models import (
     Waifu,
     Claim,
@@ -68,6 +68,7 @@ class NyahBot(commands.InteractionBot):
         self.session = aiohttp_client_cache.CachedSession(
             cache=aiohttp_client_cache.CacheBackend(expire_after=600)
         )
+        self.api = API(self.session)
 
     async def on_ready(self):
         self.logger.info("------")
