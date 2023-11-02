@@ -1,5 +1,5 @@
 import logging
-import datetime
+from datetime import datetime, timedelta
 from typing import Optional, List
 from uuid import UUID, uuid4
 
@@ -31,6 +31,9 @@ cooldown_attribute_map = {
 class NyahConfig(Document):
     class Settings:
         name = "config"
+        bson_encoders = {
+            datetime: str
+        }
     
     id: UUID = Field(default_factory=uuid4)
 
@@ -42,8 +45,7 @@ class NyahConfig(Document):
     interval_minigame_mins: int
     interval_season_days: int
     
-    timestamp_last_season_end: Optional[datetime.datetime] = None
-
+    timestamp_last_season_end: datetime
 
 class NyahGuild(Document):
     class Settings:
@@ -64,6 +66,9 @@ class NyahPlayer(Document):
         indexes = [
             "user_id",
         ]
+        bson_encoders = {
+            datetime: str
+        }
     
     id: UUID = Field(default_factory=uuid4)
     user_id: int
@@ -76,9 +81,9 @@ class NyahPlayer(Document):
     
     wishlist: List[str]
     
-    timestamp_last_duel: Optional[datetime.datetime] = None
-    timestamp_last_claim: Optional[datetime.datetime] = None
-    timestamp_last_minigame: Optional[datetime.datetime] = None
+    timestamp_last_duel: Optional[datetime] = None
+    timestamp_last_claim: Optional[datetime] = None
+    timestamp_last_minigame: Optional[datetime] = None
 
     async def add_user_xp(self, xp: int, user: disnake.Member | disnake.User = None, channel: disnake.TextChannel = None) -> None:
         self.xp += xp
@@ -125,25 +130,25 @@ class NyahPlayer(Document):
         nyah_config = result[0]
         
         interval: int = getattr(nyah_config, cooldown_attribute_map[cooldown_type]["interval"])
-        timestamp: datetime.datetime = getattr(self, cooldown_attribute_map[cooldown_type]["timestamp"])
+        timestamp: datetime = getattr(self, cooldown_attribute_map[cooldown_type]["timestamp"])
 
         if timestamp == None:
             return False # user not on cooldown
         
         timedelta = disnake.utils.utcnow() - timestamp
-        if timedelta > datetime.timedelta(minutes=interval):
+        if timedelta > timedelta(minutes=interval):
             return False # user not on cooldown
         
         return True # user is on cooldown
 
-    async def user_cooldown_expiration_time(self, cooldown_type: Cooldowns) -> datetime.datetime:
+    async def user_cooldown_expiration_time(self, cooldown_type: Cooldowns) -> datetime:
         result = await NyahConfig.find().limit(1).to_list() # using query instead of fetch_nyah_config() to avoid circular import
         nyah_config = result[0]
 
         interval: int = getattr(nyah_config, cooldown_attribute_map[cooldown_type]["interval"])
-        timestamp: datetime.datetime = getattr(self, cooldown_attribute_map[cooldown_type]["timestamp"])
+        timestamp: datetime = getattr(self, cooldown_attribute_map[cooldown_type]["timestamp"])
 
-        return timestamp + datetime.timedelta(minutes=interval)
+        return timestamp + timedelta(minutes=interval)
 
     async def reset_cooldown(self, cooldown_type: Cooldowns) -> None:
         setattr(self, cooldown_attribute_map[cooldown_type]["timestamp"], None)

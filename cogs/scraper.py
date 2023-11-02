@@ -178,13 +178,13 @@ class Scraper(commands.Cog):
                     self.bot.logger.info(f"    ├─'{field}' ({old} -> {new})")
 
                 await self.bot.mongo.update_waifu(new_waifu)
-                self.bot.logger.success(f"Updated database entry for '{slug}'")
+                self.bot.logger.info(f"Updated database entry for '{slug}'")
 
             # insert the new waifu in the db
             else:
                 self.bot.logger.warning(f"'{slug}' doesn't exist in the database; attempting to create an entry...")
                 await self.bot.mongo.insert_waifu(new_waifu)
-                self.bot.logger.success(f"Created database entry for '{slug}'")
+                self.bot.logger.info(f"Created database entry for '{slug}'")
         
         except Exception as e:
             self.bot.logger.exception(e)

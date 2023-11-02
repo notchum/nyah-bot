@@ -83,8 +83,8 @@ class Waifus(commands.Cog):
             `disnake.Embed`
                 An embed with the guild leaderboard.
         """
-        nyah_guild = await self.bot.mongo.fetch_nyah_guild(guild) # TODO remove for global
-        season_end = nyah_guild.timestamp_last_season_end + datetime.timedelta(days=nyah_guild.interval_season_days)
+        nyah_config = await self.bot.mongo.fetch_nyah_config()
+        season_end = nyah_config.timestamp_last_season_end + datetime.timedelta(days=nyah_config.interval_season_days)
         embed = disnake.Embed(
             description=f"Season ends {utils.get_dyn_time_relative(season_end)}",
             color=disnake.Color.random()
@@ -136,7 +136,7 @@ class Waifus(commands.Cog):
         
         # gather waifu war related info for guild
         nyah_guild = await self.bot.mongo.fetch_nyah_guild(guild)
-        waifu_war_channel = await guild.fetch_channel(int(nyah_guild.waifu_war_channel_id))
+        waifu_war_channel = await guild.fetch_channel(nyah_guild.waifu_war_channel_id)
         ww_role = await self.get_waifu_war_role(guild)
         
         # create the actual event
@@ -175,7 +175,7 @@ class Waifus(commands.Cog):
                 The guild event to start. Must be a Waifu War.
         """
         nyah_guild = await self.bot.mongo.fetch_nyah_guild(event.guild)
-        waifu_war_channel = await event.guild.fetch_channel(int(nyah_guild.waifu_war_channel_id))
+        waifu_war_channel = await event.guild.fetch_channel(nyah_guild.waifu_war_channel_id)
 
         # If there aren't at least two people entered, then don't start it
         event_user_ids = await self.get_waifu_war_event_users(event)
@@ -220,7 +220,7 @@ class Waifus(commands.Cog):
                 The guild event to end. Must be a Waifu War.
         """
         nyah_guild = await self.bot.mongo.fetch_nyah_guild(event.guild)
-        waifu_war_channel = await event.guild.fetch_channel(int(nyah_guild.waifu_war_channel_id))
+        waifu_war_channel = await event.guild.fetch_channel(nyah_guild.waifu_war_channel_id)
 
         if event.guild.id in self.waifu_war_tasks:
             loop: tasks.Loop = self.waifu_war_tasks[event.guild.id]
@@ -476,15 +476,16 @@ class Waifus(commands.Cog):
             guild: `disnake.Guild`
                 The guild to end the season in.
         """
-        nyah_guild = await self.bot.mongo.fetch_nyah_guild(guild)
+        nyah_config = await self.bot.mongo.fetch_nyah_config()
         
-        season_end_datetime = nyah_guild.timestamp_last_season_end + datetime.timedelta(days=nyah_guild.interval_season_days)
-        if datetime.datetime.now(datetime.timezone.utc) < season_end_datetime:
+        season_end_datetime = nyah_config.timestamp_last_season_end + datetime.timedelta(days=nyah_config.interval_season_days)
+        if disnake.utils.utcnow() < season_end_datetime:
             return
         
         return self.bot.logger.debug(f"{guild.name}'s WAIFU WAR SEASON SHOULD END")
         
-        waifu_war_channel = await guild.fetch_channel(int(nyah_guild.waifu_war_channel_id))
+        nyah_guild = await self.bot.mongo.fetch_nyah_guild(guild)
+        waifu_war_channel = await guild.fetch_channel(nyah_config.waifu_war_channel_id)
         ww_role = await self.get_waifu_war_role(guild)
         leaderboard_embed = await self.get_war_leaderboard(guild)
         msg_embed = disnake.Embed(
@@ -536,7 +537,7 @@ class Waifus(commands.Cog):
                 The guild to delete threads in.
         """
         nyah_guild = await self.bot.mongo.fetch_nyah_guild(guild)
-        waifu_war_channel = await guild.fetch_channel(int(nyah_guild.waifu_war_channel_id))
+        waifu_war_channel = await guild.fetch_channel(nyah_guild.waifu_war_channel_id)
         for t in waifu_war_channel.threads:
             if t.owner_id == self.bot.user.id and (disnake.utils.utcnow() - t.created_at).total_seconds() >= 3600 * 20: # 20 hrs
                 await t.delete()
@@ -562,7 +563,7 @@ class Waifus(commands.Cog):
         if 10.0 < minutes_diff < 11.0:
             # gather waifu war related info for guild
             nyah_guild = await self.bot.mongo.fetch_nyah_guild(guild)
-            waifu_war_channel = await guild.fetch_channel(int(nyah_guild.waifu_war_channel_id))
+            waifu_war_channel = await guild.fetch_channel(nyah_guild.waifu_war_channel_id)
             ww_role = await self.get_waifu_war_role(guild)
             
             # send a message to alert users
@@ -590,6 +591,12 @@ class Waifus(commands.Cog):
                 The guild to make the event in.
         """
         ww_role = await self.get_waifu_war_role(guild)
+        if not ww_role:
+            ww_role = await guild.create_role(
+                name="WAIFU WARRIORS",
+                mentionable=True,
+                color=disnake.Color.from_rgb(235, 69, 158)
+            )
         async for member in guild.fetch_members():
             member_active = await self.bot.mongo.fetch_harem_count(member) > 0
             if member_active and not member.get_role(ww_role.id):
@@ -626,10 +633,10 @@ class Waifus(commands.Cog):
             waifu_war_event = await self.get_waifu_war_event(guild)
             if waifu_war_event:
                 return
-            nyah_guild = await self.bot.mongo.fetch_nyah_guild(guild)
+            nyah_config = await self.bot.mongo.fetch_nyah_config
             start_time = datetime.datetime.combine(
                 date=disnake.utils.utcnow().date(),
-                time=datetime.time(nyah_guild.waifu_war_hour, 0), #??? should this be hour in UTC? it is MDT now...
+                time=datetime.time(nyah_config.waifu_war_hour, 0), #??? should this be hour in UTC? it is MDT now...
             )
             await self.schedule_waifu_war_event(guild, start_time)
 
@@ -714,7 +721,7 @@ class Waifus(commands.Cog):
         
         # Get the waifu war channel
         nyah_guild = await self.bot.mongo.fetch_nyah_guild(guild)
-        waifu_war_channel = await guild.fetch_channel(int(nyah_guild.waifu_war_channel_id))
+        waifu_war_channel = await guild.fetch_channel(nyah_guild.waifu_war_channel_id)
 
         # Get the war
         war = await self.bot.mongo.fetch_active_war(guild)
@@ -1012,106 +1019,6 @@ class Waifus(commands.Cog):
     ##*************************************************##
     ##********             COMMANDS             *******##
     ##*************************************************##
-
-    @commands.slash_command(default_member_permissions=disnake.Permissions(administrator=True))
-    async def waifuadmin(self, inter: disnake.ApplicationCommandInteraction):
-        """ Top-level command group for configuring waifus for guilds. """
-        pass
-
-    @waifuadmin.sub_command()
-    async def setup(self, inter: disnake.ApplicationCommandInteraction):
-        """ Configure settings for this server. """
-        await inter.response.send_message("in progress")
-
-    @waifuadmin.sub_command()
-    async def create_waifu_war(
-        self,
-        inter: disnake.ApplicationCommandInteraction,
-        time_delta_min: int
-    ):
-        """ Create a Waifu War event manually.
-        
-            Parameters
-            ----------
-            time_delta_min: `int`
-                How many minutes in the future to schedule for.
-        """
-        await inter.response.defer(ephemeral=True)
-        waifu_war_event = await self.get_waifu_war_event(inter.guild)
-        if waifu_war_event:
-            return await inter.edit_original_response(
-                embed=ErrorEmbed("A waifu war event already exists in this server!")
-            )
-        start_time = disnake.utils.utcnow() + datetime.timedelta(minutes=time_delta_min)
-        await self.schedule_waifu_war_event(inter.guild, start_time)
-        return await inter.edit_original_response(
-            embed=SuccessEmbed(f"Scheduled event for {utils.get_dyn_date_long_time_long(start_time)}")
-        )
-
-    @waifuadmin.sub_command()
-    async def set_user_attributes(
-        self,
-        inter: disnake.ApplicationCommandInteraction,
-        user: disnake.User,
-        level: int = None,
-        xp: int = None,
-        mmr: int = None,
-        money: int = None
-    ):
-        if level == None and xp == None and mmr == None and money == None:
-            return await inter.response.send_message(
-                embed=ErrorEmbed("No attributes provided!"),
-                ephemeral=True
-            )
-        
-        nyah_player = await self.bot.mongo.fetch_nyah_player(user)
-        if level != None: nyah_player.level = level
-        if xp != None: nyah_player.xp = xp
-        if mmr != None: nyah_player.score = mmr
-        if money != None: nyah_player.money = money
-        await self.bot.mongo.update_nyah_player(nyah_player)
-
-        return await inter.response.send_message(
-            embed=SuccessEmbed("Updated user attributes!"),
-            ephemeral=True
-        )
-
-    @waifuadmin.sub_command()
-    async def reset_user_cooldown(
-        self,
-        inter: disnake.ApplicationCommandInteraction,
-        user: disnake.User = None,
-        cooldown: str = commands.Param(choices=["timestamp_last_claim",
-                                                "timestamp_last_duel",
-                                                "timestamp_last_minigame"])
-    ):
-        """ Resets a chosen cooldown for a user or for all guild members.
-
-            Parameters
-            ----------
-            user: `disnake.User`
-                The user to reset waifu availability for. (Default: All guild members)
-            cooldown: `str`
-                The cooldown field name to reset.
-        """
-        if user:
-            nyah_player = await self.bot.mongo.fetch_nyah_player(user)
-            nyah_player.reset_cooldown(cooldown)
-            self.bot.logger.success(f"{inter.guild.name}[{inter.guild.id}] | "
-                                    f"Reset `{cooldown}` for {user.name}#{user.discriminator}[{user.id}]!")
-            return await inter.response.send_message(
-                embed=SuccessEmbed(f"Reset `{cooldown}` for {user.name}#{user.discriminator}[{user.id}]!"),
-                ephemeral=True
-            )
-        else:
-            await self.bot.mongo.update_all_nyah_players(cooldown, None)
-            self.bot.logger.success(f"{inter.guild.name}[{inter.guild.id}] | "
-                                    f"Reset `{cooldown}` for all members!")
-            return await inter.response.send_message(
-                embed=SuccessEmbed(f"Reset `{cooldown}` for all members!"),
-                ephemeral=True
-            )
-
 
     @commands.slash_command()
     async def leaderboard(self, inter: disnake.ApplicationCommandInteraction):
@@ -1898,34 +1805,36 @@ class Waifus(commands.Cog):
         
         return deque(waifu_names, maxlen=25)
 
-    @waifudex.autocomplete("name")
-    async def waifu_name_autocomplete(
-        self,
-        inter: disnake.ApplicationCommandInteraction,
-        user_input: str
-    ) -> list:
-        waifus = await self.bot.mongo.fetch_waifu_by_name(user_input)
-        return deque([f"{waifu.name} [{waifu.series[0]}]" for waifu in waifus if len(waifu.series)], maxlen=25)
+    # @waifudex.autocomplete("name")
+    # async def waifu_name_autocomplete(
+    #     self,
+    #     inter: disnake.ApplicationCommandInteraction,
+    #     user_input: str
+    # ) -> list:
+    #     if not user_input:
+    #         user_input = "a"
+    #     waifus = await self.bot.mongo.fetch_waifu_by_name(user_input)
+    #     return deque([f"{waifu.name} [{waifu.series[0]}]" for waifu in waifus if len(waifu.series)], maxlen=25)
 
-    @waifudex.autocomplete("series")
-    async def waifu_series_autocomplete(
-        self,
-        inter: disnake.ApplicationCommandInteraction,
-        user_input: str
-    ) -> list:
-        result = await self.bot.mongo.fetch_waifu_series()
-        comp = re.compile(f"(?i)^{user_input}")
-        return deque(filter(comp.match, result), maxlen=25)
+    # @waifudex.autocomplete("series")
+    # async def waifu_series_autocomplete(
+    #     self,
+    #     inter: disnake.ApplicationCommandInteraction,
+    #     user_input: str
+    # ) -> list:
+    #     result = await self.bot.mongo.fetch_waifu_series()
+    #     comp = re.compile(f"(?i)^{user_input}")
+    #     return deque(filter(comp.match, result), maxlen=25)
 
-    @waifudex.autocomplete("tag")
-    async def waifu_tag_autocomplete(
-        self,
-        inter: disnake.ApplicationCommandInteraction,
-        user_input: str
-    ) -> list:
-        result = await self.bot.mongo.fetch_waifu_tags()
-        comp = re.compile(f"(?i)^{user_input}")
-        return deque(filter(comp.match, result), maxlen=25)
+    # @waifudex.autocomplete("tag")
+    # async def waifu_tag_autocomplete(
+    #     self,
+    #     inter: disnake.ApplicationCommandInteraction,
+    #     user_input: str
+    # ) -> list:
+    #     result = await self.bot.mongo.fetch_waifu_tags()
+    #     comp = re.compile(f"(?i)^{user_input}")
+    #     return deque(filter(comp.match, result), maxlen=25)
 
 def setup(bot: commands.Bot):
     bot.add_cog(Waifus(bot))

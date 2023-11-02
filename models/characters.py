@@ -58,6 +58,9 @@ class Claim(Document):
             "user_id",
             "guild_id",
         ]
+        bson_encoders = {
+            datetime: str
+        }
     
     id: UUID = Field(default_factory=uuid4)
     slug: str

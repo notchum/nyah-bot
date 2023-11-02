@@ -8,11 +8,9 @@ from dataclasses import dataclass
 
 from models import (
     Claim,
-    Vote,
     Battle,
     Match,
     Round,
-    War,
 )
 
 @dataclass(kw_only=True)
