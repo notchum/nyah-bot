@@ -4,8 +4,8 @@ from typing import List
 
 import disnake
 
-from models import Claim
 from helpers import Mongo
+from utils import Emojis
 import utils.utilities as utils
 
 logger = logging.getLogger("nyahbot")
@@ -29,9 +29,7 @@ class WaifuSwapView(disnake.ui.View):
     async def interaction_check(self, interaction: disnake.MessageInteraction) -> bool:
         return interaction.author.id == self.original_author.id
 
-    @logger.catch
-    @disnake.ui.button(emoji="<:leftWaifu:1158460793063477420>", custom_id="prev_page_button",
-                        style=disnake.ButtonStyle.secondary)
+    @disnake.ui.button(emoji=Emojis.PREV_PAGE, style=disnake.ButtonStyle.secondary)
     async def prev_page(self, button: disnake.ui.Button, interaction: disnake.MessageInteraction) -> None:
         self.embed_index -= 1
         current_embed = self.embeds[self.embed_index]
@@ -53,9 +51,7 @@ class WaifuSwapView(disnake.ui.View):
         
         await interaction.response.edit_message(content=content, embed=current_embed, view=self)
 
-    @logger.catch
-    @disnake.ui.button(emoji="<:rightWaifu:1158460837359538186>", custom_id="next_page_button",
-                        style=disnake.ButtonStyle.secondary)
+    @disnake.ui.button(emoji=Emojis.NEXT_PAGE, style=disnake.ButtonStyle.secondary)
     async def next_page(self, button: disnake.ui.Button, interaction: disnake.MessageInteraction) -> None:
         self.embed_index += 1
         current_embed = self.embeds[self.embed_index]
@@ -77,14 +73,11 @@ class WaifuSwapView(disnake.ui.View):
         
         await interaction.response.edit_message(content=content, embed=current_embed, view=self)
     
-    @disnake.ui.button(label="Swap Menu", custom_id="title_button",
-                        style=disnake.ButtonStyle.primary, disabled=True)
+    @disnake.ui.button(label="Swap Menu", style=disnake.ButtonStyle.primary, disabled=True)
     async def title(self, button: disnake.ui.Button, interaction: disnake.MessageInteraction) -> None:
         pass
     
-    @logger.catch
-    @disnake.ui.button(label="Confirm", emoji="✔️", custom_id="confirm_button",
-                        style=disnake.ButtonStyle.green, row=1)
+    @disnake.ui.button(label="Confirm", emoji="✔️", style=disnake.ButtonStyle.green, row=1)
     async def confirm(self, button: disnake.ui.Button, interaction: disnake.MessageInteraction) -> None:
         old_embed = self.embeds[self.selected_index]
         new_embed = self.embeds[self.embed_index]
@@ -134,8 +127,7 @@ class WaifuSwapView(disnake.ui.View):
             view=self.reference_view
         )
     
-    @disnake.ui.button(label="Cancel", emoji="✖️", custom_id="cancel_button",
-                        style=disnake.ButtonStyle.red, row=1)
+    @disnake.ui.button(label="Cancel", emoji="✖️", style=disnake.ButtonStyle.red, row=1)
     async def cancel(self, button: disnake.ui.Button, interaction: disnake.MessageInteraction) -> None:
         current_embed = self.embeds[self.embed_index]
         self.reference_view.embed_index = self.embed_index

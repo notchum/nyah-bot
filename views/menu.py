@@ -6,10 +6,10 @@ from typing import List
 import disnake
 from google_images_search import GoogleImagesSearch
 
-from models import Claim, Waifu, NyahGuild
 from helpers import Mongo
 from utils import Emojis
-from views import WaifuSwapView, WaifuImageSelectView
+from views.swap import WaifuSwapView
+from views.image import WaifuImageSelectView
 import utils.utilities as utils
 
 logger = logging.getLogger("nyahbot")

@@ -15,17 +15,14 @@ class WaifuImageSelectView(disnake.ui.View):
         super().__init__()
         self.embeds = embeds
         self.claim = claim
-        self.original_author = author
+        self.author = author
         self.reference_view = reference_view
 
-        self.reset_view()
-
-    def reset_view(self) -> None:
         self.embed_index = 0
         self.prev_page.disabled = True
     
     async def interaction_check(self, interaction: disnake.MessageInteraction) -> bool:
-        return interaction.author.id == self.original_author.id
+        return interaction.author.id == self.author.id
 
     @disnake.ui.button(emoji=Emojis.PREV_PAGE)
     async def prev_page(self, button: disnake.ui.Button, interaction: disnake.MessageInteraction) -> None:
