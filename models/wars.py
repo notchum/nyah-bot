@@ -2,6 +2,7 @@ from datetime import datetime
 from typing import Optional
 from uuid import UUID, uuid4
 
+from disnake import GuildScheduledEventStatus
 from pydantic import Field
 from beanie import Document
 
@@ -65,14 +66,15 @@ class Round(Document):
     timestamp_end: Optional[datetime] = None
 
 
-class War(Document):
+class Event(Document):
     class Settings:
-        name = "core"
+        name = "events"
     
     id: UUID = Field(default_factory=uuid4)
     # discord uuid's
     event_id: int
     guild_id: int
     # other
+    state: int
     timestamp_start: Optional[datetime] = None
     timestamp_end: Optional[datetime] = None

@@ -5,6 +5,7 @@ from uuid import UUID, uuid4
 from pydantic import Field
 from beanie import Document
 
+from models import NyahConfig
 from utils import Emojis, WaifuState
 
 class Waifu(Document):
@@ -95,6 +96,9 @@ class Claim(Document):
     timestamp: datetime
     timestamp_cooldown: Optional[datetime] = None
 
+    def marry(self) -> None:
+        self.state = WaifuState.ACTIVE.name
+
     @property
     def base_stats(self) -> int:
         return self.attack + self.defense + self.health + self.speed + self.magic
@@ -137,3 +141,37 @@ class Claim(Document):
         if self.trait_legendary:
             trait_str += f"🟠`{self.trait_legendary}`\n"
         return trait_str if trait_str else "None"
+
+
+class Harem(List[Claim]):
+    def __init__(self, claims: List[Claim]) -> None:
+        super().__init__(claims)
+    
+    async def reindex(self) -> None:
+        # Figure out how many waifus are ACTIVE and INACTIVE
+        # active_count = sum(1 for claim in self if claim.state == WaifuState.ACTIVE.name)
+        # inactive_count = sum(1 for claim in self if claim.state == WaifuState.INACTIVE.name)
+
+        # Ensure there are at most 3 ACTIVE claims and at least 0 INACTIVE claims
+        # if active_count < nyah_config.waifu_max_marriages and inactive_count > 0:
+        #     for claim in self:
+        #         if claim.state == WaifuState.INACTIVE.name:
+        #             claim.state = WaifuState.ACTIVE.name
+        #             active_count += 1
+        #         if active_count >= nyah_config.waifu_max_marriages:
+        #             break
+        # elif active_count > nyah_config.waifu_max_marriages:
+        #     for claim in self:
+        #         if claim.state == WaifuState.ACTIVE.name:
+        #             claim.state = WaifuState.INACTIVE.name
+        #             active_count -= 1
+        #         if active_count <= nyah_config.waifu_max_marriages:
+        #             break
+        
+        # Sort by state and index
+        self = sorted(self, key=lambda claim: (WaifuState[claim.state].value, claim.index))
+
+        # Re-index
+        for index, claim in enumerate(self):
+            claim.index = index
+            await claim.save()

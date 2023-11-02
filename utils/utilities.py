@@ -1,8 +1,32 @@
 import re
-import datetime
+import random
 import traceback
 
 import disnake
+
+from utils import Experience
+
+##*************************************************##
+##********            NYAH UTILS            *******##
+##*************************************************##
+
+def calculate_xp_for_level(level: int) -> int:
+    """ Returns the XP needed for this level before the next. """
+    if level == 1:
+        return Experience.BASE_LEVEL.value
+    else:
+        previous_xp = calculate_xp_for_level(level - 1)
+        return int(previous_xp + int(previous_xp * 0.05))
+
+def calculate_accumulated_xp(level: int) -> int:
+    """ Returns the total XP needed to reach this level. """
+    xp_accumulated = 0
+    for level in range(1, level + 1):
+        xp_needed = calculate_xp_for_level(level)
+        xp_accumulated += xp_needed
+    return xp_accumulated
+
+random_stat = lambda l: random.randint(0, min(100, l * 10))
 
 ##*************************************************##
 ##********          DISCORD UTILS           *******##

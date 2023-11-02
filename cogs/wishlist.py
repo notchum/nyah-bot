@@ -64,7 +64,7 @@ class Wishlist(commands.Cog):
                 embed=ErrorEmbed(f"Couldn't find `{name}` in the waifu database!")
             )
         
-        embed = await helpers.get_waifu_base_embed(waifu)
+        embed = await self.bot.get_waifu_base_embed(waifu)
         embed.description = f"Wishlist __**{waifu.name}**__ for `{Money.WISHLIST_COST.value:,}` {Emojis.COINS}?"
         
         wishlist_view = WaifuWishlistView(

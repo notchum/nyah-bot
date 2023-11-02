@@ -8,9 +8,12 @@ from utils import WaifuState
 from models import (
     Waifu,
     Claim,
+    Harem,
     NyahPlayer,
     NyahGuild,
     NyahConfig,
+    Vote,
+    Event,
 )
 
 class Mongo():
@@ -18,7 +21,7 @@ class Mongo():
         pass
 
     async def fetch_nyah_config() -> NyahConfig:
-        result = await NyahConfig.find().limit(1).to_list()
+        result = await NyahConfig.find_many().limit(1).to_list()
         return result[0]
 
     async def update_nyah_config(config: NyahConfig) -> None:
@@ -73,13 +76,13 @@ class Mongo():
         return result
 
     async def fetch_waifu_by_name(self, name: str) -> List[Waifu]:
-        result = await Waifu.find(
+        result = await Waifu.find_many(
             {"name": {"$regex": f"(?i)^{name}"}}
         ).to_list()
         return result
 
     async def fetch_waifu_by_name_series(self, name: str, series: str) -> List[Waifu]:
-        return await Waifu.find(
+        return await Waifu.find_many(
             Waifu.name == name,
             Waifu.series == series
         ).sort(
@@ -87,7 +90,7 @@ class Mongo():
         ).to_list()
 
     async def fetch_waifu_by_tag(self, tag: str) -> List[Waifu]:
-        return await Waifu.find(
+        return await Waifu.find_many(
             Waifu.tags == tag
         ).sort(
             [(Waifu.popularity_rank, pymongo.ASCENDING)]
@@ -95,7 +98,7 @@ class Mongo():
 
     async def fetch_waifu_by_index(self, index: int) -> Waifu:
         #TODO remove this, this is a hack to help scrape each waifu
-        return await Waifu.find().skip(index).first_or_none()   
+        return await Waifu.find_many().skip(index).first_or_none()   
 
     async def check_waifu_exists(self, slug: str) -> bool:
         return await Waifu.find_one(Waifu.slug == slug) != None
@@ -136,7 +139,7 @@ class Mongo():
         return await NyahPlayer.find_one(NyahPlayer.user_id == user.id)
 
     async def fetch_active_nyah_players(self) -> List[NyahPlayer]:
-        return await NyahPlayer.find(
+        return await NyahPlayer.find_many(
             NyahPlayer.score != 0
         ).sort(
             [(NyahPlayer.score, pymongo.DESCENDING)]
@@ -162,7 +165,7 @@ class Mongo():
         return await NyahGuild.find_one(NyahGuild.guild_id == guild.id)
 
     async def fetch_nyah_guilds(self) -> List[NyahGuild]:
-        return await NyahGuild.find().to_list()
+        return await NyahGuild.find_many().to_list()
 
     async def check_nyah_guild_exists(self, guild: disnake.Guild) -> bool:
         return await NyahGuild.find_one(NyahGuild.guild_id == guild.id) != None
@@ -179,7 +182,7 @@ class Mongo():
         return await Claim.find_one(Claim.id == uuid)
 
     async def fetch_claim_count(self, user: disnake.Member | disnake.User) -> int:
-        return await Claim.find(Claim.user_id == user.id).count()
+        return await Claim.find_many(Claim.user_id == user.id).count()
     
     async def fetch_claim_by_index(self, user: disnake.Member | disnake.User, index: int) -> Claim | None:
         result = await Claim.find_one(
@@ -189,7 +192,7 @@ class Mongo():
         return result[0] if len(result) > 0 else None
     
     async def fetch_claims_by_slug(self, user: disnake.Member | disnake.User, slug: str) -> List[Claim]:
-        return await Claim.find(
+        return await Claim.find_many(
             Claim.user_id == user.id,
             Claim.slug == slug
         ).to_list()
@@ -197,7 +200,7 @@ class Mongo():
 
 
     async def fetch_harem_count(self, user: disnake.Member | disnake.User) -> int:
-        return await Claim.find({
+        return await Claim.find_many({
             "user_id": user.id,
             "index": {"$exists": True},
             "state": {"$exists": True},
@@ -205,7 +208,7 @@ class Mongo():
         }).count()
 
     async def fetch_harem_married_count(self, user: disnake.Member | disnake.User) -> int:
-        return await Claim.find({
+        return await Claim.find_many({
             "user_id": user.id,
             "index": {"$exists": True},
             "state": {"$exists": True},
@@ -213,7 +216,7 @@ class Mongo():
         }).count()
     
     async def fetch_harem_unmarried_count(self, user: disnake.Member | disnake.User) -> int:
-        return await Claim.find({
+        return await Claim.find_many({
             "user_id": user.id,
             "index": {"$exists": True},
             "state": {"$exists": True},
@@ -221,28 +224,32 @@ class Mongo():
         }).count()
     
     async def fetch_harem_cooldown_count(self, user: disnake.Member | disnake.User) -> int:
-        return await Claim.find({
+        return await Claim.find_many({
             "user_id": user.id,
             "index": {"$exists": True},
             "state": {"$exists": True},
             "state": WaifuState.COOLDOWN.name,
         }).count()
     
-    async def fetch_harem(self, user: disnake.Member | disnake.User) -> List[Claim]:
-        return await Claim.find({
+    async def fetch_harem(self, user: disnake.Member | disnake.User) -> Harem:
+        return await Claim.find_many({
             "user_id": user.id,
             "index": {"$exists": True},
             "state": {"$exists": True},
             "state": {"$nin": [WaifuState.NULL.name, WaifuState.SOLD.name]},
-        }).to_list()
+        }).sort(
+            [(Claim.index, pymongo.ASCENDING)]
+        ).to_list()
     
-    async def fetch_harem_married(self, user: disnake.Member | disnake.User) -> List[Claim]:
-        return await Claim.find({
+    async def fetch_harem_married(self, user: disnake.Member | disnake.User) -> Harem:
+        return await Claim.find_many({
             "user_id": user.id,
             "index": {"$exists": True},
             "state": {"$exists": True},
             "state": WaifuState.ACTIVE.name,
-        }).to_list()
+        }).sort(
+            [(Claim.index, pymongo.ASCENDING)]
+        ).to_list()
     
     async def fetch_random_harem_married(self, user: disnake.Member | disnake.User) -> Claim:
         pipeline = [
@@ -262,3 +269,17 @@ class Mongo():
 
 
 
+    async def fetch_active_war(self, guild: disnake.Guild) -> Event | None:
+        return await Event.find_one(
+            Event.guild_id == guild.id,
+            Event.state == disnake.GuildScheduledEventStatus.scheduled.value,
+        )
+
+    async def insert_vote(self, vote: Vote) -> None:
+        await vote.insert()
+
+    async def fetch_and_delete_vote(self, user: disnake.Member | disnake.User, battle_id: uuid.UUID) -> None:
+        await Vote.find_one(
+            Vote.user_id == user.id,
+            Vote.battle_id == battle_id
+        ).delete()

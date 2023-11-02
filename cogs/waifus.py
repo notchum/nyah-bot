@@ -1,4 +1,3 @@
-import os
 import re
 import uuid
 import random
@@ -8,31 +7,17 @@ import datetime
 from collections import deque
 
 import disnake
-import aiofiles
 from PIL import Image
 from disnake.ext import commands, tasks
 
 from bot import NyahBot
-from views import *
+from models import Waifu, Claim, Event
 from helpers import SuccessEmbed, ErrorEmbed
-from nyahbot.util.bracket import Bracket
-from nyahbot.util.dataclasses import (
-    Claim,
-    Waifu,
-    War,
-)
-from nyahbot.util.constants import (
-    Emojis,
-    Cooldowns,
-    WaifuState,
-    Money,
-    Experience,
-    MMR,
-)
-from nyahbot.util import (
-    helpers,
-    traits,
-)
+from views import *
+from utils import Emojis, WaifuState, Cooldowns, Experience, Money, MMR
+import utils.traits as traits
+import utils.utilities as utils
+from utils.bracket import Bracket
 
 class Waifus(commands.Cog):
     def __init__(self, bot: commands.Bot):
@@ -101,7 +86,7 @@ class Waifus(commands.Cog):
         nyah_guild = await self.bot.mongo.fetch_nyah_guild(guild) # TODO remove for global
         season_end = nyah_guild.timestamp_last_season_end + datetime.timedelta(days=nyah_guild.interval_season_days)
         embed = disnake.Embed(
-            description=f"Season ends {utilities.get_dyn_time_relative(season_end)}",
+            description=f"Season ends {utils.get_dyn_time_relative(season_end)}",
             color=disnake.Color.random()
         )
 
@@ -168,7 +153,7 @@ class Waifus(commands.Cog):
         embed = disnake.Embed(
             title="⚔️ THE WAIFU WAR IS SCHEDULED ⚔️",
             description=f"- {ww_role.mention} __**mark yourself as interested**__ to this event to enter this war!\n"
-                        f"- Starts: {utilities.get_dyn_date_long_time_long(start_time)}\n\n"
+                        f"- Starts: {utils.get_dyn_date_long_time_long(start_time)}\n\n"
                         f"{quote}",
             color=disnake.Color.random(),
         )
@@ -334,20 +319,8 @@ class Waifus(commands.Cog):
 
             return (center_x - img.width//2, center_y - img.height//2)
 
-        # download background image
-        if not os.path.exists("assets/images/vs.jpg"):
-            bg_url = "https://external-content.duckduckgo.com/iu/?u=https%3A%2F%2Fstatic.vecteezy.com%2Fsystem%2Fresources%2Fpreviews%2F000%2F544%2F945%2Foriginal%2Fcomic-fighting-cartoon-background-blue-vs-red-vector-illustration-design.jpg&f=1&nofb=1&ipt=d7b1d0d9bb512e200148263e80ad893ee95f011cf44cfc20417a2da90f94642a&ipo=images"
-            try:
-                async with self.bot.session.get(bg_url) as response:
-                    if response.status != 200:
-                        self.bot.logger.error(f"Downloading image {bg_url} returned status code `{response.status}`")
-                    async with aiofiles.open("assets/images/vs.jpg", mode="wb") as f:
-                        await f.write(await response.read())
-            except Exception as err:
-                self.bot.logger.error(f"Download image returned invalid data! {err}")
-
         # load background
-        bg_img = Image.open("assets/images/vs.jpg")
+        bg_img = Image.open("assets/vs.jpg") # "https://external-content.duckduckgo.com/iu/?u=https%3A%2F%2Fstatic.vecteezy.com%2Fsystem%2Fresources%2Fpreviews%2F000%2F544%2F945%2Foriginal%2Fcomic-fighting-cartoon-background-blue-vs-red-vector-illustration-design.jpg&f=1&nofb=1&ipt=d7b1d0d9bb512e200148263e80ad893ee95f011cf44cfc20417a2da90f94642a&ipo=images"
         if (bg_img.mode != "RGBA"):
             bg_img = bg_img.convert("RGBA")
 
@@ -372,17 +345,7 @@ class Waifus(commands.Cog):
             image_url = await self.bot.mongo.fetch_claim(waifu_value["object"].id).image_url
 
             # download image
-            try:
-                image_path = f"assets/images/{waifu_value['object'].id}"
-                if not os.path.exists(image_path):
-                    async with self.bot.session.get(image_url) as response:
-                        if response.status != 200:
-                            self.bot.logger.error(f"Downloading image {image_url} returned status code `{response.status}`")
-                        async with aiofiles.open(image_path, mode="wb") as f:
-                            await f.write(await response.read())
-                        self.bot.logger.info(f"Downloaded image {image_path}")
-            except Exception as err:
-                self.bot.logger.error(f"Downloading image returned invalid data! {err}")
+            image_path = await self.bot.api.download_image(image_url)
 
             # load fg image
             load_img = Image.open(image_path)
@@ -443,6 +406,7 @@ class Waifus(commands.Cog):
 
         # save the image
         output_path = f"assets/images/{red_waifu.id}.vs.{blue_waifu.id}.png"
+
         bg_img.save(output_path)
         self.bot.logger.info(f"Created image {output_path}")
 
@@ -458,24 +422,24 @@ class Waifus(commands.Cog):
         # Select user directly above you in score, else select user below
         nyah_players = await self.bot.mongo.fetch_active_nyah_players()
 
-        user_data = next((u for u in nyah_players if u["user_id"] == str(user.id)), None)
+        user_data = next((u for u in nyah_players if u.user_id == user.id), None)
     
         if user_data is None:
             # User not found in rankings, return None
             return None
 
         neighbors = []
-        user_score = user_data["score"]
+        user_score = user_data.score
         total_players = len(nyah_players)
 
         # Determine the number of neighbors above and below the user based on total players
         num_neighbors = min(total_players - 1, 4)  # Max 4 neighbors (2 above, 2 below)
 
         for i, opponent in enumerate(nyah_players):
-            if opponent["score"] == 0:
+            if opponent.score == 0:
                 continue
-            if opponent["user_id"] != user_data["user_id"]:
-                score_diff = user_score - opponent["score"]
+            if opponent.user_id != user_data.user_id:
+                score_diff = user_score - opponent.score
                 if i < num_neighbors or (total_players - i) <= num_neighbors:
                     neighbors.append(opponent)
 
@@ -486,8 +450,8 @@ class Waifus(commands.Cog):
         # Calculate similarity scores for each neighbor
         similarity_scores = []
         for neighbor in neighbors:
-            score_diff = abs(user_score - neighbor["score"]) // 10
-            level_diff = abs(user_data["level"] - neighbor["level"])
+            score_diff = abs(user_score - neighbor.score) // 10
+            level_diff = abs(user_data.level - neighbor.level)
             similarity_score = 1 / (1 + score_diff + level_diff)
             similarity_scores.append(similarity_score)
         
@@ -605,7 +569,7 @@ class Waifus(commands.Cog):
             embed = disnake.Embed(
                 title="⚔️ WAIFU WAR REMINDER ⚔️",
                 description=f"- {ww_role.mention} __**mark yourself as interested**__ to this event to enter this war!\n"
-                            f"- The Waifu War is starting {utilities.get_dyn_time_relative(waifu_war_event.scheduled_start_time)}!",
+                            f"- The Waifu War is starting {utils.get_dyn_time_relative(waifu_war_event.scheduled_start_time)}!",
                 color=disnake.Colour.random(),
             )
             await waifu_war_channel.send(
@@ -714,18 +678,17 @@ class Waifus(commands.Cog):
 
         # Only create the bracket on the first pass
         if loop.current_loop == 0:
-            war_uuid = uuid.uuid4()
-            war = War(
-                id=war_uuid,
-                event_id=str(waifu_war_event.id),
-                guild_id=str(guild.id),
-                timestamp_start=datetime.datetime.now(datetime.timezone.utc),
+            war = Event(
+                event_id=waifu_war_event.id,
+                guild_id=guild.id,
+                state=disnake.GuildScheduledEventStatus.active,
+                timestamp_start=disnake.utils.utcnow(),
                 timestamp_end=None
             )
             await war.insert()
 
             # Create the initial bracket
-            bracket = Bracket(war_uuid)
+            bracket = Bracket(war)
             nyah_players = await self.bot.mongo.fetch_active_nyah_players()
             event_user_ids = await self.get_waifu_war_event_users(waifu_war_event)
             
@@ -753,22 +716,11 @@ class Waifus(commands.Cog):
         nyah_guild = await self.bot.mongo.fetch_nyah_guild(guild)
         waifu_war_channel = await guild.fetch_channel(int(nyah_guild.waifu_war_channel_id))
 
-        # Get the war ID
-        war_uuid = r.db("wars") \
-                    .table("core") \
-                    .filter(
-                        r.and_(
-                            r.row["guild_id"].eq(str(guild.id)),
-                            r.row["timestamp_start"],
-                            r.not_(r.row["timestamp_end"])
-                        )
-                    ) \
-                    .nth(0) \
-                    .get_field("id") \
-                    .run(conn)
+        # Get the war
+        war = await self.bot.mongo.fetch_active_war(guild)
 
         # Create a bracket object to help us
-        bracket = Bracket(war_uuid)
+        bracket = Bracket(war)
 
         #TODO Print the bracket
         # self.bot.logger.debug(f"guildname[guildid] Waifu War bracket:")
@@ -875,7 +827,7 @@ class Waifus(commands.Cog):
             battle_embed = disnake.Embed(
                 title=f"{match_title}  •  Battle {current_battle.number}",
                 description=f"**__{red_name}__** vs. **__{blue_name}__**\n"
-                            f"Voting ends: {utilities.get_dyn_time_relative(ends_at)}",
+                            f"Voting ends: {utils.get_dyn_time_relative(ends_at)}",
                 color=disnake.Color.random()
             ).set_image(url=vs_img_url)
 
@@ -925,21 +877,8 @@ class Waifus(commands.Cog):
             losing_user = self.bot.get_user(int(losing_claim.user_id))
             
             # Reindex the losing user's waifus
-            await helpers.reindex_guild_user_harem(guild, losing_user) # TODO this should just -1
-            # r.db("waifus") \
-            #     .table("claims") \
-            #     .get_all([str(guild.id), losing_claim.user_id], index="guild_user") \
-            #     .has_fields(["state", "index"]) \
-            #     .filter(
-            #         r.or_(
-            #             r.row["state"].ne(WaifuState.NULL.name),
-            #             r.row["state"].ne(WaifuState.SOLD.name),
-            #         )
-            #     ) \
-            #     .update({
-            #         "index": r.row["index"] - 1
-            #     }) \
-            #     .run(conn)
+            losing_harem = await self.bot.mongo.fetch_harem(losing_user)
+            await losing_harem.reindex()
             
             # Get the user's waifu that won
             winning_claim = await self.bot.mongo.fetch_claim(vote_info["winner"]["id"])
@@ -1021,7 +960,8 @@ class Waifus(commands.Cog):
             # Give the user's XP at the end of the round
             for user_id in bracket.get_round_participant_ids(current_round):
                 user = await guild.fetch_member(int(user_id))
-                await helpers.add_user_xp(user, Experience.WAR_ROUND.value)
+                nyah_player = await self.bot.mongo.fetch_nyah_player(user)
+                await nyah_player.add_user_xp(Experience.WAR_ROUND.value)
 
             # War is over if this round was the last
             if bracket.last_round(current_round):
@@ -1047,15 +987,16 @@ class Waifus(commands.Cog):
                 )
                 for user_id in bracket.get_round_participant_ids(current_round):
                     user = await guild.fetch_member(int(user_id))
+                    nyah_player = await self.bot.mongo.fetch_nyah_player(user)
                     if user_id == winner_id:
-                        await helpers.add_user_money(user, Money.WAR_FIRST.value)
-                        await helpers.add_user_xp(user, Experience.WAR_FIRST.value)
+                        await nyah_player.add_user_money(Money.WAR_FIRST.value)
+                        await nyah_player.add_user_xp(Experience.WAR_FIRST.value)
                         ending_embed.title = f"Congratulations to {user.name} for winning the Waifu War!"
                         ending_embed.description += f"- {user.mention} won `{Money.WAR_FIRST.value:,}` {Money.EMOJI} and `{Experience.WAR_FIRST.value}` XP!"
                         ending_embed.set_thumbnail(url=user.display_avatar.url)
                     else:
-                        await helpers.add_user_money(user, Money.WAR_SECOND.value)
-                        await helpers.add_user_xp(user, Experience.WAR_SECOND.value)
+                        await nyah_player.add_user_money(Money.WAR_SECOND.value)
+                        await nyah_player.add_user_xp(Experience.WAR_SECOND.value)
                         ending_embed.description += f"- {user.mention} won `{Money.WAR_SECOND.value:,}` {Money.EMOJI} and `{Experience.WAR_SECOND.value}` XP!"
                 # TODO test this
                 await waifu_war_channel.send(embed=ending_embed)
@@ -1065,7 +1006,8 @@ class Waifus(commands.Cog):
                     if participant.user_id == "BYE":
                         continue
                     user = await guild.fetch_member(int(participant.user_id))
-                    await helpers.reindex_guild_user_harem(guild, user)
+                    harem = await self.bot.mongo.fetch_harem(user)
+                    await harem.reindex()
 
     ##*************************************************##
     ##********             COMMANDS             *******##
@@ -1098,12 +1040,12 @@ class Waifus(commands.Cog):
         waifu_war_event = await self.get_waifu_war_event(inter.guild)
         if waifu_war_event:
             return await inter.edit_original_response(
-                embed=utilities.get_error_embed("A waifu war event already exists in this server!")
+                embed=ErrorEmbed("A waifu war event already exists in this server!")
             )
         start_time = disnake.utils.utcnow() + datetime.timedelta(minutes=time_delta_min)
         await self.schedule_waifu_war_event(inter.guild, start_time)
         return await inter.edit_original_response(
-            embed=Succ(f"Scheduled event for {utilities.get_dyn_date_long_time_long(start_time)}")
+            embed=SuccessEmbed(f"Scheduled event for {utils.get_dyn_date_long_time_long(start_time)}")
         )
 
     @waifuadmin.sub_command()
@@ -1183,33 +1125,34 @@ class Waifus(commands.Cog):
         await inter.response.defer()
         now = disnake.utils.utcnow()
 
+        # Gather user's db info
         nyah_player = await self.bot.mongo.fetch_nyah_player(inter.author)
         
         # Claim cooldowns
-        if await helpers.user_is_on_cooldown(inter.author, Cooldowns.CLAIM):
-            next_claim_at = await helpers.user_cooldown_expiration_time(inter.author, Cooldowns.CLAIM)
+        if await nyah_player.user_is_on_cooldown(Cooldowns.CLAIM):
+            next_claim_at = await nyah_player.user_cooldown_expiration_time(Cooldowns.CLAIM)
             if now < next_claim_at:
-                fmt_claim_times = f"❄️ {utilities.get_dyn_time_relative(next_claim_at)} ({utilities.get_dyn_time_short(next_claim_at)})"
+                fmt_claim_times = f"❄️ {utils.get_dyn_time_relative(next_claim_at)} ({utils.get_dyn_time_short(next_claim_at)})"
             else:
                 fmt_claim_times = "🟢 **Ready**"
         else:
             fmt_claim_times = "🟢 **Ready**"
         
         # Duel cooldowns
-        if await helpers.user_is_on_cooldown(inter.author, Cooldowns.DUEL):
-            next_duel_at = await helpers.user_cooldown_expiration_time(inter.author, Cooldowns.DUEL)
+        if await nyah_player.user_is_on_cooldown(Cooldowns.DUEL):
+            next_duel_at = await nyah_player.user_cooldown_expiration_time(Cooldowns.DUEL)
             if now < next_duel_at:
-                fmt_duel_times = f"❄️ {utilities.get_dyn_time_relative(next_duel_at)} ({utilities.get_dyn_time_short(next_duel_at)})"
+                fmt_duel_times = f"❄️ {utils.get_dyn_time_relative(next_duel_at)} ({utils.get_dyn_time_short(next_duel_at)})"
             else:
                 fmt_duel_times = "🟢 **Ready**"
         else:
             fmt_duel_times = "🟢 **Ready**"
         
         # Minigame cooldowns
-        if await helpers.user_is_on_cooldown(inter.author, Cooldowns.MINIGAME):
-            next_minigame_at = await helpers.user_cooldown_expiration_time(inter.author, Cooldowns.MINIGAME)
+        if await nyah_player.user_is_on_cooldown(Cooldowns.MINIGAME):
+            next_minigame_at = await nyah_player.user_cooldown_expiration_time(Cooldowns.MINIGAME)
             if now < next_minigame_at:
-                fmt_minigame_times = f"❄️ {utilities.get_dyn_time_relative(next_minigame_at)} ({utilities.get_dyn_time_short(next_minigame_at)})"
+                fmt_minigame_times = f"❄️ {utils.get_dyn_time_relative(next_minigame_at)} ({utils.get_dyn_time_short(next_minigame_at)})"
             else:
                 fmt_minigame_times = "🟢 **Ready**"
         else:
@@ -1220,7 +1163,7 @@ class Waifus(commands.Cog):
         ) \
         .set_author(name=f"{inter.author.name}'s Profile", icon_url=inter.author.display_avatar.url) \
         .add_field(name="Level", value=f"{nyah_player.level}") \
-        .add_field(name="XP", value=f"{nyah_player.xp}/{helpers.calculate_accumulated_xp(nyah_player.level + 1)}") \
+        .add_field(name="XP", value=f"{nyah_player.xp}/{utils.calculate_accumulated_xp(nyah_player.level + 1)}") \
         .add_field(name=f"Balance", value=f"`{nyah_player.money:,}` {Emojis.COINS}") \
         .add_field(name="Cooldowns:", value="", inline=False) \
         .add_field(name=f"{Emojis.CLAIM} Drop", value=fmt_claim_times, inline=False) \
@@ -1232,12 +1175,15 @@ class Waifus(commands.Cog):
     @commands.slash_command()
     async def minigame(self, inter: disnake.ApplicationCommandInteraction):
         """ Play a random waifu minigame for money! """
+        # Gather user's db info
+        nyah_player = await self.bot.mongo.fetch_nyah_player(inter.author)
+        
         # Check if user's duel on cooldown
-        if await helpers.user_is_on_cooldown(inter.author, Cooldowns.MINIGAME):
-            next_minigame_at = await helpers.user_cooldown_expiration_time(inter.author, Cooldowns.MINIGAME)
+        if await nyah_player.user_is_on_cooldown(Cooldowns.MINIGAME):
+            next_minigame_at = await nyah_player.user_cooldown_expiration_time(Cooldowns.MINIGAME)
             return await inter.response.send_message(
                 content=f"{inter.author.mention} you are on a minigame cooldown now.\n"
-                        f"Try again {utilities.get_dyn_time_relative(next_minigame_at)} ({utilities.get_dyn_time_short(next_minigame_at)})",
+                        f"Try again {utils.get_dyn_time_relative(next_minigame_at)} ({utils.get_dyn_time_short(next_minigame_at)})",
                 ephemeral=True
             )
 
@@ -1319,8 +1265,8 @@ class Waifus(commands.Cog):
                 color=disnake.Color.green(),
             )
             self.bot.logger.debug(f"{inter.author.name} beat minigame '{minigame}'")
-            await helpers.add_user_money(inter.author, Money.MINIGAME_WIN.value)
-            await helpers.add_user_xp(inter.author, Experience.MINIGAME_WIN.value, inter.channel)
+            await nyah_player.add_user_money(Money.MINIGAME_WIN.value)
+            await nyah_player.add_user_xp(Experience.MINIGAME_WIN.value, inter.author, inter.channel)
         else:
             result_embed = disnake.Embed(
                 title="Wrong!",
@@ -1330,8 +1276,8 @@ class Waifus(commands.Cog):
                 color=disnake.Color.red(),
             )
             self.bot.logger.debug(f"{inter.author.name} lost minigame '{minigame}'")
-            await helpers.add_user_money(inter.author, Money.MINIGAME_LOSS.value)
-            await helpers.add_user_xp(inter.author, Experience.MINIGAME_LOSS.value, inter.channel)
+            await nyah_player.add_user_money(Money.MINIGAME_LOSS.value)
+            await nyah_player.add_user_xp(Experience.MINIGAME_LOSS.value, inter.author, inter.channel)
 
         return await inter.edit_original_response(embeds=[embed, result_embed], view=None)
 
@@ -1430,13 +1376,13 @@ class Waifus(commands.Cog):
 
     #     if not result:
     #         return await inter.edit_original_response(
-    #             embed=utilities.get_error_embed(f"Couldn't find any waifus that match:\nname={name}\nseries={series}\ntag={tag}\nbirthday={birthday}")
+    #             embed=ErrorEmbed(f"Couldn't find any waifus that match:\nname={name}\nseries={series}\ntag={tag}\nbirthday={birthday}")
     #         )
         
     #     embeds = list()
     #     for doc in result:
     #         waifu = Waifu(**doc)
-    #         embed = await helpers.get_waifu_core_embed(waifu)
+    #         embed = await self.bot.get_waifu_core_embed(waifu)
     #         embeds.append(embed)
         
     #     dex_view = await WaifuDexView.create_instance(embeds, inter.author)
@@ -1452,11 +1398,11 @@ class Waifus(commands.Cog):
         nyah_player = await self.bot.mongo.fetch_nyah_player(inter.author)
         
         # Check if user's waifu is available to claim
-        if await helpers.user_is_on_cooldown(inter.author, Cooldowns.CLAIM):
-            next_claim_at = await helpers.user_cooldown_expiration_time(inter.author, Cooldowns.CLAIM)
+        if await nyah_player.user_is_on_cooldown(Cooldowns.CLAIM):
+            next_claim_at = await nyah_player.user_cooldown_expiration_time(Cooldowns.CLAIM)
             return await inter.response.send_message(
                 content=f"Whoa now! That's too many waifus right now - this isn't a hanime, big guy.\n"
-                        f"Try again {utilities.get_dyn_time_relative(next_claim_at)} ({utilities.get_dyn_time_short(next_claim_at)})",
+                        f"Try again {utils.get_dyn_time_relative(next_claim_at)} ({utils.get_dyn_time_short(next_claim_at)})",
                 ephemeral=True
             )
         
@@ -1532,7 +1478,7 @@ class Waifus(commands.Cog):
             guild_id=None,
             channel_id=None,
             message_id=None,
-            user_id=str(inter.author.id),
+            user_id=inter.author.id,
             jump_url=None,
             image_url=new_waifu.image_url,
             cached_images_urls=None,
@@ -1576,7 +1522,7 @@ class Waifus(commands.Cog):
             trait.apply_modifiers(claim)
 
         # Send the waifu
-        waifu_embed = await helpers.get_waifu_claim_embed(claim, inter.author)
+        waifu_embed = await self.bot.get_waifu_claim_embed(claim, inter.author)
         claim_view = WaifuClaimView(claim, inter.author)
         message = await inter.edit_original_response(
             content=inter.author.mention,
@@ -1585,19 +1531,22 @@ class Waifus(commands.Cog):
         )
         claim_view.message = message
 
-        # Insert claim, update harem in db
-        claim.guild_id=str(message.guild.id)
-        claim.channel_id=str(message.channel.id)
-        claim.message_id=str(message.id)
+        # Insert claim in db
+        claim.guild_id=message.guild.id
+        claim.channel_id=message.channel.id
+        claim.message_id=message.id
         claim.jump_url=message.jump_url
         claim.timestamp=message.created_at
         await self.bot.mongo.insert_claim(claim)
-        await helpers.reindex_guild_user_harem(inter.guild, inter.author)
+
+        # Update harem in db
+        harem = await self.bot.mongo.fetch_harem(inter.author)
+        await harem.reindex()
 
         # Update user info in db
         nyah_player.timestamp_last_claim = disnake.utils.utcnow()
         await self.bot.mongo.update_nyah_player(nyah_player)
-        await helpers.add_user_xp(inter.author, Experience.CLAIM.value, inter.channel)
+        await nyah_player.add_user_xp(Experience.CLAIM.value, inter.author, inter.channel)
         return
 
     @commands.slash_command()
@@ -1609,7 +1558,7 @@ class Waifus(commands.Cog):
         
         if not harem:
             return await inter.edit_original_response(
-                embed=utilities.get_error_embed(f"{inter.author.mention} your harem is empty!\n\nUse `/getmywaifu` to get started")
+                embed=ErrorEmbed(f"{inter.author.mention} your harem is empty!\n\nUse `/getmywaifu` to get started")
             )
         
         embed = disnake.Embed(
@@ -1684,23 +1633,23 @@ class Waifus(commands.Cog):
                 index = int(waifu.split(".")[0])
             except:
                 return await inter.edit_original_response(
-                    embed=utilities.get_error_embed(f"`{waifu}` is not a valid waifu!")
+                    embed=ErrorEmbed(f"`{waifu}` is not a valid waifu!")
                 )
 
             if index > len(harem) or index <= 0:
                 return await inter.edit_original_response(
-                    embed=utilities.get_error_embed(f"`{waifu}` does not have a valid index!")
+                    embed=ErrorEmbed(f"`{waifu}` does not have a valid index!")
                 )
             harem = [harem.pop(index - 1)]
                 
         if not harem:
             return await inter.edit_original_response(
-                embed=utilities.get_error_embed(f"{inter.author.mention} your harem is empty!\n\nUse `/getmywaifu` to get started")
+                embed=ErrorEmbed(f"{inter.author.mention} your harem is empty!\n\nUse `/getmywaifu` to get started")
             )
         
         embeds: typing.List[disnake.Embed] = list()
         for claim in harem:
-            embed = await helpers.get_waifu_harem_embed(claim)
+            embed = await self.bot.get_waifu_harem_embed(claim)
             embed.set_footer(text=claim.id)
             embeds.append(embed)
 
@@ -1738,7 +1687,7 @@ class Waifus(commands.Cog):
         waifu = await self.bot.mongo.fetch_waifu(claim.slug)
 
         # Send message with waifu and new skill points
-        embed = await helpers.get_waifu_skills_embed(claim)
+        embed = await self.bot.get_waifu_skills_embed(claim)
         embed.description = f"Reroll **__{waifu.name}'s__** skills for `{Money.SKILL_COST.value:,}` {Emojis.COINS}?"
         skill_view = WaifuSkillView(claim, inter.author)
         message = await inter.edit_original_response(embed=embed, view=skill_view)
@@ -1763,7 +1712,7 @@ class Waifus(commands.Cog):
                 guild_id=None,
                 channel_id=None,
                 message_id=None,
-                user_id=str(self.bot.user.id),
+                user_id=self.bot.user.id,
                 jump_url=None,
                 image_url=waifu.image_url,
                 cached_images_urls=None,
@@ -1802,12 +1751,15 @@ class Waifus(commands.Cog):
             claim.magic = skills[4]
             return claim
         
+        # Gather user's db info
+        nyah_player = await self.bot.mongo.fetch_nyah_player(inter.author)
+
         # Check if user's duel on cooldown
-        if await helpers.user_is_on_cooldown(inter.author, Cooldowns.DUEL):
-            next_duel_at = await helpers.user_cooldown_expiration_time(inter.author, Cooldowns.DUEL)
+        if await nyah_player.user_is_on_cooldown(Cooldowns.DUEL):
+            next_duel_at = await nyah_player.user_cooldown_expiration_time(Cooldowns.DUEL)
             return await inter.response.send_message(
                 content=f"{inter.author.mention} you are on a duel cooldown now.\n"
-                        f"Try again {utilities.get_dyn_time_relative(next_duel_at)} ({utilities.get_dyn_time_short(next_duel_at)})",
+                        f"Try again {utils.get_dyn_time_relative(next_duel_at)} ({utils.get_dyn_time_short(next_duel_at)})",
                 ephemeral=True
             )
 
@@ -1837,7 +1789,7 @@ class Waifus(commands.Cog):
         duel_embed = disnake.Embed(
             description=f"### {inter.author.mention} vs. {opponent.mention}\n"
                         f"- Choose your fate by selecting __**three**__ moves below!\n"
-                        f"- Duel ends {utilities.get_dyn_time_relative(end_at)}",
+                        f"- Duel ends {utils.get_dyn_time_relative(end_at)}",
             color=disnake.Color.yellow()
         ) \
         .set_image(url=duel_image_url) \
@@ -1851,7 +1803,6 @@ class Waifus(commands.Cog):
         )
         
         # Set timestamp in db
-        nyah_player = await self.bot.mongo.fetch_nyah_player(inter.author)
         nyah_player.timestamp_last_duel = disnake.utils.utcnow()
         await self.bot.mongo.update_nyah_player(nyah_player)
 
@@ -1898,8 +1849,8 @@ class Waifus(commands.Cog):
                 color=disnake.Color.green()
             )
             self.bot.logger.debug(f"{inter.author.name} beat {opponent.name} & gained {MMR.DUEL_WIN.value} MMR")
-            await helpers.add_user_mmr(inter.author, MMR.DUEL_WIN.value)
-            await helpers.add_user_xp(inter.author, Experience.DUEL_WIN.value, inter.channel)
+            await nyah_player.add_user_mmr(MMR.DUEL_WIN.value)
+            await nyah_player.add_user_xp(Experience.DUEL_WIN.value, inter.author, inter.channel)
 
         # If user lost, they lose MMR but gain XP
         else:
@@ -1910,8 +1861,8 @@ class Waifus(commands.Cog):
                 color=disnake.Color.red()
             )
             self.bot.logger.debug(f"{inter.author.name} lost to {opponent.name} & lost {MMR.DUEL_LOSS.value} MMR")
-            await helpers.add_user_mmr(inter.author, MMR.DUEL_LOSS.value)
-            await helpers.add_user_xp(inter.author, Experience.DUEL_LOSS.value, inter.channel)
+            await nyah_player.add_user_mmr(MMR.DUEL_LOSS.value)
+            await nyah_player.add_user_xp(Experience.DUEL_LOSS.value, inter.author, inter.channel)
 
         # Edit message to add embed with the result of the match
         return await inter.edit_original_response(embeds=[duel_embed, result_embed])

@@ -58,7 +58,9 @@ class WaifuClaimView(disnake.ui.View):
         else:
             self.claim.state = WaifuState.ACTIVE.name
             await mongo.update_claim(self.claim)
-            await helpers.reindex_guild_user_harem(inter.guild, inter.author)
+
+            harem = await mongo.fetch_harem(inter.author)
+            await harem.reindex()
 
             waifu = await mongo.fetch_waifu(self.claim.slug)
             result_embed = disnake.Embed(
