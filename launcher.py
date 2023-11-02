@@ -16,6 +16,7 @@ async def main():
     config = Config(
         DEBUG=os.environ["DEBUG"] in ("1", "True", "true"),
         DISNAKE_LOGGING=os.environ["DISNAKE_LOGGING"] in ("1", "True", "true"),
+        TEST_MODE=os.environ["TEST_MODE"] in ("1", "True", "true"),
         DISCORD_BOT_TOKEN=os.environ["DISCORD_BOT_TOKEN"],
         DATABASE_URI=os.environ["DATABASE_URI"],
         MAL_CLIENT_ID=os.environ["MAL_CLIENT_ID"],

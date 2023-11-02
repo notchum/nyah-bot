@@ -33,6 +33,7 @@ Config = namedtuple(
     [
         "DEBUG",
         "DISNAKE_LOGGING",
+        "TEST_MODE",
         "DISCORD_BOT_TOKEN",
         "DATABASE_URI",
         "MAL_CLIENT_ID",
@@ -52,15 +53,12 @@ class NyahBot(commands.InteractionBot):
     
     async def setup_hook(self):
         # Load cogs
-        # for extension in [filename[:-3] for filename in os.listdir("nyahbot/cogs") if filename.endswith(".py")]:
-        #     try:
-        #         self.load_extension(f"cogs.{extension}")
-        #     except Exception as e:
-        #         exception = f"{type(e).__name__}: {e}"
-        #         self.logger.exception(f"Failed to load extension {extension}!\t{exception}")
-        self.load_extension("cogs.admin")
-        self.load_extension("cogs.owner")
-        self.load_extension("cogs.fun")
+        for extension in [filename[:-3] for filename in os.listdir("cogs") if filename.endswith(".py")]:
+            try:
+                self.load_extension(f"cogs.{extension}")
+            except Exception as e:
+                exception = f"{type(e).__name__}: {e}"
+                self.logger.exception(f"Failed to load extension {extension}!\t{exception}")
 
         # Initialize cache directory
         self.cache_dir = tempfile.mkdtemp()
@@ -68,9 +66,16 @@ class NyahBot(commands.InteractionBot):
 
         # Initialize database
         self.client = AsyncIOMotorClient(self.config.DATABASE_URI, io_loop=self.loop)
-        await init_beanie(self.client.nyah, document_models=[NyahConfig, NyahGuild, NyahPlayer])
-        await init_beanie(self.client.waifus, document_models=[Waifu, Claim])
-        await init_beanie(self.client.wars, document_models=[Event, Match, Battle, Round, Vote])
+        if self.config.TEST_MODE:
+            self.logger.warning("Running in test mode. Using test database.")
+            await init_beanie(self.client.waifus, document_models=[Waifu])
+            await init_beanie(self.client["_nyah"], document_models=[NyahConfig, NyahGuild, NyahPlayer])
+            await init_beanie(self.client["_waifus"], document_models=[Claim])
+            await init_beanie(self.client["_wars"], document_models=[Event, Match, Battle, Round, Vote])
+        else:
+            await init_beanie(self.client.nyah, document_models=[NyahConfig, NyahGuild, NyahPlayer])
+            await init_beanie(self.client.waifus, document_models=[Waifu, Claim])
+            await init_beanie(self.client.wars, document_models=[Event, Match, Battle, Round, Vote])
         self.mongo = Mongo()
 
         # Initialize aiohttp session
@@ -89,11 +94,15 @@ class NyahBot(commands.InteractionBot):
         self.logger.info("------")
 
     async def close(self):
-        self.clear_cache()
+        self.clear_cache_dir()
         await self.session.close()
         await super().close()
 
-    def clear_cache(self):
+    @property
+    def waifus_cog(self) -> commands.Cog:
+        return self.get_cog("Waifus")
+
+    def clear_cache_dir(self):
         for file in os.listdir(self.cache_dir):
             file_path = os.path.join(self.cache_dir, file)
             try:
