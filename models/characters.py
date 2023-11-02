@@ -25,7 +25,7 @@ class Waifu(Document):
     
     husbando: bool
     description: Optional[str] = None
-    image_url: str
+    image_url: Optional[str] = None
     series: List[str]
     origin: Optional[str] = None
 

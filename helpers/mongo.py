@@ -20,11 +20,11 @@ class Mongo():
     def __init__(self):
         pass
 
-    async def fetch_nyah_config() -> NyahConfig:
-        result = await NyahConfig.find_many().limit(1).to_list()
+    async def fetch_nyah_config(self) -> NyahConfig:
+        result = await NyahConfig.find_many().to_list()
         return result[0]
 
-    async def update_nyah_config(config: NyahConfig) -> None:
+    async def update_nyah_config(self, config: NyahConfig) -> None:
         await config.save()
 
 
