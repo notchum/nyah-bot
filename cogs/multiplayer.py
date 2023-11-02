@@ -3,7 +3,7 @@ import os
 import disnake
 from disnake.ext import commands
 
-from nyahbot.util import utilities
+
 
 class Multiplayer(commands.Cog):
     def __init__(self, bot: commands.Bot):

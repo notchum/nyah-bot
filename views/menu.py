@@ -123,7 +123,8 @@ class WaifuMenuView(disnake.ui.View):
             #     .run(conn)
         
         # reindex the database harem
-        await helpers.reindex_guild_user_harem(inter.guild, inter.author)
+        harem = await mongo.fetch_harem(inter.author)
+        await harem.reindex()
         
         # fix page numbers
         for i in range(len(self.embeds)):

@@ -5,11 +5,9 @@ from disnake.ext import commands
 
 from bot import NyahBot
 from views import WaifuPaginator
-from nyahbot.util.constants import Money, Emojis
-from nyahbot.util import (
-    utilities,
-    traits,
-)
+from utils import Money, Emojis
+import utils.traits as traits
+import utils.utilities as utils
 
 class Help(commands.Cog):
     def __init__(self, bot: commands.Bot):
@@ -56,10 +54,10 @@ class Help(commands.Cog):
         """ Everything you need to know! """
         await inter.response.defer()
 
-        nyah_guild = await utilities.get_nyah_guild(inter.guild)
+        nyah_config = await self.bot.mongo.fetch_nyah_config()
         start_time = datetime.datetime.combine(
             date=disnake.utils.utcnow().date(),
-            time=datetime.time(nyah_guild.waifu_war_hour, 0), #??? should this be hour in UTC? it is MDT now...
+            time=datetime.time(nyah_config.waifu_war_hour, 0), #??? should this be hour in UTC? it is MDT now...
         )
         
         waifu_war_event = await self.get_waifu_war_event(inter.guild)
@@ -68,11 +66,11 @@ class Help(commands.Cog):
         embed1 = disnake.Embed(
             title="What are the main commands?",
             color=disnake.Color.random(),
-            description=f"- `/getmywaifu`: Get a random waifu! (Cooldown time: `{nyah_guild.interval_claim_mins / 60}` hours)\n"
+            description=f"- `/getmywaifu`: Get a random waifu! (Cooldown time: `{nyah_config.interval_claim_mins / 60}` hours)\n"
                         f"- `/listmywaifus`: View all of your waifus (your harem) that you have now.\n"
                         f"- `/managemywaifus`: Scroll through your harem to change the order, pick a new image, sell, or marry a waifu.\n"
-                        f"- `/duelmywaifu`: Use one of your married waifus to fight against other player's waifus to climb the leaderboard. (Cooldown time: `{nyah_guild.interval_duel_mins / 60}` hours)\n"
-                        f"- `/minigame`: Play a waifu minigame for a chance to earn coins. (Cooldown time: `{nyah_guild.interval_minigame_mins / 60}` hours)\n"
+                        f"- `/duelmywaifu`: Use one of your married waifus to fight against other player's waifus to climb the leaderboard. (Cooldown time: `{nyah_config.interval_duel_mins / 60}` hours)\n"
+                        f"- `/minigame`: Play a waifu minigame for a chance to earn coins. (Cooldown time: `{nyah_config.interval_minigame_mins / 60}` hours)\n"
                         f"- `/profile`: View your current level, XP, SP, and balance.\n"
                         f"- `/leaderboard`: View the player rankings ladder.\n",
         )
@@ -92,7 +90,7 @@ class Help(commands.Cog):
             title="What is a Waifu War?",
             color=disnake.Color.random(),
             description=f"- A Waifu War is a bracket-style tournament that you and your harem can participate in."
-                        f" There is a Waifu War held every day at {utilities.get_dyn_time_short(start_time)}\n"
+                        f" There is a Waifu War held every day at {utils.get_dyn_time_short(start_time)}\n"
                         f"- To enter a Waifu War, mark yourself as interested to the event in this Discord server.\n"
                         f"  - Next scheduled Waifu War: {waifu_war_event_link}\n"
                         f"- Your harem will be matched up against another player's harem during each round of the tournament."
@@ -132,7 +130,7 @@ class Help(commands.Cog):
                         f"- **How do I win?**\n"
                         f"  - You win by topping the leaderboard ladder!\n"
                         f"- **What resets at the end of a season?**\n"
-                        f"  - A season lasts `{nyah_guild.interval_season_days}` days."
+                        f"  - A season lasts `{nyah_config.interval_season_days}` days."
                         f" All user's waifus, scores, and coins are reset at the end of the season.\n",
         )
         

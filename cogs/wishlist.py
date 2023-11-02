@@ -7,7 +7,7 @@ from disnake.ext import commands
 from bot import NyahBot
 from views import WaifuWishlistView
 from helpers import SuccessEmbed, ErrorEmbed
-from nyahbot.util.constants import Money, Emojis
+from utils import Emojis, Money
 
 class Wishlist(commands.Cog):
     def __init__(self, bot: commands.Bot):

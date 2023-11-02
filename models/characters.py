@@ -5,7 +5,6 @@ from uuid import UUID, uuid4
 from pydantic import Field
 from beanie import Document
 
-from models import NyahConfig
 from utils import Emojis, WaifuState
 
 class Waifu(Document):

@@ -47,5 +47,3 @@ class WaifuBaseEmbed(disnake.Embed):
         # .add_field(name="Appears In", value=waifu_series)
 
         return self
-
-
