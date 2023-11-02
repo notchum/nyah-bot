@@ -1,7 +1,3 @@
-import re
-import random
-import datetime
-
 import disnake
 from disnake.ext import commands
 
@@ -75,7 +71,7 @@ class Events(commands.Cog):
     @commands.Cog.listener()
     async def on_connect(self):
         """ Client event when it connects. """
-        self.bot.logger.success("CONNECTED TO DISCORD")
+        self.bot.logger.info("CONNECTED TO DISCORD")
 
     @commands.Cog.listener()
     async def on_reconnect(self):
@@ -99,7 +95,7 @@ class Events(commands.Cog):
             waifu_war_channel_id=guild.system_channel.id,
         )
         await self.bot.mongo.insert_nyah_guild(nyah_guild)
-        self.bot.logger.success(f"Created database entry for guild '{guild.name}'[{guild.id}]")
+        self.bot.logger.info(f"Created database entry for guild '{guild.name}'[{guild.id}]")
 
         for member in guild.members:
             if await self.bot.mongo.check_nyah_player_exists(member):
