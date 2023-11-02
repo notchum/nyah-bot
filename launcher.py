@@ -55,7 +55,7 @@ async def main():
     bot = NyahBot(
         config=config,
         logger=logger,
-        test_guilds=[776929597567795247, 759514108625682473],
+        test_guilds=[776929597567795247, 759514108625682473, 1169450511133589604],
         intents=intents,
     )
     await bot.setup_hook()

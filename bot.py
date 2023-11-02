@@ -12,16 +12,18 @@ from beanie import init_beanie
 from motor.motor_asyncio import AsyncIOMotorClient
 
 from helpers import Mongo, API
+from utils import WaifuState
 from models import (
     Waifu,
     Claim,
+    NyahConfig,
     NyahPlayer,
     NyahGuild,
     Vote,
     Battle,
     Match,
     Round,
-    War,
+    Event,
 )
 
 VERSION = "0.2.3"
@@ -52,11 +54,13 @@ class NyahBot(commands.InteractionBot):
         # Load cogs
         # for extension in [filename[:-3] for filename in os.listdir("nyahbot/cogs") if filename.endswith(".py")]:
         #     try:
-        #         self.load_extension(f"nyahbot.cogs.{extension}")
+        #         self.load_extension(f"cogs.{extension}")
         #     except Exception as e:
         #         exception = f"{type(e).__name__}: {e}"
         #         self.logger.exception(f"Failed to load extension {extension}!\t{exception}")
-        self.load_extension("nyahbot.cogs.admin")
+        self.load_extension("cogs.admin")
+        self.load_extension("cogs.owner")
+        self.load_extension("cogs.fun")
 
         # Initialize cache directory
         self.cache_dir = tempfile.mkdtemp()
@@ -64,9 +68,9 @@ class NyahBot(commands.InteractionBot):
 
         # Initialize database
         self.client = AsyncIOMotorClient(self.config.DATABASE_URI, io_loop=self.loop)
-        await init_beanie(self.client.nyah, document_models=[NyahGuild, NyahPlayer])
+        await init_beanie(self.client.nyah, document_models=[NyahConfig, NyahGuild, NyahPlayer])
         await init_beanie(self.client.waifus, document_models=[Waifu, Claim])
-        await init_beanie(self.client.wars, document_models=[War, Match, Battle, Round, Vote])
+        await init_beanie(self.client.wars, document_models=[Event, Match, Battle, Round, Vote])
         self.mongo = Mongo()
 
         # Initialize aiohttp session
@@ -135,7 +139,7 @@ class NyahBot(commands.InteractionBot):
             - Origin
             
         """
-        embed = await get_waifu_base_embed(waifu)
+        embed = await self.get_waifu_base_embed(waifu)
         embed.description = (waifu.description[:4092] + "...") if len(waifu.description) > 4092 else waifu.description
         embed.color = disnake.Color.teal()
         embed.add_field(name="Original Name", value=waifu.original_name if waifu.original_name else "-") \
@@ -152,9 +156,9 @@ class NyahBot(commands.InteractionBot):
         return embed
 
     async def get_waifu_skills_embed(self, claim: Claim) -> disnake.Embed:
-        waifu = await mongo.fetch_waifu(claim.slug)
+        waifu = await self.mongo.fetch_waifu(claim.slug)
         
-        embed = await get_waifu_base_embed(waifu)
+        embed = await self.get_waifu_base_embed(waifu)
         embed.add_field(name="Price", value=claim.price_str)
         embed.add_field(name="Traits", value=claim.trait_str)
         embed.add_field(name=f"Skills ({claim.stats_str})", value=claim.still_str)
@@ -180,10 +184,10 @@ class NyahBot(commands.InteractionBot):
             `disnake.Embed`
                 The embed.
         """
-        waifu = await mongo.fetch_waifu(claim.slug)
+        waifu = await self.mongo.fetch_waifu(claim.slug)
         waifu_type = "husbando" if waifu.husbando else "waifu"
 
-        embed = await get_waifu_skills_embed(claim)
+        embed = await self.get_waifu_skills_embed(claim)
         embed.timestamp = disnake.utils.utcnow()
         embed.set_footer(text=f"A {waifu_type} for {owner.name} >.<")
         return embed
@@ -207,7 +211,7 @@ class NyahBot(commands.InteractionBot):
             color = disnake.Color.red()
             status = f"💔 Unmarried"
         
-        embed = await get_waifu_skills_embed(claim)
+        embed = await self.get_waifu_skills_embed(claim)
         embed.add_field(name="Status", value=status)
         embed.color = color
         return embed
