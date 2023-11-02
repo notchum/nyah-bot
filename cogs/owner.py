@@ -1,10 +1,13 @@
 import codecs
+import datetime
 
 import disnake
 from disnake.ext import commands
 
 from bot import NyahBot
 from helpers import SuccessEmbed, ErrorEmbed
+from utils import Cooldowns
+import utils.utilities as utils
 
 class Owner(commands.Cog):
     def __init__(self, bot: commands.Bot):
@@ -29,7 +32,7 @@ class Owner(commands.Cog):
     @commands.is_owner()
     @commands.slash_command(guild_ids=[776929597567795247, 759514108625682473])
     async def owner(self, inter: disnake.ApplicationCommandInteraction):
-        """ Top-level command group for admin commands. """
+        """ Top-level command group for owner commands. """
         pass
 
     @owner.sub_command()
@@ -93,6 +96,101 @@ class Owner(commands.Cog):
     async def download_log(self, inter: disnake.ApplicationCommandInteraction):
         """ Download the current log file. """
         return await inter.response.send_message(file=disnake.File("log/nyah-bot.log"), ephemeral=True)
+
+    @owner.sub_command()
+    async def create_waifu_war(
+        self,
+        inter: disnake.ApplicationCommandInteraction,
+        time_delta_min: int
+    ):
+        """ Create a Waifu War event manually.
+        
+            Parameters
+            ----------
+            time_delta_min: `int`
+                How many minutes in the future to schedule for.
+        """
+        await inter.response.defer(ephemeral=True)
+        waifu_war_event = await self.bot.waifus_cog.get_waifu_war_event(inter.guild)
+        if waifu_war_event:
+            return await inter.edit_original_response(
+                embed=ErrorEmbed("A waifu war event already exists!")
+            )
+        start_time = disnake.utils.utcnow() + datetime.timedelta(minutes=time_delta_min)
+        await self.bot.waifus_cog.schedule_waifu_war_event(inter.guild, start_time)
+        return await inter.edit_original_response(
+            embed=SuccessEmbed(f"Scheduled event for {utils.get_dyn_date_long_time_long(start_time)}")
+        )
+
+    @owner.sub_command()
+    async def set_user_attributes(
+        self,
+        inter: disnake.ApplicationCommandInteraction,
+        user: disnake.User,
+        level: int = None,
+        xp: int = None,
+        mmr: int = None,
+        money: int = None
+    ):
+        """ Set attributes for a user.
+        
+            Parameters
+            ----------
+            user: `disnake.User`
+                The user to set attributes for.
+        """
+        if level == None and xp == None and mmr == None and money == None:
+            return await inter.response.send_message(
+                embed=ErrorEmbed("No attributes provided!"),
+                ephemeral=True
+            )
+        
+        nyah_player = await self.bot.mongo.fetch_nyah_player(user)
+        if level != None: nyah_player.level = level
+        if xp != None: nyah_player.xp = xp
+        if mmr != None: nyah_player.score = mmr
+        if money != None: nyah_player.money = money
+        await self.bot.mongo.update_nyah_player(nyah_player)
+
+        return await inter.response.send_message(
+            embed=SuccessEmbed("Updated user attributes!"),
+            ephemeral=True
+        )
+
+    @owner.sub_command()
+    async def reset_user_cooldown(
+        self,
+        inter: disnake.ApplicationCommandInteraction,
+        cooldown: Cooldowns,
+        user: disnake.User = None,
+    ):
+        """ Resets a chosen cooldown for a user or for all guild members.
+
+            Parameters
+            ----------
+            cooldown: `Cooldowns`
+                The cooldown to reset.
+            user: `disnake.User`
+                The user to reset waifu availability for. (Default: All guild members)
+        """
+        cooldown = Cooldowns(cooldown)
+        if user:
+            nyah_player = await self.bot.mongo.fetch_nyah_player(user)
+            await nyah_player.reset_cooldown(cooldown)
+            self.bot.logger.info(f"{inter.guild.name}[{inter.guild.id}] | "
+                                    f"Reset `{cooldown}` for {user.name}#{user.discriminator}[{user.id}]!")
+            return await inter.response.send_message(
+                embed=SuccessEmbed(f"Reset `{cooldown}` for {user.name}#{user.discriminator}[{user.id}]!"),
+                ephemeral=True
+            )
+        else:
+            await self.bot.mongo.update_all_nyah_players(cooldown, None)
+            self.bot.logger.info(f"{inter.guild.name}[{inter.guild.id}] | "
+                                    f"Reset `{cooldown}` for all members!")
+            return await inter.response.send_message(
+                embed=SuccessEmbed(f"Reset `{cooldown}` for all members!"),
+                ephemeral=True
+            )
 
     ##*************************************************##
     ##********          AUTOCOMPLETES           *******##

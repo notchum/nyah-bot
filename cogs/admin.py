@@ -43,7 +43,7 @@ class Admin(commands.Cog):
         await self.bot.mongo.update_nyah_guild(nyah_guild)
         return await inter.response.send_message(
             embed=SuccessEmbed(f"Succesfully bound {channel.mention}!")
-        ).set_footer(text=self.bot.user.name, icon_url=self.bot.user.avatar.url)
+        )
 
     @admin.sub_command()
     async def settings(self, inter: disnake.ApplicationCommandInteraction):

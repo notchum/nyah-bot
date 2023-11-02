@@ -113,6 +113,8 @@ class Wishlist(commands.Cog):
         inter: disnake.ApplicationCommandInteraction,
         user_input: str
     ) -> list:
+        if not user_input:
+            user_input = "a"
         waifus = await self.bot.mongo.fetch_waifu_by_name(user_input)
         return deque([f"{waifu.name} [{waifu.series[0]}]" for waifu in waifus if len(waifu.series)], maxlen=25)
 

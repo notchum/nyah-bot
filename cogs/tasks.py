@@ -24,7 +24,7 @@ class Tasks(commands.Cog):
     ##********              TASKS               *******##
     ##*************************************************##
 
-    @tasks.loop(seconds=5)
+    @tasks.loop(hours=1)
     async def clean_cache_dir(self):
         """ Clean the cache directory periodically. """
         self.bot.logger.debug(f"Cleaning cache directory... [loop #{self.clean_cache_dir.current_loop}]")

@@ -145,6 +145,6 @@ class NyahPlayer(Document):
 
         return timestamp + datetime.timedelta(minutes=interval)
 
-    async def reset_cooldown(self, cooldown_type: str) -> None:
+    async def reset_cooldown(self, cooldown_type: Cooldowns) -> None:
         setattr(self, cooldown_attribute_map[cooldown_type]["timestamp"], None)
         await self.save()
