@@ -2,7 +2,6 @@ from datetime import datetime
 from typing import Optional
 from uuid import UUID, uuid4
 
-from disnake import GuildScheduledEventStatus
 from pydantic import Field
 from beanie import Document
 
@@ -10,6 +9,9 @@ from beanie import Document
 class Vote(Document):
     class Settings:
         name = "votes"
+        bson_encoders = {
+            datetime: str
+        }
 
     id: UUID = Field(default_factory=uuid4)
     battle_id: UUID = Field(default_factory=uuid4)
@@ -23,6 +25,9 @@ class Vote(Document):
 class Battle(Document):
     class Settings:
         name = "battles"
+        bson_encoders = {
+            datetime: str
+        }
 
     id: UUID = Field(default_factory=uuid4)
     match_id: UUID = Field(default_factory=uuid4)
@@ -39,6 +44,9 @@ class Battle(Document):
 class Match(Document):
     class Settings:
         name = "matches"
+        bson_encoders = {
+            datetime: str
+        }
     
     id: UUID = Field(default_factory=uuid4)
     round_id: UUID = Field(default_factory=uuid4)
@@ -55,6 +63,9 @@ class Match(Document):
 class Round(Document):
     class Settings:
         name = "rounds"
+        bson_encoders = {
+            datetime: str
+        }
     
     id: UUID = Field(default_factory=uuid4)
     war_id: UUID = Field(default_factory=uuid4)
@@ -69,12 +80,15 @@ class Round(Document):
 class Event(Document):
     class Settings:
         name = "events"
+        bson_encoders = {
+            datetime: str
+        }
     
     id: UUID = Field(default_factory=uuid4)
     # discord uuid's
     event_id: int
     guild_id: int
     # other
-    state: int
+    state: int # disnake.GuildScheduledEventStatus
     timestamp_start: Optional[datetime] = None
     timestamp_end: Optional[datetime] = None

@@ -14,7 +14,7 @@ class Waifu(Document):
             "slug",
         ]
     
-    # id: UUID = Field(default_factory=uuid4)
+    id: UUID = Field(default_factory=uuid4)
     slug: str
     url: str
     source: str
@@ -24,8 +24,8 @@ class Waifu(Document):
     romaji_name: Optional[str] = None
     
     husbando: bool
-    description: Optional[str] = None
-    image_url: Optional[str] = None
+    description: str
+    image_url: str
     series: List[str]
     origin: Optional[str] = None
 
@@ -37,7 +37,7 @@ class Waifu(Document):
     waist: Optional[str] = None
     hip: Optional[str] = None
 
-    age: Optional[str] = None
+    age: Optional[int] = None
     date_of_birth: Optional[str] = None
     birthday_day: Optional[int] = None
     birthday_month: Optional[int] = None
@@ -74,7 +74,7 @@ class Claim(Document):
     image_url: str
     cached_images_urls: List[str]
 
-    state: Optional[str] = None
+    state: Optional[int] = None # WaifuState
     index: Optional[int] = None
     price: int
 
