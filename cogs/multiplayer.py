@@ -1,17 +1,65 @@
-import os
+import random
+import asyncio
+import datetime
+from collections import deque
 
 import disnake
 from disnake.ext import commands
 
-
+from bot import NyahBot
+from models import Waifu, Claim
+from utils import Cooldowns, MMR, Experience
+from views import WaifuDuelView
+import utils.utilities as utils
 
 class Multiplayer(commands.Cog):
     def __init__(self, bot: commands.Bot):
-        self.bot = bot
+        self.bot: NyahBot = bot
 
     ##*************************************************##
     ##********           ABSTRACTIONS           *******##
     ##*************************************************##
+
+    async def find_duel_opponent(self, guild: disnake.Guild, user: disnake.User | disnake.Member) -> disnake.User:
+        # Select user directly above you in score, else select user below
+        nyah_players = await self.bot.mongo.fetch_all_nyah_players()
+        nyah_player = await self.bot.mongo.fetch_nyah_player(user)
+
+        neighbors = []
+        user_score = nyah_player.score
+        total_players = len(nyah_players)
+
+        # Determine the number of neighbors above and below the user based on total players
+        num_neighbors = min(total_players - 1, 4)  # Max 4 neighbors (2 above, 2 below)
+
+        for i, opponent in enumerate(nyah_players):
+            if await self.bot.mongo.fetch_harem_married_count(opponent) == 0:
+                continue
+            if opponent.user_id != nyah_player.user_id:
+                score_diff = user_score - opponent.score
+                if i < num_neighbors or (total_players - i) <= num_neighbors:
+                    neighbors.append(opponent)
+
+        if not neighbors:
+            # No suitable neighbors found within the level and score differences
+            return self.bot.user
+
+        # Calculate similarity scores for each neighbor
+        similarity_scores = []
+        for neighbor in neighbors:
+            score_diff = abs(user_score - neighbor.score) // 10
+            level_diff = abs(nyah_player.level - neighbor.level)
+            similarity_score = 1 / (1 + score_diff + level_diff)
+            similarity_scores.append(similarity_score)
+        
+        # Check if there's a similarity score greater than 20%
+        if max(similarity_scores) < 0.20:
+            return self.bot.user
+
+        # Select the opponent with the highest similarity score
+        best_opponent = neighbors[similarity_scores.index(max(similarity_scores))]
+        opponent = await guild.fetch_member(best_opponent.user_id)
+        return opponent
 
     ##*************************************************##
     ##********              EVENTS              *******##
@@ -25,9 +73,234 @@ class Multiplayer(commands.Cog):
     ##********             COMMANDS             *******##
     ##*************************************************##
 
+    @commands.slash_command()
+    async def leaderboard(self, inter: disnake.ApplicationCommandInteraction):
+        """ View the Waifu Wars leaderboard! """
+        nyah_config = await self.bot.mongo.fetch_nyah_config()
+        season_end = nyah_config.timestamp_last_season_end + datetime.timedelta(days=nyah_config.interval_season_days)
+        embed = disnake.Embed(
+            description=f"Season ends {utils.get_dyn_time_relative(season_end)}",
+            color=disnake.Color.random()
+        )
+
+        nyah_players = await self.bot.mongo.fetch_active_nyah_players()
+        if not nyah_players:
+            embed.title = "Waifu War Leaderboard"
+            embed.description = "No one is on the scoreboard yet! Use `/getmywaifu` to get started!"
+            return embed
+        
+        embed.add_field(name="Ranking", value="")
+        embed.add_field(name="Member", value="")
+        
+        for i, player in enumerate(nyah_players, 1):
+            if i == 1:
+                rank_one_member = await self.bot.fetch_user(player.user_id)
+                embed.set_author(name="Waifu War Leaderboard", icon_url=rank_one_member.display_avatar.url)
+            embed.fields[0].value += f"`{i}` **{player.score}**\n"
+            embed.fields[1].value += f"<@{player.user_id}>\n"
+
+        return await inter.response.send_message(embed=embed)
+
+    @commands.slash_command()
+    async def duelmywaifu(
+        self, 
+        inter: disnake.ApplicationCommandInteraction,
+        waifu: str
+    ):
+        """ Use your best waifu to duel other user's waifus! """
+        def calculate_total_score(claim: Claim) -> float:
+            base_score = claim.attack * 0.4 + claim.defense * 0.35 + claim.health * 0.36 + claim.speed * 0.39 + claim.magic * 0.38
+            random_modifier = random.uniform(0.6, 1.2)
+            return base_score * random_modifier
+        
+        def generate_bot_claim(waifu: Waifu, total_sp: int) -> Claim:
+            claim = Claim(
+                slug=waifu.slug,
+                guild_id=None,
+                channel_id=None,
+                message_id=None,
+                user_id=self.bot.user.id,
+                jump_url=None,
+                image_url=waifu.image_url,
+                cached_images_urls=[],
+                state=None,
+                index=None,
+                price=None,
+                attack=None,
+                defense=None,
+                health=None,
+                speed=None,
+                magic=None,
+                attack_mod=0,
+                defense_mod=0,
+                health_mod=0,
+                speed_mod=0,
+                magic_mod=0,
+                trait_common=None,
+                trait_uncommon=None,
+                trait_rare=None,
+                trait_legendary=None,
+                timestamp_cooldown=None,
+            )
+
+            skills = [0,0,0,0,0]
+            total_sp = max(total_sp + random.choice([0, 1, -1]), 0)
+            for i, _ in enumerate(skills):
+                max_sp = total_sp - sum(skills)
+                if max_sp == 0:
+                    break
+                skills[i] = min(100, random.randint(1, max_sp))
+            claim.attack = skills[0]
+            claim.defense = skills[1]
+            claim.health = skills[2]
+            claim.speed = skills[3]
+            claim.magic = skills[4]
+            return claim
+        
+        # Gather user's db info
+        nyah_player = await self.bot.mongo.fetch_nyah_player(inter.author)
+
+        # Check if user's duel on cooldown
+        if await nyah_player.user_is_on_cooldown(Cooldowns.DUEL):
+            next_duel_at = await nyah_player.user_cooldown_expiration_time(Cooldowns.DUEL)
+            return await inter.response.send_message(
+                content=f"{inter.author.mention} you are on a duel cooldown now.\n"
+                        f"Try again {utils.get_dyn_time_relative(next_duel_at)} ({utils.get_dyn_time_short(next_duel_at)})",
+                ephemeral=True
+            )
+
+        await inter.response.defer()
+        
+        opponent = await self.find_duel_opponent(inter.guild, inter.author)
+        if not opponent:
+            return await inter.edit_original_response(content=f"Couldn't find an opponent!")
+
+        # Select both user's waifus
+        index = int(waifu.split(".")[0]) # Parse string input for waifu select TODO add some error handling here like in managemywaifus
+        users_claim = await self.bot.mongo.fetch_claim_by_index(inter.author, index)
+        if opponent.id == self.bot.user.id:
+            w = await self.bot.mongo.fetch_random_waifu([{"$sort": {"popularity_rank": 1}}, {"$limit": 100}])
+            opps_claim = generate_bot_claim(w, users_claim.total_stats)
+        else:
+            opps_married_harem = await self.bot.mongo.fetch_harem_married(opponent)
+            opps_claim = random.choice(opps_married_harem)
+        
+        # Create the duel VS image
+        duel_image_url = await self.bot.waifus_cog.create_waifu_vs_img(users_claim, opps_claim)
+        
+        # Create the embed for the duel
+        red_waifu = await self.bot.mongo.fetch_waifu(users_claim.slug)
+        blue_waifu = await self.bot.mongo.fetch_waifu(opps_claim.slug)
+        end_at = disnake.utils.utcnow() + datetime.timedelta(seconds=20)
+        duel_embed = disnake.Embed(
+            description=f"### {inter.author.mention} vs. {opponent.mention}\n"
+                        f"- Choose your fate by selecting __**three**__ moves below!\n"
+                        f"- Duel ends {utils.get_dyn_time_relative(end_at)}",
+            color=disnake.Color.yellow()
+        ) \
+        .set_image(url=duel_image_url) \
+        .add_field(
+            name=f"{red_waifu.name} ({users_claim.stats_str})",
+            value=users_claim.skill_str
+        ) \
+        .add_field(
+            name=f"{blue_waifu.name} ({opps_claim.stats_str})",
+            value=opps_claim.skill_str
+        )
+        
+        # Set timestamp in db
+        nyah_player.timestamp_last_duel = disnake.utils.utcnow()
+        await self.bot.mongo.update_nyah_player(nyah_player)
+
+        # Generate the results of the duel for the user to choose from
+        duel_choices = []
+        for _ in range(6): #TODO move magic number somewhere else
+            user_score = calculate_total_score(users_claim)
+            opps_score = calculate_total_score(opps_claim)
+            if user_score > opps_score:
+                duel_choices.append(True)
+            elif user_score < opps_score:
+                duel_choices.append(False)
+            else:
+                if random.random() < 0.5:
+                    duel_choices.append(True)
+                else:
+                    duel_choices.append(False)
+        self.bot.logger.debug(duel_choices)
+
+        # Send the message
+        message = await inter.edit_original_response(embed=duel_embed)
+        
+        # Create our view
+        duel_view = WaifuDuelView(
+            embed=duel_embed,
+            author=inter.author,
+            duel_choices=duel_choices
+        )
+        duel_view.message = message
+        
+        # Add the view to the message
+        await inter.edit_original_response(view=duel_view)
+        
+        # Give the user some time to make selections
+        await asyncio.sleep(20)
+        await duel_view.on_timeout()
+
+        # If user won, they attain MMR and gain XP
+        if duel_view.author_won:
+            result_embed = disnake.Embed(
+                title="Win",
+                description=f"- {inter.author.mention}'s __**{red_waifu.name}**__ defeated {opponent.mention}'s __**{blue_waifu.name}**__\n"
+                            f"- You gained `{MMR.DUEL_WIN.value}` MMR and earned `{Experience.DUEL_WIN.value}` XP",
+                color=disnake.Color.green()
+            )
+            self.bot.logger.debug(f"{inter.author.name} beat {opponent.name} & gained {MMR.DUEL_WIN.value} MMR")
+            await nyah_player.add_user_mmr(MMR.DUEL_WIN.value)
+            await nyah_player.add_user_xp(Experience.DUEL_WIN.value, inter.author, inter.channel)
+
+        # If user lost, they lose MMR but gain XP
+        else:
+            result_embed = disnake.Embed(
+                title="Loss",
+                description=f"- {inter.author.mention}'s __**{red_waifu.name}**__ lost to {opponent.mention}'s __**{blue_waifu.name}**__\n"
+                            f"- You lost `{MMR.DUEL_LOSS.value}` MMR and earned `{Experience.DUEL_LOSS.value}` XP",
+                color=disnake.Color.red()
+            )
+            self.bot.logger.debug(f"{inter.author.name} lost to {opponent.name} & lost {MMR.DUEL_LOSS.value} MMR")
+            await nyah_player.add_user_mmr(MMR.DUEL_LOSS.value)
+            await nyah_player.add_user_xp(Experience.DUEL_LOSS.value, inter.author, inter.channel)
+
+        # Edit message to add embed with the result of the match
+        return await inter.edit_original_response(embeds=[duel_embed, result_embed])
+
     ##*************************************************##
     ##********          AUTOCOMPLETES           *******##
     ##*************************************************##
+
+    @duelmywaifu.autocomplete("waifu")
+    async def harem_autocomplete(
+        self,
+        inter: disnake.ApplicationCommandInteraction,
+        user_input: str
+    ) -> list:
+        harem_size = await self.bot.mongo.fetch_harem_count(inter.author)
+        
+        if user_input.isdigit() and int(user_input) <= harem_size:
+            index = int(user_input)
+            claim = await self.bot.mongo.fetch_claim_by_index(inter.author, index)
+            waifu = await self.bot.mongo.fetch_waifu(claim.slug)
+            formatted_name = f"{claim.index + 1}. {waifu.name}"
+            waifu_names = [formatted_name]
+        else:
+            harem = await self.bot.mongo.fetch_harem(inter.author)
+            
+            waifu_names = []
+            for claim in harem:
+                waifu = await self.bot.mongo.fetch_waifu(claim.slug)
+                formatted_name = f"{claim.index + 1}. {waifu.name} ({claim.stats_str})"
+                waifu_names.append(formatted_name)
+        
+        return deque(waifu_names, maxlen=25)
 
 def setup(bot: commands.Bot):
     bot.add_cog(Multiplayer(bot))

@@ -21,20 +21,20 @@ class API():
             `str`: The path to the downloaded image.
         """
         try:
-            image_filename = os.path.basename(url)
+            image_filename = os.path.basename(url).split("?")[0]
             image_path = os.path.join(self.cache_dir, image_filename)
 
             if not os.path.exists(image_path):
-                async with self.bot.session.get(url) as response:
+                async with self.session.get(url) as response:
                     if response.status != 200:
-                        self.bot.logger.error(f"Downloading image {url} returned status code `{response.status}`")
+                        logger.error(f"Downloading image {url} returned status code `{response.status}`")
                         return None
                     async with aiofiles.open(image_path, mode="wb") as f:
                         await f.write(await response.read())
-                    self.bot.logger.info(f"Downloaded image {image_path}")
+                    logger.info(f"Downloaded image {image_path}")
             return image_path
         except Exception as err:
-            self.bot.logger.error(f"Downloading image returned invalid data! {err}")
+            logger.error(f"Downloading image returned invalid data! {err}")
             return None
 
     async def search_jikan_series(self, query: str) -> str | None:

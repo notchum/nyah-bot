@@ -145,6 +145,11 @@ class Mongo():
             [(NyahPlayer.score, pymongo.DESCENDING)]
         ).to_list()
 
+    async def fetch_all_nyah_players(self) -> List[NyahPlayer]:
+        return await NyahPlayer.find_all().sort(
+            [(NyahPlayer.score, pymongo.DESCENDING)]
+        ).to_list()
+
     async def check_nyah_player_exists(self, user: disnake.Member | disnake.User) -> bool:
         return await NyahPlayer.find_one(NyahPlayer.user_id == user.id) != None
 
@@ -207,6 +212,13 @@ class Mongo():
     async def fetch_harem_married_count(self, user: disnake.Member | disnake.User) -> int:
         return await Claim.find_many(
             Claim.user_id == user.id,
+            Claim.index != None,
+            Claim.state == WaifuState.ACTIVE.name,
+        ).count()
+
+    async def fetch_harem_married_count(self, nyah_player: NyahPlayer) -> int:
+        return await Claim.find_many(
+            Claim.user_id == nyah_player.user_id,
             Claim.index != None,
             Claim.state == WaifuState.ACTIVE.name,
         ).count()

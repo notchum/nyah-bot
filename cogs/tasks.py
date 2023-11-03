@@ -32,6 +32,7 @@ class Tasks(commands.Cog):
         if not os.path.exists(self.bot.cache_dir):
             self.bot.logger.debug("Cache directory does not exist. Recreating...")
             self.bot.cache_dir = tempfile.mkdtemp()
+            self.bot.api.cache_dir = self.bot.cache_dir
             self.bot.logger.debug(f"Reinitialized cache directory {self.bot.cache_dir}")
 
         for file in os.listdir(self.bot.cache_dir):
