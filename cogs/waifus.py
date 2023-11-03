@@ -25,11 +25,8 @@ class Waifus(commands.Cog):
         self.bot: NyahBot = bot
         self.last_date = datetime.date.today()
         self.waifu_housekeeping.start()
-        self.waifu_war_tasks = {}
-        #!!! REMOVE
-        self.scraper_index = 10000
-        self.last_check_unranked = False
-        #!!! REMOVE
+        self.waifu_war_creation.start()
+        self.waifu_war_tasks = {}   
 
     ##*************************************************##
     ##********           ABSTRACTIONS           *******##
@@ -1077,7 +1074,7 @@ class Waifus(commands.Cog):
 
         # Set timestamp in db
         nyah_player = await self.bot.mongo.fetch_nyah_player(inter.author)
-        # nyah_player.timestamp_last_minigame = disnake.utils.utcnow()
+        nyah_player.timestamp_last_minigame = disnake.utils.utcnow()
         await self.bot.mongo.update_nyah_player(nyah_player)
 
         # Wait for the user to answer
