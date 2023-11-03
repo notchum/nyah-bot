@@ -1095,114 +1095,79 @@ class Waifus(commands.Cog):
 
         return await inter.edit_original_response(embeds=[embed, result_embed], view=None)
 
-    # @commands.slash_command()
-    # async def waifudex(
-    #     self,
-    #     inter: disnake.ApplicationCommandInteraction,
-    #     name: str = None,
-    #     series: str = None,
-    #     tag: str = None,
-    #     birthday: bool = False
-    # ):
-    #     """ View any waifu from the database!
+    @commands.slash_command()
+    async def waifudex(
+        self,
+        inter: disnake.ApplicationCommandInteraction,
+        name: str = None,
+        series: str = None,
+        tag: str = None,
+        birthday: bool = False
+    ):
+        """ View any waifu from the database!
 
-    #         Parameters
-    #         ----------
-    #         name: `str`
-    #             Get a single waifu entry.
-    #         series: `str`
-    #             Get all waifus from a given series.
-    #         tag: `str`
-    #             Get all waifus that contain this tag.
-    #         birthday: `bool`
-    #             Get all waifus that were born today.
-    #     """
-    #     await inter.response.defer()
-    #     result = None
+            Parameters
+            ----------
+            name: `str`
+                Get a single waifu entry.
+            series: `str`
+                Get all waifus from a given series.
+            tag: `str`
+                Get all waifus that contain this tag.
+            birthday: `bool`
+                Get all waifus that were born today.
+        """
+        await inter.response.defer()
+        result = None
 
-    #     # Return the total number of waifus that the user has claimed
-    #     if not name and not series and not tag and not birthday:
-    #         n_total_claims = await self.bot.mongo.fetch_claim_count()
-    #         embed = disnake.Embed(
-    #             description=f"You've gotten {n_total_claims} waifus!",
-    #             color=disnake.Color.teal()
-    #         ).set_author(name=f"{inter.author.name}'s waifudex", icon_url=inter.author.display_avatar.url)
+        # Return the total number of waifus that the user has claimed
+        if not name and not series and not tag and not birthday:
+            n_total_claims = await self.bot.mongo.fetch_claim_count()
+            embed = disnake.Embed(
+                description=f"You've gotten {n_total_claims} waifus!",
+                color=disnake.Color.teal()
+            ).set_author(name=f"{inter.author.name}'s waifudex", icon_url=inter.author.display_avatar.url)
 
-    #         return await inter.edit_original_response(embed=embed)
+            return await inter.edit_original_response(embed=embed)
 
-    #     # Return all characters from that series
-    #     elif not name and series and not tag and not birthday:
-    #         result = r.db("waifus") \
-    #                     .table("core") \
-    #                     .filter(
-    #                         r.row["series"].contains(series)
-    #                     ) \
-    #                     .order_by("name") \
-    #                     .run(conn)
+        # Return all characters from that series
+        elif not name and series and not tag and not birthday:
+            result = await self.bot.mongo.fetch_waifus_by_series(series)
         
-    #     # Return all characters that have this tag
-    #     elif not name and not series and tag and not birthday:
-    #         result = r.db("waifus") \
-    #                     .table("core") \
-    #                     .filter(
-    #                         r.row["tags"].contains(tag)
-    #                     ) \
-    #                     .order_by("name") \
-    #                     .run(conn)
+        # Return all characters that have this tag
+        elif not name and not series and tag and not birthday:
+            result = await self.bot.mongo.fetch_waifus_by_tag(tag)
         
-    #     # Return characters that were born today
-    #     elif not name and not series and not tag and birthday:
-    #         result = r.db("waifus") \
-    #                     .table("core") \
-    #                     .filter(
-    #                         r.and_(
-    #                             r.row["birthday_month"].eq(r.now().month()),
-    #                             r.row["birthday_day"].eq(r.now().day())
-    #                         )
-    #                     ) \
-    #                     .order_by("name") \
-    #                     .run(conn)
+        # Return characters that were born today
+        elif not name and not series and not tag and birthday:
+            result = await self.bot.mongo.fetch_waifus_birthday_today()
 
-    #     # Return characters with the same name
-    #     elif name and not series and not tag and not birthday:
-    #         if re.search(r"\[.*\]", name):
-    #             match = re.match(r"^(.*?)\s*\[(.*?)\]$", name)
-    #             name = match.group(1).strip()
-    #             series = match.group(2).strip()
+        # Return characters with the same name
+        elif name and not series and not tag and not birthday:
+            if re.search(r"\[.*\]", name):
+                match = re.match(r"^(.*?)\s*\[(.*?)\]$", name)
+                name = match.group(1).strip()
+                series = match.group(2).strip()
+                result = await self.bot.mongo.fetch_waifus_by_name_and_series(name, series)
+            else:
+                series = ""
+                result = await self.bot.mongo.fetch_waifus_by_name(name)
 
-    #             result = r.db("waifus") \
-    #                         .table("core") \
-    #                         .get_all(name, index="name") \
-    #                         .filter(
-    #                             r.row["series"].contains(series)
-    #                         ) \
-    #                         .run(conn)
-    #         else:
-    #             series = ""
-    #             result = r.db("waifus") \
-    #                         .table("core") \
-    #                         .filter(
-    #                             r.row["name"].match(f"(?i){name}")
-    #                         ) \
-    #                         .order_by("name") \
-    #                         .run(conn)
-
-    #     if not result:
-    #         return await inter.edit_original_response(
-    #             embed=ErrorEmbed(f"Couldn't find any waifus that match:\nname={name}\nseries={series}\ntag={tag}\nbirthday={birthday}")
-    #         )
+        if not result:
+            return await inter.edit_original_response(
+                embed=ErrorEmbed(f"Couldn't find any waifus that match:\nname={name}\nseries={series}\ntag={tag}\nbirthday={birthday}")
+            )
         
-    #     embeds = list()
-    #     for doc in result:
-    #         waifu = Waifu(**doc)
-    #         embed = await self.bot.get_waifu_core_embed(waifu)
-    #         embeds.append(embed)
+        embeds = []
+        for waifu in result:
+            embed = await self.bot.get_waifu_core_embed(waifu)
+            embeds.append(embed)
         
-    #     dex_view = await WaifuDexView.create_instance(embeds, inter.author)
-    #     await dex_view.initialize_footers()
-    #     message = await inter.edit_original_response(embed=embeds[0], view=dex_view)
-    #     dex_view.message = message
-    #     return
+        dex_view = await WaifuDexView.create_instance(embeds, inter.author)
+        await dex_view.initialize_footers()
+        message = await inter.edit_original_response(embed=embeds[0], view=dex_view)
+        dex_view.message = message
+        return
 
     @commands.slash_command()
     async def getmywaifu(self, inter: disnake.ApplicationCommandInteraction):
@@ -1537,36 +1502,36 @@ class Waifus(commands.Cog):
         
         return deque(waifu_names, maxlen=25)
 
-    # @waifudex.autocomplete("name")
-    # async def waifu_name_autocomplete(
-    #     self,
-    #     inter: disnake.ApplicationCommandInteraction,
-    #     user_input: str
-    # ) -> list:
-    #     if not user_input:
-    #         user_input = "a"
-    #     waifus = await self.bot.mongo.fetch_waifu_by_name(user_input)
-    #     return deque([f"{waifu.name} [{waifu.series[0]}]" for waifu in waifus if len(waifu.series)], maxlen=25)
+    @waifudex.autocomplete("name")
+    async def waifu_name_autocomplete(
+        self,
+        inter: disnake.ApplicationCommandInteraction,
+        user_input: str
+    ) -> list:
+        if not user_input:
+            user_input = "a"
+        waifus = await self.bot.mongo.fetch_waifus_by_name(user_input)
+        return deque([f"{waifu.name} [{waifu.series[0]}]" for waifu in waifus if len(waifu.series)], maxlen=25)
 
-    # @waifudex.autocomplete("series")
-    # async def waifu_series_autocomplete(
-    #     self,
-    #     inter: disnake.ApplicationCommandInteraction,
-    #     user_input: str
-    # ) -> list:
-    #     result = await self.bot.mongo.fetch_waifu_series()
-    #     comp = re.compile(f"(?i)^{user_input}")
-    #     return deque(filter(comp.match, result), maxlen=25)
+    @waifudex.autocomplete("series")
+    async def waifu_series_autocomplete(
+        self,
+        inter: disnake.ApplicationCommandInteraction,
+        user_input: str
+    ) -> list:
+        result = await self.bot.mongo.fetch_waifu_series()
+        comp = re.compile(f"(?i)^{user_input}")
+        return deque(filter(comp.match, result), maxlen=25)
 
-    # @waifudex.autocomplete("tag")
-    # async def waifu_tag_autocomplete(
-    #     self,
-    #     inter: disnake.ApplicationCommandInteraction,
-    #     user_input: str
-    # ) -> list:
-    #     result = await self.bot.mongo.fetch_waifu_tags()
-    #     comp = re.compile(f"(?i)^{user_input}")
-    #     return deque(filter(comp.match, result), maxlen=25)
+    @waifudex.autocomplete("tag")
+    async def waifu_tag_autocomplete(
+        self,
+        inter: disnake.ApplicationCommandInteraction,
+        user_input: str
+    ) -> list:
+        result = await self.bot.mongo.fetch_waifu_tags()
+        comp = re.compile(f"(?i)^{user_input}")
+        return deque(filter(comp.match, result), maxlen=25)
 
 def setup(bot: commands.Bot):
     bot.add_cog(Waifus(bot))

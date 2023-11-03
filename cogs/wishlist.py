@@ -54,9 +54,9 @@ class Wishlist(commands.Cog):
             name = match.group(1).strip()
             series = match.group(2).strip()
 
-            result = await self.bot.mongo.fetch_waifu_by_name_series(name, series)
+            result = await self.bot.mongo.fetch_waifus_by_name_and_series(name, series)
         else:
-            result = await self.bot.mongo.fetch_waifu_by_name(waifu)
+            result = await self.bot.mongo.fetch_waifus_by_name(waifu)
         waifu = result[0]
 
         if not result:
@@ -115,7 +115,7 @@ class Wishlist(commands.Cog):
     ) -> list:
         if not user_input:
             user_input = "a"
-        waifus = await self.bot.mongo.fetch_waifu_by_name(user_input)
+        waifus = await self.bot.mongo.fetch_waifus_by_name(user_input)
         return deque([f"{waifu.name} [{waifu.series[0]}]" for waifu in waifus if len(waifu.series)], maxlen=25)
 
 def setup(bot: commands.Bot):

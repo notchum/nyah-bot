@@ -75,13 +75,13 @@ class Mongo():
         ).to_list()
         return result
 
-    async def fetch_waifu_by_name(self, name: str) -> List[Waifu]:
+    async def fetch_waifus_by_name(self, name: str) -> List[Waifu]:
         result = await Waifu.find_many(
             {"name": {"$regex": f"(?i)^{name}"}}
         ).to_list()
         return result
 
-    async def fetch_waifu_by_name_series(self, name: str, series: str) -> List[Waifu]:
+    async def fetch_waifus_by_name_and_series(self, name: str, series: str) -> List[Waifu]:
         return await Waifu.find_many(
             Waifu.name == name,
             Waifu.series == series
@@ -89,11 +89,27 @@ class Mongo():
             [(Waifu.popularity_rank, pymongo.ASCENDING)]
         ).to_list()
 
-    async def fetch_waifu_by_tag(self, tag: str) -> List[Waifu]:
+    async def fetch_waifus_by_series(self, series: str) -> List[Waifu]:
+        return await Waifu.find_many(
+            Waifu.series == series
+        ).sort(
+            [(Waifu.name, pymongo.ASCENDING)]
+        ).to_list()
+
+    async def fetch_waifus_by_tag(self, tag: str) -> List[Waifu]:
         return await Waifu.find_many(
             Waifu.tags == tag
         ).sort(
-            [(Waifu.popularity_rank, pymongo.ASCENDING)]
+            [(Waifu.name, pymongo.ASCENDING)]
+        ).to_list()
+
+    async def fetch_waifus_birthday_today(self) -> List[Waifu]:
+        today = disnake.utils.utcnow().date()
+        return await Waifu.find_many(
+            Waifu.birthday_month == today.month,
+            Waifu.birthday_day == today.day
+        ).sort(
+            [(Waifu.name, pymongo.ASCENDING)]
         ).to_list()
 
     async def fetch_waifu_by_index(self, index: int) -> Waifu:
