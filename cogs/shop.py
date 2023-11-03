@@ -3,11 +3,12 @@ import os
 import disnake
 from disnake.ext import commands
 
+from bot import NyahBot
 from helpers import SuccessEmbed, ErrorEmbed
 
 class Shop(commands.Cog):
     def __init__(self, bot: commands.Bot):
-        self.bot = bot
+        self.bot: NyahBot = bot
 
     ##*************************************************##
     ##********           ABSTRACTIONS           *******##
@@ -29,8 +30,7 @@ class Shop(commands.Cog):
     async def shop(self, inter: disnake.ApplicationCommandInteraction):
         """ View the shop! """
         return await inter.response.send_message(
-            embed=ErrorEmbed("Not implemented :("),
-            ephemeral=True
+            embed=ErrorEmbed("Not implemented :(")
         )
 
     ##*************************************************##

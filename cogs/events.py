@@ -36,29 +36,29 @@ class Events(commands.Cog):
                 embed=ErrorEmbed("Use `/setup` to ensure all bot functions are available!")
             )
 
-    @commands.Cog.listener()
-    async def on_slash_command_error(self, inter: disnake.ApplicationCommandInteraction, error: commands.CommandError):
-        """ Client event when a slash command catches an error. """
-        return
-        #TODO fix this bullshit
-        original_response = await inter.original_response()
-        if original_response.flags.loading:
-            if isinstance(error, commands.CommandOnCooldown):
-                await inter.edit_original_response(
-                    content=f"This command is on cooldown... try again in {error.retry_after:.2f} seconds."
-                )
-            await inter.edit_original_response(create_trace(error))
-        else:
-            if isinstance(error, commands.CommandOnCooldown):
-                await inter.response.send_message(
-                    content=f"This command is on cooldown... try again in {error.retry_after:.2f} seconds.",
-                    ephemeral=True
-                )
-            await inter.response.send_message(create_trace(error), ephemeral=True)
-        self.bot.logger.error(f"{inter.guild.name}[{inter.guild.id}] | "
-                     f"{inter.channel.name}[{inter.channel.id}] | "
-                     f"{inter.author}[{inter.author.id}] | "
-                     f"Reason [{error}]")
+    # @commands.Cog.listener()
+    # async def on_slash_command_error(self, inter: disnake.ApplicationCommandInteraction, error: commands.CommandError):
+    #     """ Client event when a slash command catches an error. """
+    #     return
+    #     #TODO fix this bullshit
+    #     original_response = await inter.original_response()
+    #     if original_response.flags.loading:
+    #         if isinstance(error, commands.CommandOnCooldown):
+    #             await inter.edit_original_response(
+    #                 content=f"This command is on cooldown... try again in {error.retry_after:.2f} seconds."
+    #             )
+    #         await inter.edit_original_response(create_trace(error))
+    #     else:
+    #         if isinstance(error, commands.CommandOnCooldown):
+    #             await inter.response.send_message(
+    #                 content=f"This command is on cooldown... try again in {error.retry_after:.2f} seconds.",
+    #                 ephemeral=True
+    #             )
+    #         await inter.response.send_message(create_trace(error), ephemeral=True)
+    #     self.bot.logger.error(f"{inter.guild.name}[{inter.guild.id}] | "
+    #                  f"{inter.channel.name}[{inter.channel.id}] | "
+    #                  f"{inter.author}[{inter.author.id}] | "
+    #                  f"Reason [{error}]")
 
     @commands.Cog.listener()
     async def on_slash_command_completion(self, inter: disnake.ApplicationCommandInteraction):
