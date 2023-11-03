@@ -40,6 +40,8 @@ class WaifuSkillView(disnake.ui.View):
                         f"{inter.channel.name}[{inter.channel.id}] | "
                         f"{inter.author}[{inter.author.id}] | "
                         f"Failed to reroll skills {self.claim.slug}[{self.claim.id}]")
+            
+            self.children = []
         else:
             await nyah_player.add_user_money(-Money.SKILL_COST.value)
 
@@ -67,7 +69,7 @@ class WaifuSkillView(disnake.ui.View):
             
             await mongo.update_claim(self.claim)
 
-            waifu = await mongo.fetch_claims_by_slug(self.claim.slug)
+            waifu = await mongo.fetch_waifu(self.claim.slug)
 
             confirmation_embed = disnake.Embed(
                 description=f"Successfully rerolled skills for **__{waifu.name}__**!",
@@ -80,7 +82,8 @@ class WaifuSkillView(disnake.ui.View):
                         f"{inter.author}[{inter.author.id}] | "
                         f"Rerolled skills {self.claim.slug}[{self.claim.id}]")
 
-        await inter.response.edit_message(embeds=[self.message.embeds[0], confirmation_embed], view=None)
+        self.reroll.label = "Reroll Skills Again?"
+        await inter.response.edit_message(embeds=[self.message.embeds[0], confirmation_embed], view=self)
 
     @disnake.ui.button(label="Cancel", emoji="✖️", style=disnake.ButtonStyle.red)
     async def cancel(self, button: disnake.ui.Button, inter: disnake.MessageInteraction) -> None:
