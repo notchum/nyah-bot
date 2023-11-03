@@ -41,11 +41,10 @@ class WaifuSkillView(disnake.ui.View):
                         f"{inter.author}[{inter.author.id}] | "
                         f"Failed to reroll skills {self.claim.slug}[{self.claim.id}]")
         else:
-            nyah_player.money -= Money.SKILL_COST.value
-            await mongo.update_nyah_player(nyah_player)
+            await nyah_player.add_user_money(-Money.SKILL_COST.value)
 
             # TODO re-assess how to best assign base stats, here is just completely random
-            max_stat = min(100, nyah_player.level * 10)
+            max_stat = max(random.randint(1, 10), min(100, nyah_player.level * 10))
             self.claim.attack = random.randint(0, max_stat)
             self.claim.defense = random.randint(0, max_stat)
             self.claim.health = random.randint(0, max_stat)
@@ -74,7 +73,7 @@ class WaifuSkillView(disnake.ui.View):
                 description=f"Successfully rerolled skills for **__{waifu.name}__**!",
                 color=disnake.Color.green()
             )
-            confirmation_embed.add_field(name=f"New Skills ({self.claim.stats_str})", value=self.claim.still_str)
+            confirmation_embed.add_field(name=f"New Skills ({self.claim.stats_str})", value=self.claim.skill_str)
 
             logger.info(f"{inter.guild.name}[{inter.guild.id}] | "
                         f"{inter.channel.name}[{inter.channel.id}] | "

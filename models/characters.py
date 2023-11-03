@@ -65,12 +65,12 @@ class Claim(Document):
     id: UUID = Field(default_factory=uuid4)
     slug: str
 
-    guild_id: int
-    channel_id: int
-    message_id: int
+    guild_id: Optional[int] = None
+    channel_id: Optional[int] = None
+    message_id: Optional[int] = None
     user_id: int
 
-    jump_url: str
+    jump_url: Optional[str] = None
     image_url: str
     cached_images_urls: List[str]
 
@@ -95,7 +95,7 @@ class Claim(Document):
     trait_rare: Optional[str] = None
     trait_legendary: Optional[str] = None
 
-    timestamp: datetime
+    timestamp: Optional[datetime] = None
     timestamp_cooldown: Optional[datetime] = None
 
     def marry(self) -> None:

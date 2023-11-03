@@ -3,6 +3,7 @@ from typing import List, Any
 
 import disnake
 import pymongo
+from beanie.operators import Set
 
 from utils import WaifuState
 from models import (
@@ -44,11 +45,10 @@ class Mongo():
     async def fetch_random_waifu(self, aggregations: List = []) -> Waifu:
         pipeline = [
             {"$match": {
-                "popularity_rank": {"$exists": True},
-                "like_rank": {"$exists": True},
-                "trash_rank": {"$exists": True}
+                "popularity_rank": {"$ne": None},
+                "like_rank": {"$ne": None},
+                "trash_rank": {"$ne": None}
             }},
-            {"$sort": {"popularity_rank": pymongo.ASCENDING}},
             *aggregations,
             {"$sample": {"size": 1}}
         ]
@@ -149,9 +149,7 @@ class Mongo():
         return await NyahPlayer.find_one(NyahPlayer.user_id == user.id) != None
 
     async def update_all_nyah_players(self, field: str, value: Any) -> None:
-        await NyahPlayer.update(
-            {"$set": {field: value}}
-        )
+        await NyahPlayer.find_all().update(Set({field: value}))
 
 
 
@@ -232,7 +230,7 @@ class Mongo():
         }).count()
     
     async def fetch_harem(self, user: disnake.Member | disnake.User) -> Harem:
-        return await Claim.find_many({
+        result = await Claim.find_many({
             "user_id": user.id,
             "index": {"$exists": True},
             "state": {"$exists": True},
@@ -240,9 +238,10 @@ class Mongo():
         }).sort(
             [(Claim.index, pymongo.ASCENDING)]
         ).to_list()
+        return Harem(result)
     
     async def fetch_harem_married(self, user: disnake.Member | disnake.User) -> Harem:
-        return await Claim.find_many({
+        result = await Claim.find_many({
             "user_id": user.id,
             "index": {"$exists": True},
             "state": {"$exists": True},
@@ -250,6 +249,7 @@ class Mongo():
         }).sort(
             [(Claim.index, pymongo.ASCENDING)]
         ).to_list()
+        return Harem(result)
     
     async def fetch_random_harem_married(self, user: disnake.Member | disnake.User) -> Claim:
         pipeline = [

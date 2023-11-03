@@ -87,7 +87,6 @@ class NyahPlayer(Document):
 
     async def add_user_xp(self, xp: int, user: disnake.Member | disnake.User = None, channel: disnake.TextChannel = None) -> None:
         self.xp += xp
-        # logger.info(f"{user.name}[{user.id}] gained {xp}XP ({self.xp}XP)")
 
         # check if they leveled up
         if self.xp >= utils.calculate_accumulated_xp(self.level + 1):
@@ -101,7 +100,6 @@ class NyahPlayer(Document):
                     color=disnake.Color.dark_teal()
                 ).set_thumbnail(url=user.avatar.url)
                 await channel.send(embed=level_up_embed)
-            # logger.info(f"{user.name}[{user.id}] leveled up to level {self.level}")
         
         await self.save()
 
@@ -135,8 +133,8 @@ class NyahPlayer(Document):
         if timestamp == None:
             return False # user not on cooldown
         
-        timedelta = disnake.utils.utcnow() - timestamp
-        if timedelta > timedelta(minutes=interval):
+        tdelta = disnake.utils.utcnow() - timestamp
+        if tdelta > timedelta(minutes=interval):
             return False # user not on cooldown
         
         return True # user is on cooldown

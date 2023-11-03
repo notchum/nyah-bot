@@ -1099,10 +1099,8 @@ class Waifus(commands.Cog):
         # Select the type of minigame this will be
         minigame = random.choice(["guess_name", "guess_bust", "smash_or_pass"])
 
-        # Get a random waifu
-        waifu = await self.bot.mongo.fetch_random_waifu([{"$limit": 500}])
-
         if minigame == "guess_name":
+            waifu = await self.bot.mongo.fetch_random_waifu([{"$sort": {"popularity_rank": 1}}, {"$limit": 500}])
             answer = waifu.name
 
             embed = disnake.Embed(
@@ -1116,7 +1114,7 @@ class Waifus(commands.Cog):
             wrong_description = f"- No, this is **__{answer}__** :(\n"
         
         elif minigame == "guess_bust":
-            waifu = await self.bot.mongo.fetch_random_waifu([{"$match": {"bust": {"$exists": True}}}, {"$limit": 500}])
+            waifu = await self.bot.mongo.fetch_random_waifu([{"$match": {"bust": {"$ne": None}}}, {"$sort": {"popularity_rank": 1}}, {"$limit": 500}])
             answer = waifu.bust
 
             embed = disnake.Embed(
@@ -1130,6 +1128,8 @@ class Waifus(commands.Cog):
             wrong_description = f"- Sorry, **__{waifu.name}'s__** tits are {answer} :(\n"
 
         elif minigame == "smash_or_pass":
+            waifu = await self.bot.mongo.fetch_random_waifu([{"$sort": {"popularity_rank": 1}}, {"$limit": 500}])
+            
             femboy = False
             if "femboy" in waifu.description.lower():
                 answer = "SMASH"
@@ -1369,7 +1369,7 @@ class Waifus(commands.Cog):
 
         # TODO re-assess how to best assign base stats, here is just completely random
         # TODO but i left price using stats calculated via waifu rank, since that seemed fine
-        max_stat = min(100, nyah_player.level * 10)
+        max_stat = max(random.randint(1, 10), min(100, nyah_player.level * 10))
         attack = random.randint(0, max_stat)
         defense = random.randint(0, max_stat)
         health = random.randint(0, max_stat)
@@ -1388,7 +1388,7 @@ class Waifus(commands.Cog):
             user_id=inter.author.id,
             jump_url=None,
             image_url=new_waifu.image_url,
-            cached_images_urls=None,
+            cached_images_urls=[],
             state=WaifuState.INACTIVE.name,
             index=index,
             price=price,
@@ -1622,7 +1622,7 @@ class Waifus(commands.Cog):
                 user_id=self.bot.user.id,
                 jump_url=None,
                 image_url=waifu.image_url,
-                cached_images_urls=None,
+                cached_images_urls=[],
                 state=None,
                 index=None,
                 price=None,
@@ -1640,7 +1640,6 @@ class Waifus(commands.Cog):
                 trait_uncommon=None,
                 trait_rare=None,
                 trait_legendary=None,
-                timestamp=None,
                 timestamp_cooldown=None,
             )
 
@@ -1680,7 +1679,7 @@ class Waifus(commands.Cog):
         index = int(waifu.split(".")[0]) # Parse string input for waifu select TODO add some error handling here like in managemywaifus
         users_claim = await self.bot.mongo.fetch_claim_by_index(inter.author, index)
         if opponent.id == self.bot.user.id:
-            w = await self.bot.mongo.fetch_random_waifu([{"$limit": 100}])
+            w = await self.bot.mongo.fetch_random_waifu([{"$sort": {"popularity_rank": 1}}, {"$limit": 100}])
             opps_claim = generate_bot_claim(w, users_claim.total_stats)
         else:
             opps_married_harem = await self.bot.mongo.fetch_harem_married(opponent)
@@ -1702,11 +1701,11 @@ class Waifus(commands.Cog):
         .set_image(url=duel_image_url) \
         .add_field(
             name=f"{red_name} ({users_claim.stats_str})",
-            value=users_claim.still_str
+            value=users_claim.skill_str
         ) \
         .add_field(
             name=f"{blue_name} ({opps_claim.stats_str})",
-            value=opps_claim.still_str
+            value=opps_claim.skill_str
         )
         
         # Set timestamp in db

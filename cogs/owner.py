@@ -184,7 +184,7 @@ class Owner(commands.Cog):
                 ephemeral=True
             )
         else:
-            await self.bot.mongo.update_all_nyah_players(cooldown, None)
+            await self.bot.mongo.update_all_nyah_players(f"timestamp_last_{cooldown.name.lower()}", None)
             self.bot.logger.info(f"{inter.guild.name}[{inter.guild.id}] | "
                                     f"Reset `{cooldown}` for all members!")
             return await inter.response.send_message(

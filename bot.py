@@ -170,7 +170,7 @@ class NyahBot(commands.InteractionBot):
         embed = await self.get_waifu_base_embed(waifu)
         embed.add_field(name="Price", value=claim.price_str)
         embed.add_field(name="Traits", value=claim.trait_str)
-        embed.add_field(name=f"Skills ({claim.stats_str})", value=claim.still_str)
+        embed.add_field(name=f"Skills ({claim.stats_str})", value=claim.skill_str)
         embed.set_footer(text=claim.id)
         embed.set_image(url=claim.image_url)
         return embed

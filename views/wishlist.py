@@ -45,7 +45,7 @@ class WaifuWishlistView(disnake.ui.View):
                         f"{inter.author}[{inter.author.id}] | "
                         f"Failed to wishlist '{self.waifu.slug}'")
         else:
-            nyah_player.money -= Money.WISHLIST_COST.value
+            await nyah_player.add_user_money(-Money.WISHLIST_COST.value)
             nyah_player.wishlist.append(self.waifu.slug)
             num_wishlists = nyah_player.wishlist.count(self.waifu.slug)
             await mongo.update_nyah_player(nyah_player)
