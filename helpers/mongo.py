@@ -65,7 +65,6 @@ class Mongo():
                 "like_rank": {"$ne": None},
                 "trash_rank": {"$ne": None}
             }},
-            {"$sort": {"popularity_rank": pymongo.ASCENDING}},
             *aggregations,
             {"$sample": {"size": number}}
         ]

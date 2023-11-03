@@ -1004,7 +1004,7 @@ class Waifus(commands.Cog):
         await inter.response.defer()
         
         # Select the type of minigame this will be
-        minigame = random.choice(["guess_name", "guess_bust", "smash_or_pass"])
+        minigame = random.choice(["guess_name", "guess_bust", "guess_age", "smash_or_pass"])
 
         if minigame == "guess_name":
             waifu = await self.bot.mongo.fetch_random_waifu([{"$sort": {"popularity_rank": 1}}, {"$limit": 500}])
@@ -1015,7 +1015,7 @@ class Waifus(commands.Cog):
                 description=f"{inter.author.mention} who is this character?",
                 color=disnake.Color.teal()
             ).set_image(waifu.image_url)
-            minigame_view = WaifuNameGuessView(inter.author, answer)
+            minigame_view = await WaifuNameGuessView.create(inter.author, answer)
 
             correct_description = f"- Yes! This is **__{answer}__**, good job\n"
             wrong_description = f"- No, this is **__{answer}__** :(\n"
@@ -1029,10 +1029,24 @@ class Waifus(commands.Cog):
                 description=f"{inter.author.mention} what is **__{waifu.name}'s__** bust measurement?",
                 color=disnake.Color.teal()
             ).set_image(waifu.image_url)
-            minigame_view = WaifuBustGuessView(inter.author, answer)
+            minigame_view = await WaifuBustGuessView.create(inter.author, answer)
 
             correct_description = f"- **__{waifu.name}'s__** bust is {answer}, good job\n"
             wrong_description = f"- Sorry, **__{waifu.name}'s__** tits are {answer} :(\n"
+        
+        elif minigame == "guess_age":
+            waifu = await self.bot.mongo.fetch_random_waifu([{"$match": {"age": {"$ne": None}}}, {"$sort": {"popularity_rank": 1}}, {"$limit": 500}])
+            answer = waifu.age
+
+            embed = disnake.Embed(
+                title="AGE GUESS GAME",
+                description=f"{inter.author.mention} how old is **__{waifu.name}__**?",
+                color=disnake.Color.teal()
+            ).set_image(waifu.image_url)
+            minigame_view = await WaifuAgeGuessView.create(inter.author, answer)
+
+            correct_description = f"- **__{waifu.name}__** is {answer} years old, good job\n"
+            wrong_description = f"- Sorry, **__{waifu.name}__** is {answer} :(\n"
 
         elif minigame == "smash_or_pass":
             waifu = await self.bot.mongo.fetch_random_waifu([{"$sort": {"popularity_rank": 1}}, {"$limit": 500}])
@@ -1063,7 +1077,7 @@ class Waifus(commands.Cog):
 
         # Set timestamp in db
         nyah_player = await self.bot.mongo.fetch_nyah_player(inter.author)
-        nyah_player.timestamp_last_minigame = disnake.utils.utcnow()
+        # nyah_player.timestamp_last_minigame = disnake.utils.utcnow()
         await self.bot.mongo.update_nyah_player(nyah_player)
 
         # Wait for the user to answer

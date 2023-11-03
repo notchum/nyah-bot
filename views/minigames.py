@@ -48,27 +48,25 @@ class WaifuNameGuessView(disnake.ui.View):
         self.answer = answer
         self.author_won = None
 
+    @classmethod
+    async def create(cls, author: disnake.User | disnake.Member, answer: str) -> None:
+        self = WaifuBustGuessView(author, answer)
+
         num_buttons = 3
         num_buttons_per_row = 3
 
-        async def fetch_and_shuffle_choices() -> List[str]:
-            result = await mongo.fetch_random_waifus(num_buttons - 1, {"name": {"$ne": answer}})
-            choices = [waifu.name for waifu in result]
-            choices.append(answer)
-            random.shuffle(choices)
-            return choices
+        result = await mongo.fetch_random_waifus(num_buttons - 1, [{"$sort": {"popularity_rank": 1}}, {"$limit": 500}, {"$match": {"name": {"$nin": [answer, None]}}}])
+        choices = [waifu.name for waifu in result]
+        choices.append(answer)
+        random.shuffle(choices)
 
-        async def initialize():
-            choices = await fetch_and_shuffle_choices()
-            row = 0
-            for i, choice in enumerate(choices, 1):
-                self.add_item(MinigameButton(label=choice, row=row))
-                if i % num_buttons_per_row == 0:
-                    row += 1
-
-        # You need to call the async initialize function here using an event loop
-        # import asyncio
-        # asyncio.get_event_loop().run_until_complete(initialize())
+        row = 0
+        for i, choice in enumerate(choices, 1):
+            self.add_item(MinigameButton(label=choice, row=row))
+            if i % num_buttons_per_row == 0:
+                row += 1
+        
+        return self
     
     async def interaction_check(self, interaction: disnake.MessageInteraction) -> bool:
         return interaction.author.id == self.original_author.id
@@ -82,23 +80,57 @@ class WaifuBustGuessView(disnake.ui.View):
         self.answer = answer
         self.author_won = None
 
+    @classmethod
+    async def create(cls, author: disnake.User | disnake.Member, answer: str) -> None:
+        self = WaifuBustGuessView(author, answer)
+
         num_buttons = 3
         num_buttons_per_row = 3
 
-        async def fetch_and_shuffle_choices() -> List[str]:
-            result = await mongo.fetch_random_waifus(num_buttons - 1, {"bust": {"$ne": answer}})
-            choices = [waifu.bust for waifu in result]
-            choices.append(answer)
-            random.shuffle(choices)
-            return choices
+        result = await mongo.fetch_random_waifus(num_buttons - 1, [{"$sort": {"popularity_rank": 1}}, {"$limit": 500}, {"$match": {"bust": {"$nin": [answer, None]}}}])
+        choices = [waifu.bust for waifu in result]
+        choices.append(answer)
+        random.shuffle(choices)
 
-        async def initialize():
-            choices = await fetch_and_shuffle_choices()
-            row = 0
-            for i, choice in enumerate(choices, 1):
-                self.add_item(MinigameButton(label=choice, row=row))
-                if i % num_buttons_per_row == 0:
-                    row += 1
+        row = 0
+        for i, choice in enumerate(choices, 1):
+            self.add_item(MinigameButton(label=choice, row=row))
+            if i % num_buttons_per_row == 0:
+                row += 1
+        
+        return self
+    
+    async def interaction_check(self, interaction: disnake.MessageInteraction) -> bool:
+        return interaction.author.id == self.original_author.id
+
+class WaifuAgeGuessView(disnake.ui.View):
+    children: List[MinigameButton]
+
+    def __init__(self, author: disnake.User | disnake.Member, answer: str) -> None:
+        super().__init__()
+        self.original_author = author
+        self.answer = answer
+        self.author_won = None
+
+    @classmethod
+    async def create(cls, author: disnake.User | disnake.Member, answer: str) -> None:
+        self = WaifuAgeGuessView(author, answer)
+
+        num_buttons = 3
+        num_buttons_per_row = 3
+
+        result = await mongo.fetch_random_waifus(num_buttons - 1, [{"$sort": {"popularity_rank": 1}}, {"$limit": 500}, {"$match": {"age": {"$nin": [answer, None]}}}])
+        choices = [waifu.age for waifu in result]
+        choices.append(answer)
+        random.shuffle(choices)
+
+        row = 0
+        for i, choice in enumerate(choices, 1):
+            self.add_item(MinigameButton(label=choice, row=row))
+            if i % num_buttons_per_row == 0:
+                row += 1
+        
+        return self
     
     async def interaction_check(self, interaction: disnake.MessageInteraction) -> bool:
         return interaction.author.id == self.original_author.id
