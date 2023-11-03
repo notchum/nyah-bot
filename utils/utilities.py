@@ -1,4 +1,5 @@
 import re
+import uuid
 import random
 import traceback
 
@@ -26,7 +27,7 @@ def calculate_accumulated_xp(level: int) -> int:
         xp_accumulated += xp_needed
     return xp_accumulated
 
-random_stat = lambda l: random.randint(0, min(100, l * 10))
+random_stat = lambda l: random.randint(0, max(random.randint(1, 10), min(100, l * 10)))
 
 ##*************************************************##
 ##********          DISCORD UTILS           *******##
@@ -102,6 +103,6 @@ def extract_uuid(input_string: str) -> str | None:
     uuid_match = re.search(uuid_pattern, input_string)
     
     if uuid_match:
-        return uuid_match.group()
+        return uuid.UUID(uuid_match.group())
     else:
         return None

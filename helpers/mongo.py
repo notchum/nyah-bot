@@ -3,7 +3,7 @@ from typing import List, Any
 
 import disnake
 import pymongo
-from beanie.operators import Set
+from beanie.operators import Set, NotIn
 
 from utils import WaifuState
 from models import (
@@ -61,9 +61,9 @@ class Mongo():
     async def fetch_random_waifus(self, number: int, aggregations: List = []) -> List[Waifu]:
         pipeline = [
             {"$match": {
-                "popularity_rank": {"$exists": True},
-                "like_rank": {"$exists": True},
-                "trash_rank": {"$exists": True}
+                "popularity_rank": {"$ne": None},
+                "like_rank": {"$ne": None},
+                "trash_rank": {"$ne": None}
             }},
             {"$sort": {"popularity_rank": pymongo.ASCENDING}},
             *aggregations,
@@ -183,11 +183,10 @@ class Mongo():
         return await Claim.find_many(Claim.user_id == user.id).count()
     
     async def fetch_claim_by_index(self, user: disnake.Member | disnake.User, index: int) -> Claim | None:
-        result = await Claim.find_one(
+        return await Claim.find_one(
             Claim.user_id == user.id,
             Claim.index == index
-        ).to_list()
-        return result[0] if len(result) > 0 else None
+        )
     
     async def fetch_claims_by_slug(self, user: disnake.Member | disnake.User, slug: str) -> List[Claim]:
         return await Claim.find_many(
@@ -198,55 +197,51 @@ class Mongo():
 
 
     async def fetch_harem_count(self, user: disnake.Member | disnake.User) -> int:
-        return await Claim.find_many({
-            "user_id": user.id,
-            "index": {"$exists": True},
-            "state": {"$exists": True},
-            "state": {"$nin": [WaifuState.NULL.name, WaifuState.SOLD.name]},
-        }).count()
+        return await Claim.find_many(
+            Claim.user_id == user.id,
+            Claim.index != None,
+            Claim.state != None,
+            NotIn(Claim.state, [WaifuState.NULL.name, WaifuState.SOLD.name]),
+        ).count()
 
     async def fetch_harem_married_count(self, user: disnake.Member | disnake.User) -> int:
-        return await Claim.find_many({
-            "user_id": user.id,
-            "index": {"$exists": True},
-            "state": {"$exists": True},
-            "state": WaifuState.ACTIVE.name,
-        }).count()
+        return await Claim.find_many(
+            Claim.user_id == user.id,
+            Claim.index != None,
+            Claim.state == WaifuState.ACTIVE.name,
+        ).count()
     
     async def fetch_harem_unmarried_count(self, user: disnake.Member | disnake.User) -> int:
-        return await Claim.find_many({
-            "user_id": user.id,
-            "index": {"$exists": True},
-            "state": {"$exists": True},
-            "state": WaifuState.INACTIVE.name,
-        }).count()
+        return await Claim.find_many(
+            Claim.user_id == user.id,
+            Claim.index != None,
+            Claim.state == WaifuState.INACTIVE.name,
+        ).count()
     
     async def fetch_harem_cooldown_count(self, user: disnake.Member | disnake.User) -> int:
-        return await Claim.find_many({
-            "user_id": user.id,
-            "index": {"$exists": True},
-            "state": {"$exists": True},
-            "state": WaifuState.COOLDOWN.name,
-        }).count()
+        return await Claim.find_many(
+            Claim.user_id == user.id,
+            Claim.index != None,
+            Claim.state == WaifuState.COOLDOWN.name,
+        ).count()
     
     async def fetch_harem(self, user: disnake.Member | disnake.User) -> Harem:
-        result = await Claim.find_many({
-            "user_id": user.id,
-            "index": {"$exists": True},
-            "state": {"$exists": True},
-            "state": {"$nin": [WaifuState.NULL.name, WaifuState.SOLD.name]},
-        }).sort(
+        result = await Claim.find_many(
+            Claim.user_id == user.id,
+            Claim.index != None,
+            Claim.state != None,
+            NotIn(Claim.state, [WaifuState.NULL.name, WaifuState.SOLD.name]),
+        ).sort(
             [(Claim.index, pymongo.ASCENDING)]
         ).to_list()
         return Harem(result)
     
     async def fetch_harem_married(self, user: disnake.Member | disnake.User) -> Harem:
-        result = await Claim.find_many({
-            "user_id": user.id,
-            "index": {"$exists": True},
-            "state": {"$exists": True},
-            "state": WaifuState.ACTIVE.name,
-        }).sort(
+        result = await Claim.find_many(
+            Claim.user_id == user.id,
+            Claim.index != None,
+            Claim.state == WaifuState.ACTIVE.name,
+        ).sort(
             [(Claim.index, pymongo.ASCENDING)]
         ).to_list()
         return Harem(result)
@@ -255,8 +250,8 @@ class Mongo():
         pipeline = [
             {"$match": {
                 "user_id": user.id,
-                "index": {"$exists": True},
-                "state": {"$exists": True},
+                "index": {"$ne": None},
+                "state": {"$ne": None},
                 "state": WaifuState.ACTIVE.name,
             }},
             {"$sample": {"size": 1}}

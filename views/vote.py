@@ -27,7 +27,7 @@ class WarVoteView(disnake.ui.View):
         )
         await mongo.insert_vote(vote)
 
-        claim = await mongo.fetch_claim(claim.id)
+        claim = await mongo.fetch_claim(vote.waifu_vote_id)
         waifu = await mongo.fetch_waifu(claim.slug)
 
         embed = disnake.Embed(
@@ -48,7 +48,7 @@ class WarVoteView(disnake.ui.View):
         )
         await mongo.insert_vote(vote)
 
-        claim = await mongo.fetch_claim(claim.id)
+        claim = await mongo.fetch_claim(vote.waifu_vote_id)
         waifu = await mongo.fetch_waifu(claim.slug)
 
         embed = disnake.Embed(
