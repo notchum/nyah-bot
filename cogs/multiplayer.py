@@ -63,7 +63,11 @@ class Multiplayer(commands.Cog):
         return opponent
 
     def calculate_total_score(self, claim: Claim) -> float:
-        base_score = claim.attack * 0.4 + claim.defense * 0.35 + claim.health * 0.36 + claim.speed * 0.39 + claim.magic * 0.38
+        base_score = (claim.attack + claim.attack_mod) * 0.4 + \
+                     (claim.defense + claim.defense_mod) * 0.35 + \
+                     (claim.health + claim.health_mod) * 0.36 + \
+                     (claim.speed + claim.speed_mod) * 0.39 + \
+                     (claim.magic + claim.magic_mod) * 0.38
         random_modifier = random.uniform(0.6, 1.2)
         return base_score * random_modifier
     
