@@ -973,8 +973,18 @@ class Waifus(commands.Cog):
         return await inter.edit_original_response(embed=embed)
 
     @commands.slash_command()
-    async def minigame(self, inter: disnake.ApplicationCommandInteraction):
-        """ Play a random waifu minigame for money! """
+    async def minigame(
+        self,
+        inter: disnake.ApplicationCommandInteraction,
+        bet: commands.Range[int, 0, 5000] = 0
+    ):
+        """ Play a random waifu minigame for money!
+        
+            Parameters
+            ----------
+            bet: `int`
+                The amount of money to bet.
+        """
         # Gather user's db info
         nyah_player = await self.bot.mongo.fetch_nyah_player(inter.author)
         
@@ -984,6 +994,13 @@ class Waifus(commands.Cog):
             return await inter.response.send_message(
                 content=f"{inter.author.mention} you are on a minigame cooldown now.\n"
                         f"Try again {utils.get_dyn_time_relative(next_minigame_at)} ({utils.get_dyn_time_short(next_minigame_at)})",
+                ephemeral=True
+            )
+        
+        # Check if user has enough money
+        if nyah_player.money < bet:
+            return await inter.response.send_message(
+                content=f"{inter.author.mention} you don't have enough money to bet that much.",
                 ephemeral=True
             )
 
@@ -1035,7 +1052,7 @@ class Waifus(commands.Cog):
             wrong_description = f"- Sorry, **__{waifu.name}__** is {answer} :(\n"
 
         elif minigame == "smash_or_pass":
-            waifu = await self.bot.mongo.fetch_random_waifu([{"$sort": {"popularity_rank": 1}}, {"$limit": 500}])
+            waifu = await self.bot.mongo.fetch_random_waifu([{"$match": {"age": {"$gte": 18}}}, {"$sort": {"popularity_rank": 1}}, {"$limit": 500}])
             
             femboy = False
             if "femboy" in waifu.description.lower():
@@ -1068,29 +1085,37 @@ class Waifus(commands.Cog):
 
         # Wait for the user to answer
         await minigame_view.wait()
+        
+        # Calculate the amount of money the user won/lost
+        if bet > 0:
+            win_amount = bet
+            lose_amount = bet * -1
+        else:
+            win_amount = Money.MINIGAME_WIN.value
+            lose_amount = Money.MINIGAME_LOSS.value
 
         # Create the embed with the result of the user's answer
         if minigame_view.author_won:
+            self.bot.logger.debug(f"{inter.author.name} beat minigame '{minigame}'")
             result_embed = disnake.Embed(
                 title="Correct!",
                 description=correct_description + 
-                            f"- You earned `{Money.MINIGAME_WIN.value}` {Emojis.COINS} "
+                            f"- You won `{win_amount:,}` {Emojis.COINS} "
                             f"and `{Experience.MINIGAME_WIN.value}` XP",
                 color=disnake.Color.green(),
             )
-            self.bot.logger.debug(f"{inter.author.name} beat minigame '{minigame}'")
-            await nyah_player.add_user_money(Money.MINIGAME_WIN.value)
+            await nyah_player.add_user_money(win_amount)
             await nyah_player.add_user_xp(Experience.MINIGAME_WIN.value, inter.author, inter.channel)
         else:
+            self.bot.logger.debug(f"{inter.author.name} lost minigame '{minigame}'")
             result_embed = disnake.Embed(
                 title="Wrong!",
                 description=wrong_description +
-                            f"- You earned `{Money.MINIGAME_LOSS.value}` {Emojis.COINS} "
-                            f"and `{Experience.MINIGAME_LOSS.value}` XP",
+                            f"- You lost `{lose_amount:,}` {Emojis.COINS} "
+                            f"and earned `{Experience.MINIGAME_LOSS.value}` XP",
                 color=disnake.Color.red(),
             )
-            self.bot.logger.debug(f"{inter.author.name} lost minigame '{minigame}'")
-            await nyah_player.add_user_money(Money.MINIGAME_LOSS.value)
+            await nyah_player.add_user_money(lose_amount)
             await nyah_player.add_user_xp(Experience.MINIGAME_LOSS.value, inter.author, inter.channel)
 
         return await inter.edit_original_response(embeds=[embed, result_embed], view=None)
