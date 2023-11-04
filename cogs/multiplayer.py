@@ -129,15 +129,17 @@ class Multiplayer(commands.Cog):
             embed.description = "No one is on the scoreboard yet! Use `/getmywaifu` to get started!"
             return embed
         
-        embed.add_field(name="Ranking", value="")
-        embed.add_field(name="Member", value="")
-        
+        ranking_str = ""
+        member_str = ""
         for i, player in enumerate(nyah_players, 1):
             if i == 1:
                 rank_one_member = await self.bot.fetch_user(player.user_id)
                 embed.set_author(name="Waifu War Leaderboard", icon_url=rank_one_member.display_avatar.url)
-            embed.fields[0].value += f"`{i}` **{player.score}**\n"
-            embed.fields[1].value += f"<@{player.user_id}>\n"
+            ranking_str += f"`{i}` **{player.score}**\n"
+            member_str += f"<@{player.user_id}>\n"
+
+        embed.add_field(name="Ranking", value=ranking_str)
+        embed.add_field(name="Member", value=member_str)
 
         return await inter.response.send_message(embed=embed)
 

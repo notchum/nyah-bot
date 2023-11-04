@@ -87,9 +87,4 @@ class WaifuSkillView(disnake.ui.View):
 
     @disnake.ui.button(label="Cancel", emoji="✖️", style=disnake.ButtonStyle.red)
     async def cancel(self, button: disnake.ui.Button, inter: disnake.MessageInteraction) -> None:
-        cancel_embed = disnake.Embed(
-            description=f"Re-skill cancelled.\n",
-            color=disnake.Color.red()
-        )
-        
-        await inter.response.edit_message(embeds=[self.message.embeds[0], cancel_embed], view=None)
+        await inter.response.edit_message(view=None)

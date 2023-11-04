@@ -1122,7 +1122,7 @@ class Waifus(commands.Cog):
 
         # Return the total number of waifus that the user has claimed
         if not name and not series and not tag and not birthday:
-            n_total_claims = await self.bot.mongo.fetch_claim_count()
+            n_total_claims = await self.bot.mongo.fetch_claim_count(inter.author)
             embed = disnake.Embed(
                 description=f"You've gotten {n_total_claims} waifus!",
                 color=disnake.Color.teal()
