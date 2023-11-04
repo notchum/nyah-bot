@@ -33,6 +33,8 @@ async def main():
         logger = logging.getLogger("nyahbot")
     logger.setLevel(logging.DEBUG if config.DEBUG else logging.INFO)
 
+    if not os.path.exists("log"):
+        os.makedirs("log")
     handler = logging.handlers.TimedRotatingFileHandler(
         filename="log/nyah-bot.log",
         when="midnight",
