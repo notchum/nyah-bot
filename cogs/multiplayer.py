@@ -8,6 +8,7 @@ from disnake.ext import commands
 
 from bot import NyahBot
 from models import Waifu, Claim
+from helpers import SuccessEmbed, ErrorEmbed
 from utils import Cooldowns, MMR, Experience
 from views import WaifuDuelView
 import utils.utilities as utils
@@ -61,6 +62,41 @@ class Multiplayer(commands.Cog):
         opponent = await guild.fetch_member(best_opponent.user_id)
         return opponent
 
+    def calculate_total_score(self, claim: Claim) -> float:
+        base_score = claim.attack * 0.4 + claim.defense * 0.35 + claim.health * 0.36 + claim.speed * 0.39 + claim.magic * 0.38
+        random_modifier = random.uniform(0.6, 1.2)
+        return base_score * random_modifier
+    
+    async def generate_bot_claim(self, total_sp: int) -> Claim:
+        waifu = await self.bot.mongo.fetch_random_waifu([{"$sort": {"popularity_rank": 1}}, {"$limit": 100}])
+
+        skills = [0,0,0,0,0]
+        ten_percent = total_sp // 10
+        total_sp = max(total_sp + random.randint(-ten_percent, ten_percent), 0)
+        for i, _ in enumerate(skills):
+            max_sp = total_sp - sum(skills)
+            if max_sp == 0:
+                break
+            skills[i] = min(100, random.randint(1, max_sp))
+        
+        return Claim(
+            slug=waifu.slug,
+            user_id=self.bot.user.id,
+            image_url=waifu.image_url,
+            cached_images_urls=[],
+            price=0,
+            attack=skills[0],
+            defense=skills[1],
+            health=skills[2],
+            speed=skills[3],
+            magic=skills[4],
+            attack_mod=0,
+            defense_mod=0,
+            health_mod=0,
+            speed_mod=0,
+            magic_mod=0,
+        )
+
     ##*************************************************##
     ##********              EVENTS              *******##
     ##*************************************************##
@@ -108,55 +144,6 @@ class Multiplayer(commands.Cog):
         waifu: str
     ):
         """ Use your best waifu to duel other user's waifus! """
-        def calculate_total_score(claim: Claim) -> float:
-            base_score = claim.attack * 0.4 + claim.defense * 0.35 + claim.health * 0.36 + claim.speed * 0.39 + claim.magic * 0.38
-            random_modifier = random.uniform(0.6, 1.2)
-            return base_score * random_modifier
-        
-        def generate_bot_claim(waifu: Waifu, total_sp: int) -> Claim:
-            claim = Claim(
-                slug=waifu.slug,
-                guild_id=None,
-                channel_id=None,
-                message_id=None,
-                user_id=self.bot.user.id,
-                jump_url=None,
-                image_url=waifu.image_url,
-                cached_images_urls=[],
-                state=None,
-                index=None,
-                price=None,
-                attack=None,
-                defense=None,
-                health=None,
-                speed=None,
-                magic=None,
-                attack_mod=0,
-                defense_mod=0,
-                health_mod=0,
-                speed_mod=0,
-                magic_mod=0,
-                trait_common=None,
-                trait_uncommon=None,
-                trait_rare=None,
-                trait_legendary=None,
-                timestamp_cooldown=None,
-            )
-
-            skills = [0,0,0,0,0]
-            total_sp = max(total_sp + random.choice([0, 1, -1]), 0)
-            for i, _ in enumerate(skills):
-                max_sp = total_sp - sum(skills)
-                if max_sp == 0:
-                    break
-                skills[i] = min(100, random.randint(1, max_sp))
-            claim.attack = skills[0]
-            claim.defense = skills[1]
-            claim.health = skills[2]
-            claim.speed = skills[3]
-            claim.magic = skills[4]
-            return claim
-        
         # Gather user's db info
         nyah_player = await self.bot.mongo.fetch_nyah_player(inter.author)
 
@@ -168,19 +155,34 @@ class Multiplayer(commands.Cog):
                         f"Try again {utils.get_dyn_time_relative(next_duel_at)} ({utils.get_dyn_time_short(next_duel_at)})",
                 ephemeral=True
             )
+        
+        # Parse string input for waifu select
+        try:
+            index = int(waifu.split(".")[0])
+        except:
+            return await inter.response.send_message(
+                embed=ErrorEmbed(f"`{waifu}` is not a valid waifu!"),
+                ephemeral=True
+            )
+
+        harem_married_size = await self.bot.mongo.fetch_harem_married_count(inter.author)
+        if index > harem_married_size or index <= 0:
+            return await inter.response.send_message(
+                embed=ErrorEmbed(f"`{waifu}` does not have a valid index!"),
+                ephemeral=True
+            )
 
         await inter.response.defer()
         
+        # Find opponent
         opponent = await self.find_duel_opponent(inter.guild, inter.author)
         if not opponent:
             return await inter.edit_original_response(content=f"Couldn't find an opponent!")
 
         # Select both user's waifus
-        index = int(waifu.split(".")[0]) # Parse string input for waifu select TODO add some error handling here like in managemywaifus
         users_claim = await self.bot.mongo.fetch_claim_by_index(inter.author, index)
         if opponent.id == self.bot.user.id:
-            w = await self.bot.mongo.fetch_random_waifu([{"$sort": {"popularity_rank": 1}}, {"$limit": 100}])
-            opps_claim = generate_bot_claim(w, users_claim.total_stats)
+            opps_claim = await self.generate_bot_claim(users_claim.total_stats)
         else:
             opps_married_harem = await self.bot.mongo.fetch_harem_married(opponent)
             opps_claim = random.choice(opps_married_harem)
@@ -215,8 +217,8 @@ class Multiplayer(commands.Cog):
         # Generate the results of the duel for the user to choose from
         duel_choices = []
         for _ in range(6): #TODO move magic number somewhere else
-            user_score = calculate_total_score(users_claim)
-            opps_score = calculate_total_score(opps_claim)
+            user_score = self.calculate_total_score(users_claim)
+            opps_score = self.calculate_total_score(opps_claim)
             if user_score > opps_score:
                 duel_choices.append(True)
             elif user_score < opps_score:
@@ -283,21 +285,23 @@ class Multiplayer(commands.Cog):
         inter: disnake.ApplicationCommandInteraction,
         user_input: str
     ) -> list:
-        harem_size = await self.bot.mongo.fetch_harem_count(inter.author)
+        harem_married_size = await self.bot.mongo.fetch_harem_married_count(inter.author)
+        if harem_married_size == 0:
+            return [f"You have no waifus to duel!"]
         
-        if user_input.isdigit() and int(user_input) <= harem_size:
+        if user_input.isdigit() and int(user_input) <= harem_married_size:
             index = int(user_input)
             claim = await self.bot.mongo.fetch_claim_by_index(inter.author, index)
             waifu = await self.bot.mongo.fetch_waifu(claim.slug)
-            formatted_name = f"{claim.index + 1}. {waifu.name}"
+            formatted_name = f"{claim.index}. {waifu.name}"
             waifu_names = [formatted_name]
         else:
-            harem = await self.bot.mongo.fetch_harem(inter.author)
+            harem = await self.bot.mongo.fetch_harem_married(inter.author)
             
             waifu_names = []
             for claim in harem:
                 waifu = await self.bot.mongo.fetch_waifu(claim.slug)
-                formatted_name = f"{claim.index + 1}. {waifu.name} ({claim.stats_str})"
+                formatted_name = f"{claim.index}. {waifu.name} ({claim.stats_str})"
                 waifu_names.append(formatted_name)
         
         return deque(waifu_names, maxlen=25)

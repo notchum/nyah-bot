@@ -1,3 +1,5 @@
+import traceback
+
 import disnake
 from disnake.ext import commands
 
@@ -12,53 +14,31 @@ class Events(commands.Cog):
     @commands.Cog.listener()
     async def on_slash_command(self, inter: disnake.ApplicationCommandInteraction):
         """ Client event when a command is used. """
-        return
-        #TODO figure out what to do with setup_finished - is it needed?   
-        if inter.data.name == "setup": return
-
-        guild_exists_in_db = r.db("nyah") \
-                                .table("guilds") \
-                                .get_all(str(inter.guild.id), index="guild_id") \
-                                .count() \
-                                .eq(1) \
-                                .run(conn)
-        if not guild_exists_in_db:
-            return await inter.guild.system_channel.send(
-                embed=ErrorEmbed(f"A database entry doesn't exist for this guild! Please contact {self.bot.owner.mention}")
+        if inter.guild.id in [776929597567795247, 1169450511133589604]:
+            if not self.bot.config.TEST_MODE:
+                return await inter.response.send_message(
+                    embed=ErrorEmbed("The bot is not configured for test mode.")
+                )
+            else:
+                pass
+        elif self.bot.config.TEST_MODE:
+            return await inter.response.send_message(
+                embed=ErrorEmbed("The bot is configured for test mode.")
             )
-        setup_finished = r.db("nyah") \
-                            .table("guilds") \
-                            .get(str(inter.guild.id)) \
-                            .get_field("setup_finished") \
-                            .run(conn) 
-        if not setup_finished:         
-            return await inter.guild.system_channel.send(
-                embed=ErrorEmbed("Use `/setup` to ensure all bot functions are available!")
-            )
+        else:
+            pass
 
-    # @commands.Cog.listener()
-    # async def on_slash_command_error(self, inter: disnake.ApplicationCommandInteraction, error: commands.CommandError):
-    #     """ Client event when a slash command catches an error. """
-    #     return
-    #     #TODO fix this bullshit
-    #     original_response = await inter.original_response()
-    #     if original_response.flags.loading:
-    #         if isinstance(error, commands.CommandOnCooldown):
-    #             await inter.edit_original_response(
-    #                 content=f"This command is on cooldown... try again in {error.retry_after:.2f} seconds."
-    #             )
-    #         await inter.edit_original_response(create_trace(error))
-    #     else:
-    #         if isinstance(error, commands.CommandOnCooldown):
-    #             await inter.response.send_message(
-    #                 content=f"This command is on cooldown... try again in {error.retry_after:.2f} seconds.",
-    #                 ephemeral=True
-    #             )
-    #         await inter.response.send_message(create_trace(error), ephemeral=True)
-    #     self.bot.logger.error(f"{inter.guild.name}[{inter.guild.id}] | "
-    #                  f"{inter.channel.name}[{inter.channel.id}] | "
-    #                  f"{inter.author}[{inter.author.id}] | "
-    #                  f"Reason [{error}]")
+    @commands.Cog.listener()
+    async def on_slash_command_error(self, inter: disnake.ApplicationCommandInteraction, error: commands.CommandError):
+        """ Client event when a slash command catches an error. """
+        trace = traceback.format_exception(type(error), error, error.__traceback__)
+        traceback_str = "".join(trace)
+        self.bot.logger.exception(traceback_str)
+        self.bot.logger.exception(f"{inter.guild.name}[{inter.guild.id}] | "
+                                  f"{inter.channel.name}[{inter.channel.id}] | "
+                                  f"{inter.author}[{inter.author.id}] | "
+                                  f"{inter.application_command.cog_name}::{inter.application_command.name} | "
+                                  f"Reason: [{error}]")
 
     @commands.Cog.listener()
     async def on_slash_command_completion(self, inter: disnake.ApplicationCommandInteraction):

@@ -118,7 +118,7 @@ class NyahPlayer(Document):
         await self.save()
 
     async def sell_waifu(self, claim: Claim) -> None:
-        claim.state = WaifuState.SOLD.name
+        claim.state = WaifuState.SOLD.value
         claim.index = None
         await claim.save()
         await self.add_user_money(claim.price)

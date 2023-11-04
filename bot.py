@@ -210,13 +210,13 @@ class NyahBot(commands.InteractionBot):
             - Marriage status.
         
         """
-        if claim.state == WaifuState.ACTIVE.name:
+        if claim.state == WaifuState.ACTIVE.value:
             color = disnake.Color.green()
             status = f"💕 Married"
-        elif claim.state == WaifuState.COOLDOWN.name:
+        elif claim.state == WaifuState.COOLDOWN.value:
             color = disnake.Color.blue()
             status = f"❄️ Cooldown"
-        elif claim.state == WaifuState.INACTIVE.name:
+        elif claim.state == WaifuState.INACTIVE.value:
             color = disnake.Color.red()
             status = f"💔 Unmarried"
         

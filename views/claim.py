@@ -56,7 +56,7 @@ class WaifuClaimView(disnake.ui.View):
                         f"{inter.author}[{inter.author.id}] | "
                         f"Failed to marry {self.claim.slug}[{self.claim.id}]")
         else:
-            self.claim.state = WaifuState.ACTIVE.name
+            self.claim.marry()
             await mongo.update_claim(self.claim)
 
             harem = await mongo.fetch_harem(inter.author)

@@ -99,7 +99,7 @@ class Claim(Document):
     timestamp_cooldown: Optional[datetime] = None
 
     def marry(self) -> None:
-        self.state = WaifuState.ACTIVE.name
+        self.state = WaifuState.ACTIVE.value
 
     @property
     def base_stats(self) -> int:
@@ -171,9 +171,9 @@ class Harem(List[Claim]):
         #             break
         
         # Sort by state and index
-        self = sorted(self, key=lambda claim: (WaifuState[claim.state].value, claim.index))
+        self = sorted(self, key=lambda claim: (claim.state, claim.index))
 
         # Re-index
-        for index, claim in enumerate(self):
+        for index, claim in enumerate(self, 1):
             claim.index = index
             await claim.save()

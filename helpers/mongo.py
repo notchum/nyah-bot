@@ -1,5 +1,5 @@
 import uuid
-from typing import List, Any
+from typing import List, Any, Union
 
 import disnake
 import pymongo
@@ -221,35 +221,29 @@ class Mongo():
             Claim.user_id == user.id,
             Claim.index != None,
             Claim.state != None,
-            NotIn(Claim.state, [WaifuState.NULL.name, WaifuState.SOLD.name]),
+            NotIn(Claim.state, [WaifuState.NULL.value, WaifuState.SOLD.value]),
         ).count()
 
-    async def fetch_harem_married_count(self, user: disnake.Member | disnake.User) -> int:
+    async def fetch_harem_married_count(self, user: Union[disnake.Member, disnake.User, NyahPlayer]) -> int:
+        user_id = user.id if isinstance(user, (disnake.Member, disnake.User)) else user.user_id
         return await Claim.find_many(
-            Claim.user_id == user.id,
+            Claim.user_id == user_id,
             Claim.index != None,
-            Claim.state == WaifuState.ACTIVE.name,
-        ).count()
-
-    async def fetch_harem_married_count(self, nyah_player: NyahPlayer) -> int:
-        return await Claim.find_many(
-            Claim.user_id == nyah_player.user_id,
-            Claim.index != None,
-            Claim.state == WaifuState.ACTIVE.name,
+            Claim.state == WaifuState.ACTIVE.value,
         ).count()
     
     async def fetch_harem_unmarried_count(self, user: disnake.Member | disnake.User) -> int:
         return await Claim.find_many(
             Claim.user_id == user.id,
             Claim.index != None,
-            Claim.state == WaifuState.INACTIVE.name,
+            Claim.state == WaifuState.INACTIVE.value,
         ).count()
     
     async def fetch_harem_cooldown_count(self, user: disnake.Member | disnake.User) -> int:
         return await Claim.find_many(
             Claim.user_id == user.id,
             Claim.index != None,
-            Claim.state == WaifuState.COOLDOWN.name,
+            Claim.state == WaifuState.COOLDOWN.value,
         ).count()
     
     async def fetch_harem(self, user: disnake.Member | disnake.User) -> Harem:
@@ -257,7 +251,7 @@ class Mongo():
             Claim.user_id == user.id,
             Claim.index != None,
             Claim.state != None,
-            NotIn(Claim.state, [WaifuState.NULL.name, WaifuState.SOLD.name]),
+            NotIn(Claim.state, [WaifuState.NULL.value, WaifuState.SOLD.value]),
         ).sort(
             [(Claim.index, pymongo.ASCENDING)]
         ).to_list()
@@ -267,7 +261,7 @@ class Mongo():
         result = await Claim.find_many(
             Claim.user_id == user.id,
             Claim.index != None,
-            Claim.state == WaifuState.ACTIVE.name,
+            Claim.state == WaifuState.ACTIVE.value,
         ).sort(
             [(Claim.index, pymongo.ASCENDING)]
         ).to_list()
@@ -279,7 +273,7 @@ class Mongo():
                 "user_id": user.id,
                 "index": {"$ne": None},
                 "state": {"$ne": None},
-                "state": WaifuState.ACTIVE.name,
+                "state": WaifuState.ACTIVE.value,
             }},
             {"$sample": {"size": 1}}
         ]

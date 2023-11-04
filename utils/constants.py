@@ -66,11 +66,11 @@ class Cooldowns(Enum):
     MINIGAME = 2
 
 class WaifuState(Enum):
-    ACTIVE   = 0
-    COOLDOWN = 1
-    INACTIVE = 2
-    SOLD     = 3
-    NULL     = 4
+    NULL     = None
+    ACTIVE   = 1
+    COOLDOWN = 2
+    INACTIVE = 3
+    SOLD     = 4
 
 class Weekday(Enum):
     MONDAY    = 1

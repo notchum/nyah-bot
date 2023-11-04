@@ -302,7 +302,7 @@ class Waifus(commands.Cog):
         }
         for waifu_color, waifu_value in waifus.items():
             # get claim
-            claim = await self.bot.mongo.fetch_claim(waifu_value["object"].id)
+            claim = waifu_value["object"]
 
             # download image
             image_path = await self.bot.api.download_image(claim.image_url)
@@ -884,19 +884,8 @@ class Waifus(commands.Cog):
             if bracket.last_round(current_round):
                 await self.end_waifu_war_event(waifu_war_event)
 
-                # Put winner's waifus on cooldown
-                # r.db("waifus") \
-                #     .table("claims") \
-                #     .get_all([str(guild.id), winner_id], index="guild_user") \
-                #     .has_fields(["state", "index"]) \
-                #     .filter(
-                #         r.row["state"].eq(WaifuState.ACTIVE.name)
-                #     ) \
-                #     .update({
-                #         "state": WaifuState.COOLDOWN.name,
-                #         "timestamp_cooldown": disnake.utils.utcnow(),
-                #     }) \
-                #     .run(conn)
+                # TODO Put winner's waifus on cooldown 
+                # set state to COOLDOWN and timestamp_cooldown to now
                 
                 # Give the winner and runner-up awards
                 ending_embed = disnake.Embed(
@@ -1260,7 +1249,7 @@ class Waifus(commands.Cog):
 
         # Generate the claim object
         new_waifu_uuid = uuid.uuid4()
-        index = await self.bot.mongo.fetch_harem_count(inter.author)
+        harem_size = await self.bot.mongo.fetch_harem_count(inter.author)
         claim = Claim(
             id=new_waifu_uuid,
             slug=new_waifu.slug,
@@ -1271,8 +1260,8 @@ class Waifus(commands.Cog):
             jump_url=None,
             image_url=new_waifu.image_url,
             cached_images_urls=[],
-            state=WaifuState.INACTIVE.name,
-            index=index,
+            state=WaifuState.INACTIVE.value,
+            index=harem_size + 1,
             price=price,
             attack=attack,
             defense=defense,
@@ -1355,18 +1344,18 @@ class Waifus(commands.Cog):
             color=disnake.Color.dark_red()
         )
         embeds = []
-        for i, claim in enumerate(harem, 1):
+        for claim in harem:
             waifu = await self.bot.mongo.fetch_waifu(claim.slug)
-            if i == 1:
+            if claim.index == 1:
                 embed.set_thumbnail(url=claim.image_url)
             
-            embed.description += f"`{i}` "
+            embed.description += f"`{claim.index}` "
             
-            if claim.state == WaifuState.ACTIVE.name:
+            if claim.state == WaifuState.ACTIVE.value:
                 embed.description += Emojis.STATE_MARRIED
-            elif claim.state == WaifuState.COOLDOWN.name:
+            elif claim.state == WaifuState.COOLDOWN.value:
                 embed.description += Emojis.STATE_COOLDOWN
-            elif claim.state == WaifuState.INACTIVE.name:
+            elif claim.state == WaifuState.INACTIVE.value:
                 embed.description += Emojis.STATE_UNMARRIED
             
             embed.description += f" {waifu.name} ({claim.stats_str}) "
@@ -1382,7 +1371,7 @@ class Waifus(commands.Cog):
             
             embed.description += "\n"
 
-            if i % 10 == 0:
+            if claim.index % 10 == 0:
                 embed.set_author(name=f"{inter.author.name}'s Harem", icon_url=inter.author.display_avatar.url)
                 embeds.append(embed)
                 embed = disnake.Embed(
@@ -1464,10 +1453,23 @@ class Waifus(commands.Cog):
             waifu: `str`
                 The waifu to skill.
         """
-        await inter.response.defer()
-        
         # Parse string input for waifu select
-        index = int(waifu.split(".")[0])
+        try:
+            index = int(waifu.split(".")[0])
+        except:
+            return await inter.response.send_message(
+                embed=ErrorEmbed(f"`{waifu}` is not a valid waifu!"),
+                ephemeral=True
+            )
+
+        harem_size = await self.bot.mongo.fetch_harem_count(inter.author)
+        if index > harem_size or index <= 0:
+            return await inter.response.send_message(
+                embed=ErrorEmbed(f"`{waifu}` does not have a valid index!"),
+                ephemeral=True
+            )
+        
+        await inter.response.defer()
 
         # Get claim from db
         claim = await self.bot.mongo.fetch_claim_by_index(inter.author, index)
@@ -1495,12 +1497,14 @@ class Waifus(commands.Cog):
         user_input: str
     ) -> list:
         harem_size = await self.bot.mongo.fetch_harem_count(inter.author)
+        if harem_size == 0:
+            return [f"Your harem is empty!"]
         
         if user_input.isdigit() and int(user_input) <= harem_size:
             index = int(user_input)
             claim = await self.bot.mongo.fetch_claim_by_index(inter.author, index)
             waifu = await self.bot.mongo.fetch_waifu(claim.slug)
-            formatted_name = f"{claim.index + 1}. {waifu.name}"
+            formatted_name = f"{claim.index}. {waifu.name}"
             waifu_names = [formatted_name]
         else:
             harem = await self.bot.mongo.fetch_harem(inter.author)
@@ -1508,7 +1512,7 @@ class Waifus(commands.Cog):
             waifu_names = []
             for claim in harem:
                 waifu = await self.bot.mongo.fetch_waifu(claim.slug)
-                formatted_name = f"{claim.index + 1}. {waifu.name} ({claim.stats_str})"
+                formatted_name = f"{claim.index}. {waifu.name} ({claim.stats_str})"
                 waifu_names.append(formatted_name)
         
         return deque(waifu_names, maxlen=25)
