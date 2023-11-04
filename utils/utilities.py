@@ -106,3 +106,15 @@ def extract_uuid(input_string: str) -> str | None:
         return uuid.UUID(uuid_match.group())
     else:
         return None
+
+def ceildiv(a: int, b: int) -> int:
+    """ Upside-down floor division (ceiling).
+    
+        Parameters
+        ----------
+        a: `int`
+            The dividend
+        b: `int`
+            The divisor
+    """
+    return -(a // -b)
