@@ -9,6 +9,8 @@ from utils import Money, Emojis
 import utils.traits as traits
 import utils.utilities as utils
 
+from views.suggest import SuggestionModal
+
 class Help(commands.Cog):
     def __init__(self, bot: commands.Bot):
         self.bot: NyahBot = bot
@@ -162,6 +164,11 @@ class Help(commands.Cog):
         message = await inter.edit_original_response(embed=embeds[0], view=waifu_page_view)
         waifu_page_view.message = message
         return
+
+    @commands.slash_command()
+    async def suggest(self, inter: disnake.ApplicationCommandInteraction):
+        """ Suggest a character to add! """
+        await inter.response.send_modal(SuggestionModal())
 
     ##*************************************************##
     ##********          AUTOCOMPLETES           *******##

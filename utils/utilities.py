@@ -84,6 +84,20 @@ def chunkify(to_chunk: str) -> list:
         chunks.append(chunked_str)
     return chunks
 
+def slugify(to_slug: str) -> str:
+    """ Slugify a string.
+
+        Parameters
+        ----------
+        to_slug: `str`
+            The string to slugify
+        
+        Returns
+        -------
+        `str`: The slugified string
+    """
+    return re.sub(r'[-\s]+', '-', to_slug.lower())
+
 def extract_uuid(input_string: str) -> str | None:
     """ Extract the UUID from any string.
 
