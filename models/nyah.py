@@ -4,10 +4,11 @@ from typing import Optional, List
 from uuid import UUID, uuid4
 
 import disnake
-from pydantic import Field
+from pydantic import BaseModel, Field
 from beanie import Document
+from beanie.operators import NotIn
 
-from models import Claim
+from models import Waifu, Claim
 from utils import Emojis, WaifuState, Cooldowns, Money
 import utils.utilities as utils
 
@@ -60,6 +61,11 @@ class NyahGuild(Document):
     waifu_war_channel_id: int
 
 
+class InventoryItem(BaseModel):
+    type: int
+    amount: int
+
+
 class NyahPlayer(Document):
     class Settings:
         name = "players"
@@ -80,10 +86,55 @@ class NyahPlayer(Document):
     level: int
     
     wishlist: List[str]
+    inventory: List[InventoryItem]
     
     timestamp_last_duel: Optional[datetime] = None
     timestamp_last_claim: Optional[datetime] = None
     timestamp_last_minigame: Optional[datetime] = None
+
+    async def create_random_claim(self, waifu: Waifu) -> Claim:
+        harem_size = await Claim.find_many(
+            Claim.user_id == self.user_id,
+            Claim.index != None,
+            Claim.state != None,
+            NotIn(Claim.state, [WaifuState.NULL.value, WaifuState.SOLD.value]),
+        ).count() # using query instead of fetch_harem_count() to avoid circular import
+        
+        claim = Claim(
+            slug=waifu.slug,
+            guild_id=None,
+            channel_id=None,
+            message_id=None,
+            user_id=self.user_id,
+            jump_url=None,
+            image_url=waifu.image_url,
+            cached_images_urls=[],
+            state=WaifuState.INACTIVE.value,
+            index=harem_size + 1,
+            price=0,
+            attack=0,
+            defense=0,
+            health=0,
+            speed=0,
+            magic=0,
+            attack_mod=0,
+            defense_mod=0,
+            health_mod=0,
+            speed_mod=0,
+            magic_mod=0,
+            trait_common=None,
+            trait_uncommon=None,
+            trait_rare=None,
+            trait_legendary=None,
+            timestamp=None,
+            timestamp_cooldown=None
+        )
+
+        await claim.roll_skills()
+        await claim.roll_traits()
+        await claim.calculate_price()
+        
+        return claim        
 
     async def add_user_xp(self, xp: int, user: disnake.Member | disnake.User = None, channel: disnake.TextChannel = None) -> None:
         self.xp += xp
@@ -115,6 +166,26 @@ class NyahPlayer(Document):
             self.money = 0
         else:
             self.money += money
+        await self.save()
+    
+    async def add_inventory_item(self, item_type: int, item_amount: int) -> None:
+        for i in self.inventory:
+            if i.type == item_type:
+                i.amount += item_amount
+                break
+        else:
+            self.inventory.append(InventoryItem(type=item_type, amount=item_amount))
+
+        await self.save()
+    
+    async def remove_inventory_item(self, item: InventoryItem) -> None:
+        for i in self.inventory:
+            if i.type == item.type:
+                i.amount -= item.amount
+                break
+        else:
+            raise ValueError(f"User {self.user_id} does not have item {item.type} in their inventory")
+
         await self.save()
 
     async def sell_waifu(self, claim: Claim) -> None:

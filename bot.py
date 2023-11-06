@@ -193,12 +193,8 @@ class NyahBot(commands.InteractionBot):
             `disnake.Embed`
                 The embed.
         """
-        waifu = await self.mongo.fetch_waifu(claim.slug)
-        waifu_type = "husbando" if waifu.husbando else "waifu"
-
         embed = await self.get_waifu_skills_embed(claim)
-        embed.timestamp = disnake.utils.utcnow()
-        embed.set_footer(text=f"A {waifu_type} for {owner.name} >.<")
+        embed.set_footer(text=f"{claim.id}")
         return embed
 
     async def get_waifu_harem_embed(self, claim: Claim) -> disnake.Embed:

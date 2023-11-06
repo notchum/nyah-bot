@@ -19,3 +19,4 @@ from .constants import (
     WaifuState,
     Weekday,
 )
+from .traits import CharacterTraitDropper

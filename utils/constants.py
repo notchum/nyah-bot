@@ -13,6 +13,11 @@ class Emojis:
     MINIGAME = "🎮"
     DUEL     = "🎌"
 
+    ITEM_CHEST_KEY    = "🗝️"
+    ITEM_TRAIT_SCROLL = "📜"
+    ITEM_SHONEN_STONE = "💎"
+    ITEM_ENERGY_BOOST = "⚡"
+
     SKILL_ATTACK  = "🗡️"
     SKILL_DEFENSE = "🛡️"
     SKILL_HEALTH  = "❤️"

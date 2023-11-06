@@ -1,6 +1,5 @@
 import os
 import re
-import uuid
 import random
 import typing
 import asyncio
@@ -12,13 +11,13 @@ from PIL import Image
 from disnake.ext import commands, tasks
 
 from bot import NyahBot
-from models import Waifu, Claim, Event
+from models import Claim, Event
 from helpers import SuccessEmbed, ErrorEmbed
 from views import *
-from utils import Emojis, WaifuState, Cooldowns, Experience, Money, MMR
-import utils.traits as traits
+from utils import Emojis, WaifuState, Cooldowns, Experience, Money
 import utils.utilities as utils
 from utils.bracket import Bracket
+from utils.items import ItemFactory
 
 class Waifus(commands.Cog):
     def __init__(self, bot: commands.Bot):
@@ -957,6 +956,18 @@ class Waifus(commands.Cog):
                 fmt_minigame_times = "🟢 **Ready**"
         else:
             fmt_minigame_times = "🟢 **Ready**"
+        
+        # Player inventory
+        player_inventory = []
+        for inv_item in nyah_player.inventory:
+            if inv_item.amount == 0:
+                continue
+            item = ItemFactory.create_item(inv_item.type, nyah_player, inv_item.amount)
+            player_inventory.append(item)
+        if len(player_inventory) == 0:
+            fmt_inventory = "-"
+        else:
+            fmt_inventory = " ".join([i.inv_str for i in player_inventory])
 
         embed = disnake.Embed(
             color=disnake.Color.random(),
@@ -965,6 +976,7 @@ class Waifus(commands.Cog):
         .add_field(name="Level", value=f"{nyah_player.level}") \
         .add_field(name="XP", value=f"{nyah_player.xp}/{utils.calculate_accumulated_xp(nyah_player.level + 1)}") \
         .add_field(name=f"Balance", value=f"`{nyah_player.money:,}` {Emojis.COINS}") \
+        .add_field(name="Inventory", value=fmt_inventory) \
         .add_field(name="Cooldowns:", value="", inline=False) \
         .add_field(name=f"{Emojis.CLAIM} Drop", value=fmt_claim_times, inline=False) \
         .add_field(name=f"{Emojis.MINIGAME} Minigame", value=fmt_minigame_times, inline=False) \
@@ -1233,102 +1245,15 @@ class Waifus(commands.Cog):
                 new_waifu = await self.bot.mongo.fetch_random_waifu()
         else:
             new_waifu = await self.bot.mongo.fetch_random_waifu()
-
-        # Roll traits
-        trait_dropper = traits.CharacterTraitDropper(nyah_player.level)
-        rolled_traits = trait_dropper.roll_all_traits()
-
-        # Normalize each ranking, adding some various permutations to a list
-        num_ranks = await self.bot.mongo.fetch_waifu_count()
-        normalized_popularity_rank = 1 - (new_waifu.popularity_rank - 1) / (num_ranks - 1)
-        normalized_like_rank = 1 - (new_waifu.like_rank - 1) / (num_ranks - 1)
-        normalized_trash_rank = (new_waifu.trash_rank - 1) / (num_ranks - 1)
-        base_normalizations = [
-            normalized_like_rank - normalized_trash_rank,
-            normalized_popularity_rank - normalized_trash_rank,
-            normalized_popularity_rank + normalized_like_rank - normalized_trash_rank,
-        ]
-
-        # Calculate base stats
-        attack = max(0, min(100, int(round((random.choice(base_normalizations) + random.uniform(-0.2, 0.2)) * 100))))
-        defense = max(0, min(100, int(round((random.choice(base_normalizations) + random.uniform(-0.2, 0.2)) * 100))))
-        health = max(0, min(100, int(round((random.choice(base_normalizations) + random.uniform(-0.2, 0.2)) * 100))))
-        speed = max(0, min(100, int(round((random.choice(base_normalizations) + random.uniform(-0.2, 0.2)) * 100))))
-        magic = max(0, min(100, int(round((random.choice(base_normalizations) + random.uniform(-0.2, 0.2)) * 100))))
         
-        # Calculate price
-        normalized_total_stats = ((attack + defense + health + speed + magic) / 500)
-        popularity_price = int(round(normalized_popularity_rank * 1000))
-        stats_price = int(round(0.2 * normalized_total_stats * 100))
-        traits_price = sum([t.money_value for t in rolled_traits.values() if t != None])
-        price = max(100, popularity_price + stats_price + traits_price)
-
-        # TODO re-assess how to best assign base stats, here is just completely random
-        # TODO but i left price using stats calculated via waifu rank, since that seemed fine
-        max_stat = max(random.randint(1, 10), min(100, nyah_player.level * 10))
-        attack = random.randint(0, max_stat)
-        defense = random.randint(0, max_stat)
-        health = random.randint(0, max_stat)
-        speed = random.randint(0, max_stat)
-        magic = random.randint(0, max_stat)
-
-        # Generate the claim object
-        new_waifu_uuid = uuid.uuid4()
-        harem_size = await self.bot.mongo.fetch_harem_count(inter.author)
-        claim = Claim(
-            id=new_waifu_uuid,
-            slug=new_waifu.slug,
-            guild_id=None,
-            channel_id=None,
-            message_id=None,
-            user_id=inter.author.id,
-            jump_url=None,
-            image_url=new_waifu.image_url,
-            cached_images_urls=[],
-            state=WaifuState.INACTIVE.value,
-            index=harem_size + 1,
-            price=price,
-            attack=attack,
-            defense=defense,
-            health=health,
-            speed=speed,
-            magic=magic,
-            attack_mod=0,
-            defense_mod=0,
-            health_mod=0,
-            speed_mod=0,
-            magic_mod=0,
-            trait_common=rolled_traits["common"].name if rolled_traits["common"] else None,
-            trait_uncommon=rolled_traits["uncommon"].name if rolled_traits["uncommon"] else None,
-            trait_rare=rolled_traits["rare"].name if rolled_traits["rare"] else None,
-            trait_legendary=rolled_traits["legendary"].name if rolled_traits["legendary"] else None,
-            timestamp=None,
-            timestamp_cooldown=None
-        )
-        self.bot.logger.info(f"{inter.guild.name}[{inter.guild.id}] | "
-                             f"{inter.channel.name}[{inter.channel.id}] | "
-                             f"{inter.author}[{inter.author.id}] | "
-                             f"Claimed {new_waifu.slug}[{new_waifu_uuid}]")
-
-        # Apply trait modifiers
-        if claim.trait_common:
-            trait = traits.CharacterTraitsCommon.get_trait_by_name(claim.trait_common)
-            trait.apply_modifiers(claim)
-        if claim.trait_uncommon:
-            trait = traits.CharacterTraitsUncommon.get_trait_by_name(claim.trait_uncommon)
-            trait.apply_modifiers(claim)
-        if claim.trait_rare:
-            trait = traits.CharacterTraitsRare.get_trait_by_name(claim.trait_rare)
-            trait.apply_modifiers(claim)
-        if claim.trait_legendary:
-            trait = traits.CharacterTraitsLegendary.get_trait_by_name(claim.trait_legendary)
-            trait.apply_modifiers(claim)
-
+        # Create the claim
+        claim = await nyah_player.create_random_claim(new_waifu)
+        
         # Send the waifu
         waifu_embed = await self.bot.get_waifu_claim_embed(claim, inter.author)
         claim_view = WaifuClaimView(claim, inter.author)
         message = await inter.edit_original_response(
-            content=inter.author.mention,
+            content=f"**A {'husbando' if new_waifu.husbando else 'waifu'} for {inter.author.mention} :3**",
             embed=waifu_embed,
             view=claim_view
         )
@@ -1350,6 +1275,11 @@ class Waifus(commands.Cog):
         nyah_player.timestamp_last_claim = disnake.utils.utcnow()
         await self.bot.mongo.update_nyah_player(nyah_player)
         await nyah_player.add_user_xp(Experience.CLAIM.value, inter.author, inter.channel)
+
+        self.bot.logger.info(f"{inter.guild.name}[{inter.guild.id}] | "
+                             f"{inter.channel.name}[{inter.channel.id}] | "
+                             f"{inter.author}[{inter.author.id}] | "
+                             f"Claimed {new_waifu.slug}[{claim.id}]")
         return
 
     @commands.slash_command()

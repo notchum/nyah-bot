@@ -147,13 +147,13 @@ class Help(commands.Cog):
         await inter.response.defer()
 
         embeds = []
-        for i, title, color in [(traits.CharacterTraitsCommon, "🟢 Common Traits", disnake.Color.green()),
-                                (traits.CharacterTraitsUncommon, "🔵 Uncommon Traits", disnake.Color.blue()),
-                                (traits.CharacterTraitsRare, "🟣 Rare Traits", disnake.Color.purple()),
-                                (traits.CharacterTraitsLegendary, "🟠 Legendary Traits", disnake.Color.orange())]:
+        for trait_type, title, color in [(traits.TraitTypes.COMMON, "🟢 Common Traits", disnake.Color.green()),
+                                         (traits.TraitTypes.UNCOMMON, "🔵 Uncommon Traits", disnake.Color.blue()),
+                                         (traits.TraitTypes.RARE, "🟣 Rare Traits", disnake.Color.purple()),
+                                         (traits.TraitTypes.LEGENDARY, "🟠 Legendary Traits", disnake.Color.orange())]:
             e = disnake.Embed(
                 title=title,
-                description=i.__str__(),
+                description="\n".join([str(trait) for trait in traits.get_trait_group(trait_type)]),
                 color=color
             )
             embeds.append(e)

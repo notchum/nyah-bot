@@ -15,7 +15,7 @@ class WaifuSkillView(disnake.ui.View):
     message: disnake.Message
     
     def __init__(self, claim: Claim, author: disnake.User | disnake.Member) -> None:
-        super().__init__()
+        super().__init__(timeout=30.0)
         self.claim = claim
         self.author = author
     
@@ -72,7 +72,8 @@ class WaifuSkillView(disnake.ui.View):
             waifu = await mongo.fetch_waifu(self.claim.slug)
 
             confirmation_embed = disnake.Embed(
-                description=f"Successfully rerolled skills for **__{waifu.name}__**!",
+                description=f"Successfully rerolled skills for **__{waifu.name}__**!\n"
+                            f"Your balance is now `{nyah_player.money:,}` {Emojis.COINS}",
                 color=disnake.Color.green()
             )
             confirmation_embed.add_field(name=f"New Skills ({self.claim.stats_str})", value=self.claim.skill_str)

@@ -6,7 +6,7 @@ from disnake.ext import commands
 
 from bot import NyahBot
 from helpers import SuccessEmbed, ErrorEmbed
-from utils import Cooldowns
+from utils import Cooldowns, WaifuState
 import utils.utilities as utils
 
 class Owner(commands.Cog):
@@ -191,6 +191,23 @@ class Owner(commands.Cog):
                 embed=SuccessEmbed(f"Reset `{cooldown}` for all members!"),
                 ephemeral=True
             )
+
+    @owner.sub_command()
+    async def view_user_harem(
+        self,
+        inter: disnake.ApplicationCommandInteraction,
+        user: disnake.User
+    ):
+        await inter.response.defer(ephemeral=True)
+
+        harem = await self.bot.mongo.fetch_harem(user)
+        embed = disnake.Embed(
+            title=f"{user.name}#{user.discriminator}'s Harem",
+            description="\n".join([f"`{claim.index}` `{WaifuState(claim.state).name}` `{claim.slug}` `{claim.id}`" for claim in harem]),
+            color=disnake.Color.dark_teal()
+        )
+
+        return await inter.edit_original_response(embed=embed)
 
     ##*************************************************##
     ##********          AUTOCOMPLETES           *******##

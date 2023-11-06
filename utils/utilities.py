@@ -1,6 +1,5 @@
 import re
 import uuid
-import random
 import traceback
 
 import disnake
@@ -26,8 +25,6 @@ def calculate_accumulated_xp(level: int) -> int:
         xp_needed = calculate_xp_for_level(level)
         xp_accumulated += xp_needed
     return xp_accumulated
-
-random_stat = lambda l: random.randint(0, max(random.randint(1, 10), min(100, l * 10)))
 
 ##*************************************************##
 ##********          DISCORD UTILS           *******##
