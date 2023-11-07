@@ -49,6 +49,7 @@ class NyahBot(commands.InteractionBot):
         self.config: Config = kwargs.pop("config", None)
         self.logger: logging.Logger = kwargs.pop("logger", None)
         super().__init__(*args, **kwargs)
+        self.after_slash_command_invoke(self.foobar)
         self.activity = Activity(type=ActivityType.watching, name=f"v{VERSION}")
     
     async def setup_hook(self):
@@ -111,6 +112,47 @@ class NyahBot(commands.InteractionBot):
             except Exception as e:
                 self.logger.error(f"Error deleting {file}: {e}")
         os.rmdir(self.cache_dir)
+
+    async def foobar(self, inter: disnake.ApplicationCommandInteraction):
+        if inter.data.name == "skillmywaifu":
+            message = await inter.original_response()
+            await self.client["_nyah"].locks.find_one_and_update(
+                {"_id": inter.author.id},
+                {"$set": {
+                    "last_command_name": inter.data.name,
+                    "last_command_channel_id": inter.channel.id,
+                    "last_command_message_id": message.id
+                    }
+                },
+                upsert=True
+            )
+        else:
+            result = await self.client["_nyah"].locks.find_one(
+                {"_id": inter.author.id}
+            )
+            channel_id = result["last_command_channel_id"]
+            message_id = result["last_command_message_id"]
+            print(channel_id, message_id)
+            
+            channel = self.get_channel(channel_id)
+            message = await channel.fetch_message(message_id)
+            
+            if message.components:
+                for component in message.components:
+                    if isinstance(component, (disnake.Button, disnake.BaseSelectMenu)):
+                        component.disabled = True
+                    elif isinstance(component, disnake.ActionRow):
+                        for child in component.children:
+                            if isinstance(child, (disnake.Button, disnake.BaseSelectMenu)):
+                                child.disabled = True
+                    
+            # p_message = channel.get_partial_message(message_id)
+            # await p_message.edit(view=None)
+            
+            # p_channel = self.get_partial_messageable(channel_id, type=disnake.TextChannel)
+            # p_message = p_channel.get_partial_message(message_id)
+            # print(p_message)
+        
 
     async def get_waifu_base_embed(self, waifu: Waifu) -> disnake.Embed:
         """ Get a bare-bones embed for a waifu.
