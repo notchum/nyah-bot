@@ -171,10 +171,15 @@ class Multiplayer(commands.Cog):
                 ephemeral=True
             )
 
-        harem_married_size = await self.bot.mongo.fetch_harem_married_count(inter.author)
-        if index > harem_married_size or index <= 0:
+        users_claim = await self.bot.mongo.fetch_claim_by_index(inter.author, index)
+        if not users_claim:
             return await inter.response.send_message(
-                embed=ErrorEmbed(f"`{waifu}` does not have a valid index!"),
+                embed=ErrorEmbed(f"`{waifu}` is not a valid character!"),
+                ephemeral=True
+            )
+        if not users_claim.is_married:
+            return await inter.response.send_message(
+                embed=ErrorEmbed(f"`{waifu}` does not have a married character!"),
                 ephemeral=True
             )
 
@@ -186,7 +191,6 @@ class Multiplayer(commands.Cog):
             return await inter.edit_original_response(content=f"Couldn't find an opponent!")
 
         # Select both user's waifus
-        users_claim = await self.bot.mongo.fetch_claim_by_index(inter.author, index)
         if opponent.id == self.bot.user.id:
             opps_claim = await self.generate_bot_claim(users_claim.total_stats)
         else:

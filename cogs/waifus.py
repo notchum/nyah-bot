@@ -1391,6 +1391,7 @@ class Waifus(commands.Cog):
             return await inter.edit_original_response(embed=embeds[0], view=None)
         
         view = WaifuMenuView(embeds, inter.author)
+        await view.initialize()
         message = await inter.edit_original_response(embed=embeds[0], view=view)
         view.message = message
         return

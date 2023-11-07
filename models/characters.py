@@ -6,6 +6,8 @@ from importlib import import_module
 
 from pydantic import Field
 from beanie import Document
+from beanie.operators import Set
+from beanie.odm.bulk import BulkWriter
 
 from utils import Emojis, WaifuState, Money
 import utils.traits as traits
@@ -256,30 +258,11 @@ class Harem(List[Claim]):
         super().__init__(claims)
     
     async def reindex(self) -> None:
-        # Figure out how many waifus are ACTIVE and INACTIVE
-        # active_count = sum(1 for claim in self if claim.state == WaifuState.ACTIVE.name)
-        # inactive_count = sum(1 for claim in self if claim.state == WaifuState.INACTIVE.name)
-
-        # Ensure there are at most 3 ACTIVE claims and at least 0 INACTIVE claims
-        # if active_count < nyah_config.waifu_max_marriages and inactive_count > 0:
-        #     for claim in self:
-        #         if claim.state == WaifuState.INACTIVE.name:
-        #             claim.state = WaifuState.ACTIVE.name
-        #             active_count += 1
-        #         if active_count >= nyah_config.waifu_max_marriages:
-        #             break
-        # elif active_count > nyah_config.waifu_max_marriages:
-        #     for claim in self:
-        #         if claim.state == WaifuState.ACTIVE.name:
-        #             claim.state = WaifuState.INACTIVE.name
-        #             active_count -= 1
-        #         if active_count <= nyah_config.waifu_max_marriages:
-        #             break
-        
-        # Sort by state and index
-        self = sorted(self, key=lambda claim: (claim.state, claim.index))
-
-        # Re-index
-        for index, claim in enumerate(self, 1):
-            claim.index = index
-            await claim.save()
+        async with BulkWriter() as bulk_writer:
+            for index, claim in enumerate(self, 1):
+                if claim.index != index:
+                    await Claim.find_one(
+                        Claim.id == claim.id
+                    ).update_one(
+                        Set({Claim.index: index}), bulk_writer=bulk_writer
+                    )
