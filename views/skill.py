@@ -1,4 +1,3 @@
-import random
 import logging
 
 import disnake
@@ -6,7 +5,6 @@ import disnake
 from models import Claim
 from helpers import Mongo
 from utils import Emojis, Money
-import utils.traits as traits
 
 logger = logging.getLogger("nyahbot")
 mongo = Mongo()
@@ -45,28 +43,7 @@ class WaifuSkillView(disnake.ui.View):
         else:
             await nyah_player.add_user_money(-Money.SKILL_COST.value)
 
-            # TODO re-assess how to best assign base stats, here is just completely random
-            max_stat = max(random.randint(1, 10), min(100, nyah_player.level * 10))
-            self.claim.attack = random.randint(0, max_stat)
-            self.claim.defense = random.randint(0, max_stat)
-            self.claim.health = random.randint(0, max_stat)
-            self.claim.speed = random.randint(0, max_stat)
-            self.claim.magic = random.randint(0, max_stat)
-            
-            # Apply trait modifiers
-            if self.claim.trait_common:
-                trait = traits.CharacterTraitsCommon.get_trait_by_name(self.claim.trait_common)
-                trait.apply_modifiers(self.claim)
-            if self.claim.trait_uncommon:
-                trait = traits.CharacterTraitsUncommon.get_trait_by_name(self.claim.trait_uncommon)
-                trait.apply_modifiers(self.claim)
-            if self.claim.trait_rare:
-                trait = traits.CharacterTraitsRare.get_trait_by_name(self.claim.trait_rare)
-                trait.apply_modifiers(self.claim)
-            if self.claim.trait_legendary:
-                trait = traits.CharacterTraitsLegendary.get_trait_by_name(self.claim.trait_legendary)
-                trait.apply_modifiers(self.claim)
-            
+            await self.claim.roll_skills()
             await mongo.update_claim(self.claim)
 
             waifu = await mongo.fetch_waifu(self.claim.slug)
