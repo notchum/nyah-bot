@@ -148,7 +148,7 @@ class WaifuMenuView(disnake.ui.View):
         if not claim.cached_images_urls:
             # search for 3 extra images
             search_params = {
-                "q": f"{waifu.name} {waifu.series[0]}",
+                "q": f"{waifu.name} {waifu.series[0] if waifu.series else ''}",
                 "num": 3,
                 "fileType": "jpg|gif|png"
             }
