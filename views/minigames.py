@@ -26,9 +26,10 @@ class MinigameButton(disnake.ui.Button):
 
 class WaifuSmashOrPassView(disnake.ui.View):
     children: List[MinigameButton]
+    message: disnake.Message
     
     def __init__(self, author: disnake.User | disnake.Member, answer: str) -> None:
-        super().__init__()
+        super().__init__(timeout=10.5)
         self.original_author = author
         self.answer = answer
         self.author_won = None
@@ -38,12 +39,17 @@ class WaifuSmashOrPassView(disnake.ui.View):
     
     async def interaction_check(self, interaction: disnake.MessageInteraction) -> bool:
         return interaction.author.id == self.original_author.id
+    
+    async def on_timeout(self) -> None:
+        self.author_won = False
+        await self.message.edit(view=None)
 
 class WaifuNameGuessView(disnake.ui.View):
     children: List[MinigameButton]
+    message: disnake.Message
 
     def __init__(self, author: disnake.User | disnake.Member, answer: str) -> None:
-        super().__init__()
+        super().__init__(timeout=10.5)
         self.original_author = author
         self.answer = answer
         self.author_won = None
@@ -71,11 +77,16 @@ class WaifuNameGuessView(disnake.ui.View):
     async def interaction_check(self, interaction: disnake.MessageInteraction) -> bool:
         return interaction.author.id == self.original_author.id
 
+    async def on_timeout(self) -> None:
+        self.author_won = False
+        await self.message.edit(view=None)
+
 class WaifuBustGuessView(disnake.ui.View):
     children: List[MinigameButton]
+    message: disnake.Message
 
     def __init__(self, author: disnake.User | disnake.Member, answer: str) -> None:
-        super().__init__()
+        super().__init__(timeout=10.5)
         self.original_author = author
         self.answer = answer
         self.author_won = None
@@ -103,11 +114,16 @@ class WaifuBustGuessView(disnake.ui.View):
     async def interaction_check(self, interaction: disnake.MessageInteraction) -> bool:
         return interaction.author.id == self.original_author.id
 
+    async def on_timeout(self) -> None:
+        self.author_won = False
+        await self.message.edit(view=None)
+
 class WaifuAgeGuessView(disnake.ui.View):
     children: List[MinigameButton]
+    message: disnake.Message
 
     def __init__(self, author: disnake.User | disnake.Member, answer: str) -> None:
-        super().__init__()
+        super().__init__(timeout=10.5)
         self.original_author = author
         self.answer = answer
         self.author_won = None
@@ -134,3 +150,7 @@ class WaifuAgeGuessView(disnake.ui.View):
     
     async def interaction_check(self, interaction: disnake.MessageInteraction) -> bool:
         return interaction.author.id == self.original_author.id
+
+    async def on_timeout(self) -> None:
+        self.author_won = False
+        await self.message.edit(view=None)

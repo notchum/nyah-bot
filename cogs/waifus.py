@@ -1021,74 +1021,77 @@ class Waifus(commands.Cog):
         # Select the type of minigame this will be
         minigame = random.choice(["guess_name", "guess_bust", "guess_age", "smash_or_pass"])
 
-        if minigame == "guess_name":
-            waifu = await self.bot.mongo.fetch_random_waifu([{"$sort": {"popularity_rank": 1}}, {"$limit": 500}])
-            answer = waifu.name
+        match minigame:
+            case "guess_name":
+                waifu = await self.bot.mongo.fetch_random_waifu([{"$sort": {"popularity_rank": 1}}, {"$limit": 500}])
+                answer = waifu.name
 
-            embed = disnake.Embed(
-                title="WHO'S THAT WAIFU",
-                description=f"{inter.author.mention} who is this character?",
-                color=disnake.Color.teal()
-            ).set_image(waifu.image_url)
-            minigame_view = await WaifuNameGuessView.create(inter.author, answer)
+                embed = disnake.Embed(
+                    title="WHO'S THAT WAIFU",
+                    description=f"{inter.author.mention} who is this character?",
+                    color=disnake.Color.teal()
+                ).set_image(waifu.image_url)
+                minigame_view = await WaifuNameGuessView.create(inter.author, answer)
 
-            correct_description = f"- Yes! This is **__{answer}__**, good job\n"
-            wrong_description = f"- No, this is **__{answer}__** :(\n"
+                correct_description = f"- Yes! This is **__{answer}__**, good job\n"
+                wrong_description = f"- No, this is **__{answer}__** :(\n"
         
-        elif minigame == "guess_bust":
-            waifu = await self.bot.mongo.fetch_random_waifu([{"$match": {"bust": {"$ne": None}}}, {"$sort": {"popularity_rank": 1}}, {"$limit": 500}])
-            answer = waifu.bust
+            case "guess_bust":
+                waifu = await self.bot.mongo.fetch_random_waifu([{"$match": {"bust": {"$ne": None}}}, {"$sort": {"popularity_rank": 1}}, {"$limit": 500}])
+                answer = waifu.bust
 
-            embed = disnake.Embed(
-                title="GUESS HER BUST SIZE",
-                description=f"{inter.author.mention} what is **__{waifu.name}'s__** bust measurement?",
-                color=disnake.Color.teal()
-            ).set_image(waifu.image_url)
-            minigame_view = await WaifuBustGuessView.create(inter.author, answer)
+                embed = disnake.Embed(
+                    title="GUESS HER BUST SIZE",
+                    description=f"{inter.author.mention} what is **__{waifu.name}'s__** bust measurement?",
+                    color=disnake.Color.teal()
+                ).set_image(waifu.image_url)
+                minigame_view = await WaifuBustGuessView.create(inter.author, answer)
 
-            correct_description = f"- **__{waifu.name}'s__** bust is {answer}, good job\n"
-            wrong_description = f"- Sorry, **__{waifu.name}'s__** tits are {answer} :(\n"
+                correct_description = f"- **__{waifu.name}'s__** bust is {answer}, good job\n"
+                wrong_description = f"- Sorry, **__{waifu.name}'s__** tits are {answer} :(\n"
         
-        elif minigame == "guess_age":
-            waifu = await self.bot.mongo.fetch_random_waifu([{"$match": {"age": {"$ne": None}}}, {"$sort": {"popularity_rank": 1}}, {"$limit": 500}])
-            answer = waifu.age
+            case "guess_age":
+                waifu = await self.bot.mongo.fetch_random_waifu([{"$match": {"age": {"$ne": None}}}, {"$sort": {"popularity_rank": 1}}, {"$limit": 500}])
+                answer = waifu.age
 
-            embed = disnake.Embed(
-                title="AGE GUESS GAME",
-                description=f"{inter.author.mention} how old is **__{waifu.name}__**?",
-                color=disnake.Color.teal()
-            ).set_image(waifu.image_url)
-            minigame_view = await WaifuAgeGuessView.create(inter.author, answer)
+                embed = disnake.Embed(
+                    title="AGE GUESS GAME",
+                    description=f"{inter.author.mention} how old is **__{waifu.name}__**?",
+                    color=disnake.Color.teal()
+                ).set_image(waifu.image_url)
+                minigame_view = await WaifuAgeGuessView.create(inter.author, answer)
 
-            correct_description = f"- **__{waifu.name}__** is {answer} years old, good job\n"
-            wrong_description = f"- Sorry, **__{waifu.name}__** is {answer} :(\n"
+                correct_description = f"- **__{waifu.name}__** is {answer} years old, good job\n"
+                wrong_description = f"- Sorry, **__{waifu.name}__** is {answer} :(\n"
 
-        elif minigame == "smash_or_pass":
-            waifu = await self.bot.mongo.fetch_random_waifu([{"$match": {"age": {"$gte": 18}}}, {"$sort": {"popularity_rank": 1}}, {"$limit": 500}])
-            
-            femboy = False
-            if "femboy" in waifu.description.lower():
-                answer = "SMASH"
-                femboy = True
-            else:
-                answer = random.choice(["SMASH", "PASS"])
+            case "smash_or_pass":
+                waifu = await self.bot.mongo.fetch_random_waifu([{"$match": {"age": {"$gte": 18}}}, {"$sort": {"popularity_rank": 1}}, {"$limit": 500}])
+                
+                femboy = False
+                if "femboy" in waifu.description.lower():
+                    answer = "SMASH"
+                    femboy = True
+                else:
+                    answer = random.choice(["SMASH", "PASS"])
 
-            embed = disnake.Embed(
-                title="SMASH OR PASS?",
-                description=f"{inter.author.mention} would you smash or pass **__{waifu.name}__**?",
-                color=disnake.Color.teal()
-            ).set_image(waifu.image_url)
-            minigame_view = WaifuSmashOrPassView(inter.author, answer)
+                embed = disnake.Embed(
+                    title="SMASH OR PASS?",
+                    description=f"{inter.author.mention} would you smash or pass **__{waifu.name}__**?",
+                    color=disnake.Color.teal()
+                ).set_image(waifu.image_url)
+                minigame_view = WaifuSmashOrPassView(inter.author, answer)
 
-            if femboy:
-                correct_description = f"- **__{waifu.name}__** is a femboy... so he is a SMASH, good job\n"
-                wrong_description = f"- **__{waifu.name}__** is a femboy... femboys are always a SMASH... c'mon bro\n"
-            else:
-                correct_description = f"- **__{waifu.name}__** is a {answer}, good job\n"
-                wrong_description = f"- **__{waifu.name}__** is a {answer}... c'mon bro\n"
+                if femboy:
+                    correct_description = f"- **__{waifu.name}__** is a femboy... so he is a SMASH, good job\n"
+                    wrong_description = f"- **__{waifu.name}__** is a femboy... femboys are always a SMASH... c'mon bro\n"
+                else:
+                    correct_description = f"- **__{waifu.name}__** is a {answer}, good job\n"
+                    wrong_description = f"- **__{waifu.name}__** is a {answer}... c'mon bro\n"
         
         # Send the message
-        await inter.edit_original_response(embed=embed, view=minigame_view)
+        embed.set_footer(text="You have 10 seconds to answer")
+        message = await inter.edit_original_response(embed=embed, view=minigame_view)
+        minigame_view.message = message
 
         # Set timestamp in db
         nyah_player = await self.bot.mongo.fetch_nyah_player(inter.author)
