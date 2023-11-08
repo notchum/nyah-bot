@@ -169,7 +169,7 @@ class Multiplayer(commands.Cog):
         return await inter.response.send_message(embed=embed)
 
     @commands.slash_command()
-    async def duelmywaifu(
+    async def duel(
         self, 
         inter: disnake.ApplicationCommandInteraction,
         waifu: str
@@ -204,7 +204,7 @@ class Multiplayer(commands.Cog):
             )
         if not users_claim.is_married:
             return await inter.response.send_message(
-                embed=ErrorEmbed(f"`{waifu}` does not have a married character!"),
+                embed=ErrorEmbed(f"`{waifu}` is not a married character!"),
                 ephemeral=True
             )
 
@@ -292,7 +292,7 @@ class Multiplayer(commands.Cog):
         # If user won
         if duel_view.author_won:
             result_embed = disnake.Embed(
-                title="Win",
+                title="Ranked Win",
                 description=f"- {inter.author.mention}'s __**{red_waifu.name}**__ defeated {opponent.mention}'s __**{blue_waifu.name}**__\n"
                             f"- You gained `{rating_change}` MMR and earned `{Experience.DUEL_WIN.value}` XP",
                 color=disnake.Color.green()
@@ -302,7 +302,7 @@ class Multiplayer(commands.Cog):
         # If user lost
         else:
             result_embed = disnake.Embed(
-                title="Loss",
+                title="Ranked Loss",
                 description=f"- {inter.author.mention}'s __**{red_waifu.name}**__ lost to {opponent.mention}'s __**{blue_waifu.name}**__\n"
                             f"- You lost `{rating_change}` MMR and earned `{Experience.DUEL_LOSS.value}` XP",
                 color=disnake.Color.red()
@@ -314,11 +314,151 @@ class Multiplayer(commands.Cog):
         # Edit message to add embed with the result of the match
         return await inter.edit_original_response(embeds=[duel_embed, result_embed])
 
+    @commands.slash_command()
+    async def casual(
+        self, 
+        inter: disnake.ApplicationCommandInteraction,
+        opponent: disnake.User,
+        waifu: str
+    ):
+        """ Duel another user for fun. """
+        # Gather user's db info
+        nyah_player = await self.bot.mongo.fetch_nyah_player(inter.author)
+
+        # Check if user's duel on cooldown TODO
+        # if await nyah_player.user_is_on_cooldown(Cooldowns.DUEL):
+        #     next_duel_at = await nyah_player.user_cooldown_expiration_time(Cooldowns.DUEL)
+        #     return await inter.response.send_message(
+        #         content=f"{inter.author.mention} you are on a duel cooldown now.\n"
+        #                 f"Try again {utils.get_dyn_time_relative(next_duel_at)} ({utils.get_dyn_time_short(next_duel_at)})",
+        #         ephemeral=True
+        #     )
+        
+        # Parse string input for waifu select
+        try:
+            index = int(waifu.split(".")[0])
+        except:
+            return await inter.response.send_message(
+                embed=ErrorEmbed(f"`{waifu}` is not a valid waifu!"),
+                ephemeral=True
+            )
+
+        users_claim = await self.bot.mongo.fetch_claim_by_index(inter.author, index)
+        if not users_claim:
+            return await inter.response.send_message(
+                embed=ErrorEmbed(f"`{waifu}` is not a valid character!"),
+                ephemeral=True
+            )
+        if not users_claim.is_married:
+            return await inter.response.send_message(
+                embed=ErrorEmbed(f"`{waifu}` is not a married character!"),
+                ephemeral=True
+            )
+        if opponent.id == inter.author.id:
+            return await inter.response.send_message(
+                embed=ErrorEmbed(f"You can't duel yourself!"),
+                ephemeral=True
+            )
+        
+        await inter.response.defer()
+        
+        # Make sure opponent has a married character
+        opps_harem_married_size = await self.bot.mongo.fetch_harem_married_count(opponent)
+        if opps_harem_married_size == 0:
+            return await inter.edit_original_response(
+                embed=ErrorEmbed(f"{opponent.mention} has no characters to duel!")
+            )
+
+        # Select both user's waifus
+        opps_married_harem = await self.bot.mongo.fetch_harem_married(opponent)
+        opps_claim = random.choice(opps_married_harem)
+        
+        # Create the duel VS image
+        duel_image_url = await self.bot.waifus_cog.create_waifu_vs_img(users_claim, opps_claim)
+        
+        # Create the embed for the duel
+        red_waifu = await self.bot.mongo.fetch_waifu(users_claim.slug)
+        blue_waifu = await self.bot.mongo.fetch_waifu(opps_claim.slug)
+        end_at = disnake.utils.utcnow() + datetime.timedelta(seconds=20)
+        duel_embed = disnake.Embed(
+            description=f"### {inter.author.mention} vs. {opponent.mention}\n"
+                        f"- Choose your fate by selecting __**three**__ moves below!\n"
+                        f"- Duel ends {utils.get_dyn_time_relative(end_at)}",
+            color=disnake.Color.yellow()
+        ) \
+        .set_image(url=duel_image_url) \
+        .add_field(
+            name=f"{red_waifu.name} ({users_claim.stats_str})",
+            value=users_claim.skill_str
+        ) \
+        .add_field(
+            name=f"{blue_waifu.name} ({opps_claim.stats_str})",
+            value=opps_claim.skill_str
+        )
+        
+        # Set timestamp in db
+        nyah_player.timestamp_last_duel = disnake.utils.utcnow()
+        await self.bot.mongo.update_nyah_player(nyah_player)
+
+        # Generate the results of the duel for the user to choose from
+        duel_choices = []
+        for _ in range(6): #TODO move magic number somewhere else
+            user_score = self.calculate_total_score(users_claim)
+            opps_score = self.calculate_total_score(opps_claim)
+            if user_score > opps_score:
+                duel_choices.append(True)
+            elif user_score < opps_score:
+                duel_choices.append(False)
+            else:
+                if random.random() < 0.5:
+                    duel_choices.append(True)
+                else:
+                    duel_choices.append(False)
+        self.bot.logger.debug(duel_choices)
+
+        # Send the message
+        message = await inter.edit_original_response(embed=duel_embed)
+        
+        # Create our view
+        duel_view = WaifuDuelView(
+            embed=duel_embed,
+            author=inter.author,
+            duel_choices=duel_choices
+        )
+        duel_view.message = message
+        
+        # Add the view to the message
+        await inter.edit_original_response(view=duel_view)
+        
+        # Give the user some time to make selections
+        await asyncio.sleep(20)
+        await duel_view.on_timeout()
+
+        # If user won
+        if duel_view.author_won:
+            result_embed = disnake.Embed(
+                title="Casual Win",
+                description=f"- {inter.author.mention}'s __**{red_waifu.name}**__ defeated {opponent.mention}'s __**{blue_waifu.name}**__\n",
+                color=disnake.Color.green()
+            )
+
+        # If user lost
+        else:
+            result_embed = disnake.Embed(
+                title="Casual Loss",
+                description=f"- {inter.author.mention}'s __**{red_waifu.name}**__ lost to {opponent.mention}'s __**{blue_waifu.name}**__\n",
+                color=disnake.Color.red()
+            )
+
+        # Edit message to add embed with the result of the match
+        return await inter.edit_original_response(embeds=[duel_embed, result_embed])
+
     ##*************************************************##
     ##********          AUTOCOMPLETES           *******##
     ##*************************************************##
 
-    @duelmywaifu.autocomplete("waifu")
+    @duel.autocomplete("waifu")
+    @casual.autocomplete("waifu")
     async def harem_autocomplete(
         self,
         inter: disnake.ApplicationCommandInteraction,
