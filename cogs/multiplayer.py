@@ -1,15 +1,16 @@
 import random
 import asyncio
 import datetime
+from typing import Tuple, List
 from collections import deque
 
 import disnake
 from disnake.ext import commands
 
 from bot import NyahBot
-from models import Waifu, Claim
+from models import Claim
 from helpers import SuccessEmbed, ErrorEmbed
-from utils import Cooldowns, MMR, Experience
+from utils import Cooldowns, Experience
 from views import WaifuDuelView
 import utils.utilities as utils
 
@@ -21,61 +22,52 @@ class Multiplayer(commands.Cog):
     ##********           ABSTRACTIONS           *******##
     ##*************************************************##
 
-    async def find_duel_opponent(self, guild: disnake.Guild, user: disnake.User | disnake.Member) -> disnake.User:
+    async def find_duel_opponent(self, guild: disnake.Guild, user: disnake.User | disnake.Member) -> Tuple[disnake.User, int]:
         # Select user directly above you in score, else select user below
         nyah_players = await self.bot.mongo.fetch_all_nyah_players()
         nyah_player = await self.bot.mongo.fetch_nyah_player(user)
 
         neighbors = []
-        user_score = nyah_player.score
+        user_rating = nyah_player.score
         total_players = len(nyah_players)
 
         # Determine the number of neighbors above and below the user based on total players
         num_neighbors = min(total_players - 1, 4)  # Max 4 neighbors (2 above, 2 below)
 
-        for i, opponent in enumerate(nyah_players):
-            if await self.bot.mongo.fetch_harem_married_count(opponent) == 0:
+        for i, neighbor in enumerate(nyah_players):
+            if await self.bot.mongo.fetch_harem_married_count(neighbor) == 0:
                 continue
-            if opponent.user_id != nyah_player.user_id:
-                score_diff = user_score - opponent.score
+            if neighbor.user_id != nyah_player.user_id:
                 if i < num_neighbors or (total_players - i) <= num_neighbors:
-                    neighbors.append(opponent)
+                    neighbors.append(neighbor)
 
+        # No suitable neighbors
         if not neighbors:
-            # No suitable neighbors found within the level and score differences
-            return self.bot.user
+            bot_rating = max(user_rating + random.randint(-int(user_rating * 0.03), int(user_rating * 0.10)), 0)
+            return self.bot.user, bot_rating
 
         # Calculate similarity scores for each neighbor
         similarity_scores = []
         for neighbor in neighbors:
-            score_diff = abs(user_score - neighbor.score) // 10
-            level_diff = abs(nyah_player.level - neighbor.level)
-            similarity_score = 1 / (1 + score_diff + level_diff)
+            score_diff = abs(user_rating - neighbor.score) // 10
+            similarity_score = 1 / (1 + score_diff)
             similarity_scores.append(similarity_score)
         
         # Check if there's a similarity score greater than 20%
-        if max(similarity_scores) < 0.20:
-            return self.bot.user
+        # if max(similarity_scores) < 0.20:
+        #     bot_rating = max(user_rating + random.randint(-int(user_rating * 0.03), int(user_rating * 0.10)), 0)
+        #     return self.bot.user, bot_rating
 
         # Select the opponent with the highest similarity score
         best_opponent = neighbors[similarity_scores.index(max(similarity_scores))]
         opponent = await guild.fetch_member(best_opponent.user_id)
-        return opponent
+        return opponent, best_opponent.score
 
-    def calculate_total_score(self, claim: Claim) -> float:
-        base_score = (claim.attack + claim.attack_mod) * 0.4 + \
-                     (claim.defense + claim.defense_mod) * 0.35 + \
-                     (claim.health + claim.health_mod) * 0.36 + \
-                     (claim.speed + claim.speed_mod) * 0.39 + \
-                     (claim.magic + claim.magic_mod) * 0.38
-        random_modifier = random.uniform(0.6, 1.2)
-        return base_score * random_modifier
-    
     async def generate_bot_claim(self, total_sp: int) -> Claim:
         waifu = await self.bot.mongo.fetch_random_waifu([{"$sort": {"popularity_rank": 1}}, {"$limit": 100}])
 
         skills = [0,0,0,0,0]
-        ten_percent = total_sp // 10
+        ten_percent = int(total_sp * 0.10)
         total_sp = max(total_sp + random.randint(-ten_percent, ten_percent), 0)
         for i, _ in enumerate(skills):
             max_sp = total_sp - sum(skills)
@@ -100,6 +92,39 @@ class Multiplayer(commands.Cog):
             speed_mod=0,
             magic_mod=0,
         )
+
+    def calculate_total_score(self, claim: Claim) -> float:
+        base_score = (claim.attack + claim.attack_mod) * 0.4 + \
+                     (claim.defense + claim.defense_mod) * 0.35 + \
+                     (claim.health + claim.health_mod) * 0.36 + \
+                     (claim.speed + claim.speed_mod) * 0.39 + \
+                     (claim.magic + claim.magic_mod) * 0.38
+        random_modifier = random.uniform(0.6, 1.2)
+        return base_score * random_modifier
+
+    def calculate_new_rating(
+        self,
+        player_a_rating: int,
+        player_b_rating: int,
+        player_a_won: bool,
+        k_factor = 32
+    ) -> int:
+        expected_probability_a = 1 / (1 + 10**((player_b_rating - player_a_rating) / 400))
+        expected_probability_b = 1 - expected_probability_a
+
+        self.bot.logger.debug(f"Expected probability of player A winning: {expected_probability_a}")
+
+        if player_a_won:
+            new_rating_a = player_a_rating + k_factor * (1 - expected_probability_a)
+            new_rating_b = player_b_rating - k_factor * (1 - expected_probability_a)
+        else:
+            new_rating_a = player_a_rating - k_factor * (1 - expected_probability_b)
+            new_rating_b = player_b_rating + k_factor * (1 - expected_probability_b)
+
+        rating_difference_a = new_rating_a - player_a_rating
+        rating_difference_b = new_rating_b - player_b_rating
+
+        return round(rating_difference_a)
 
     ##*************************************************##
     ##********              EVENTS              *******##
@@ -186,9 +211,11 @@ class Multiplayer(commands.Cog):
         await inter.response.defer()
         
         # Find opponent
-        opponent = await self.find_duel_opponent(inter.guild, inter.author)
+        opponent, opponent_rating = await self.find_duel_opponent(inter.guild, inter.author)
         if not opponent:
             return await inter.edit_original_response(content=f"Couldn't find an opponent!")
+        self.bot.logger.debug(f"Duel created: {nyah_player.score}.{inter.author.name}[{inter.author.id}] vs "
+                              f"{opponent_rating}.{opponent.name}[{opponent.id}]")
 
         # Select both user's waifus
         if opponent.id == self.bot.user.id:
@@ -258,29 +285,31 @@ class Multiplayer(commands.Cog):
         await asyncio.sleep(20)
         await duel_view.on_timeout()
 
-        # If user won, they attain MMR and gain XP
+        # Calculate and update user's MMR
+        rating_change = self.calculate_new_rating(nyah_player.score, opponent_rating, duel_view.author_won)
+        await nyah_player.add_user_mmr(rating_change)
+
+        # If user won
         if duel_view.author_won:
             result_embed = disnake.Embed(
                 title="Win",
                 description=f"- {inter.author.mention}'s __**{red_waifu.name}**__ defeated {opponent.mention}'s __**{blue_waifu.name}**__\n"
-                            f"- You gained `{MMR.DUEL_WIN.value}` MMR and earned `{Experience.DUEL_WIN.value}` XP",
+                            f"- You gained `{rating_change}` MMR and earned `{Experience.DUEL_WIN.value}` XP",
                 color=disnake.Color.green()
             )
-            self.bot.logger.debug(f"{inter.author.name} beat {opponent.name} & gained {MMR.DUEL_WIN.value} MMR")
-            await nyah_player.add_user_mmr(MMR.DUEL_WIN.value)
             await nyah_player.add_user_xp(Experience.DUEL_WIN.value, inter.author, inter.channel)
 
-        # If user lost, they lose MMR but gain XP
+        # If user lost
         else:
             result_embed = disnake.Embed(
                 title="Loss",
                 description=f"- {inter.author.mention}'s __**{red_waifu.name}**__ lost to {opponent.mention}'s __**{blue_waifu.name}**__\n"
-                            f"- You lost `{MMR.DUEL_LOSS.value}` MMR and earned `{Experience.DUEL_LOSS.value}` XP",
+                            f"- You lost `{rating_change}` MMR and earned `{Experience.DUEL_LOSS.value}` XP",
                 color=disnake.Color.red()
             )
-            self.bot.logger.debug(f"{inter.author.name} lost to {opponent.name} & lost {MMR.DUEL_LOSS.value} MMR")
-            await nyah_player.add_user_mmr(MMR.DUEL_LOSS.value)
             await nyah_player.add_user_xp(Experience.DUEL_LOSS.value, inter.author, inter.channel)
+
+        self.bot.logger.debug(f"{inter.author.name}'s new rating: {nyah_player.score}")
 
         # Edit message to add embed with the result of the match
         return await inter.edit_original_response(embeds=[duel_embed, result_embed])
@@ -294,7 +323,7 @@ class Multiplayer(commands.Cog):
         self,
         inter: disnake.ApplicationCommandInteraction,
         user_input: str
-    ) -> list:
+    ) -> List[str]:
         harem_married_size = await self.bot.mongo.fetch_harem_married_count(inter.author)
         if harem_married_size == 0:
             return [f"You have no waifus to duel!"]

@@ -33,10 +33,6 @@ class Emojis:
     STATE_COOLDOWN  = "❄️"
     STATE_UNMARRIED = "💔"
 
-class MMR(Enum):
-    DUEL_LOSS = -15 # gained from losing a duel
-    DUEL_WIN  = 15 # gained from winning a duel
-
 class Experience(Enum):
     BASE_LEVEL = 100 # base amount of XP per level
     CLAIM      = 5  # gained from claiming a waifu

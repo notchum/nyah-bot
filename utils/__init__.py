@@ -12,7 +12,6 @@
 # )
 from .constants import (
     Emojis,
-    MMR,
     Experience,
     Money,
     Cooldowns,
