@@ -506,12 +506,16 @@ class Waifus(commands.Cog):
                 mentionable=True,
                 color=disnake.Color.from_rgb(235, 69, 158)
             )
-        async for member in guild.fetch_members():
-            member_active = await self.bot.mongo.fetch_harem_count(member) > 0
-            if member_active and not member.get_role(ww_role.id):
+        
+        for member in guild.members:
+            if member.bot:
+                continue
+            
+            harem_size = await self.bot.mongo.fetch_harem_count(member)
+            if harem_size > 0 and not member.get_role(ww_role.id):
                 # Add user to role if not
                 await member.add_roles(ww_role)
-            elif not member_active and member.get_role(ww_role.id):
+            elif harem_size == 0 and member.get_role(ww_role.id):
                 # Remove user from role if
                 await member.remove_roles(ww_role)
 
@@ -535,14 +539,14 @@ class Waifus(commands.Cog):
     ##********              TASKS               *******##
     ##*************************************************##
 
-    @tasks.loop(time=datetime.time(hour=6, minute=0)) #!!! i think this is broken
+    @tasks.loop(time=datetime.time(hour=6, minute=0))
     async def waifu_war_creation(self):
         """ Creates a Waifu War scheduled event in a guild each day. """
         for guild in self.bot.guilds:
             waifu_war_event = await self.get_waifu_war_event(guild)
             if waifu_war_event:
                 return
-            nyah_config = await self.bot.mongo.fetch_nyah_config
+            nyah_config = await self.bot.mongo.fetch_nyah_config()
             start_time = datetime.datetime.combine(
                 date=disnake.utils.utcnow().date(),
                 time=datetime.time(nyah_config.waifu_war_hour, 0), #??? should this be hour in UTC? it is MDT now...
