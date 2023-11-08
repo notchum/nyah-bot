@@ -199,8 +199,21 @@ class WaifuMenuView(disnake.ui.View):
         harem = await mongo.fetch_harem(inter.author)
         await harem.reindex()
         
+        # create the sold embed
+        sold_embed = disnake.Embed(
+            description=f"Sold **__{waifu.name}__** for {claim.price_str}",
+            color=disnake.Color.gold()
+        )
+
         # remove the embed of the sold waifu
         del self.embeds[self.embed_index]
+        
+        # remove the view if there are no more embeds
+        if len(self.embeds) == 0:
+            return await inter.response.edit_message(
+                embeds=[current_embed, sold_embed],
+                view=None
+            )
         
         # fix page numbers
         for i in range(len(self.embeds)):
@@ -221,15 +234,6 @@ class WaifuMenuView(disnake.ui.View):
             self.next_page.disabled = True
         
         # update the message
-        sold_embed = disnake.Embed(
-            description=f"Sold **__{waifu.name}__** for {claim.price_str}",
-            color=disnake.Color.gold()
-        )
-        if len(self.embeds) == 0:
-            return await inter.response.edit_message(
-                embeds=[self.embeds[self.embed_index], sold_embed],
-                view=None
-            )
         await inter.response.edit_message(
             embeds=[self.embeds[self.embed_index], sold_embed],
             view=self
