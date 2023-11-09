@@ -125,11 +125,8 @@ class Shop(commands.Cog):
                 )
             
             player_item = utils.items.ItemFactory.create_item(inventory_item.type, nyah_player, inventory_item.amount)
-            await player_item.use()
-
-            return await inter.edit_original_response(
-                embed=SuccessEmbed(f"You used `{player_item.name}`!")
-            )
+            await player_item.use(inter)
+            return
         
         return await inter.edit_original_response(
             embed=ErrorEmbed(f"TODO: Error message\n{nyah_player.inventory}")

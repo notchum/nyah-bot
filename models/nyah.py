@@ -92,7 +92,7 @@ class NyahPlayer(Document):
     timestamp_last_claim: Optional[datetime] = None
     timestamp_last_minigame: Optional[datetime] = None
 
-    async def create_random_claim(self, waifu: Waifu) -> Claim:
+    async def generate_claim(self, waifu: Waifu) -> Claim:
         harem_size = await Claim.find_many(
             Claim.user_id == self.user_id,
             Claim.index != None,
@@ -178,13 +178,13 @@ class NyahPlayer(Document):
 
         await self.save()
     
-    async def remove_inventory_item(self, item: InventoryItem) -> None:
+    async def remove_inventory_item(self, item_type: int, item_amount: int) -> None:
         for i in self.inventory:
-            if i.type == item.type:
-                i.amount -= item.amount
+            if i.type == item_type:
+                i.amount -= item_amount
                 break
         else:
-            raise ValueError(f"User {self.user_id} does not have item {item.type} in their inventory")
+            raise ValueError(f"User {self.user_id} does not have item {item_type} in their inventory")
 
         await self.save()
 

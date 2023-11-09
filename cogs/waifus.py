@@ -1025,9 +1025,12 @@ class Waifus(commands.Cog):
         # Select the type of minigame this will be
         minigame = random.choice(["guess_name", "guess_bust", "guess_age", "smash_or_pass"])
 
+        # Get very popular characters for the minigame
+        mutual_aggregation = {"$match": {"popularity_rank": {"$lt": 600}}}
+
         match minigame:
             case "guess_name":
-                waifu = await self.bot.mongo.fetch_random_waifu([{"$sort": {"popularity_rank": 1}}, {"$limit": 500}])
+                waifu = await self.bot.mongo.fetch_random_waifu([mutual_aggregation])
                 answer = waifu.name
 
                 embed = disnake.Embed(
@@ -1041,7 +1044,7 @@ class Waifus(commands.Cog):
                 wrong_description = f"- No, this is **__{answer}__** :(\n"
         
             case "guess_bust":
-                waifu = await self.bot.mongo.fetch_random_waifu([{"$match": {"bust": {"$ne": None}}}, {"$sort": {"popularity_rank": 1}}, {"$limit": 500}])
+                waifu = await self.bot.mongo.fetch_random_waifu([{"$match": {"bust": {"$ne": None}}}, mutual_aggregation])
                 answer = waifu.bust
 
                 embed = disnake.Embed(
@@ -1055,7 +1058,7 @@ class Waifus(commands.Cog):
                 wrong_description = f"- Sorry, **__{waifu.name}'s__** tits are {answer} :(\n"
         
             case "guess_age":
-                waifu = await self.bot.mongo.fetch_random_waifu([{"$match": {"age": {"$ne": None}}}, {"$sort": {"popularity_rank": 1}}, {"$limit": 500}])
+                waifu = await self.bot.mongo.fetch_random_waifu([{"$match": {"age": {"$ne": None}}}, mutual_aggregation])
                 answer = waifu.age
 
                 embed = disnake.Embed(
@@ -1069,7 +1072,7 @@ class Waifus(commands.Cog):
                 wrong_description = f"- Sorry, **__{waifu.name}__** is {answer} :(\n"
 
             case "smash_or_pass":
-                waifu = await self.bot.mongo.fetch_random_waifu([{"$match": {"age": {"$gte": 18}}}, {"$sort": {"popularity_rank": 1}}, {"$limit": 500}])
+                waifu = await self.bot.mongo.fetch_random_waifu([{"$match": {"age": {"$gte": 18}}}, mutual_aggregation])
                 
                 femboy = False
                 if "femboy" in waifu.description.lower():
@@ -1254,7 +1257,7 @@ class Waifus(commands.Cog):
             new_waifu = await self.bot.mongo.fetch_random_waifu()
         
         # Create the claim
-        claim = await nyah_player.create_random_claim(new_waifu)
+        claim = await nyah_player.generate_claim(new_waifu)
         
         # Send the waifu
         waifu_embed = await self.bot.get_waifu_claim_embed(claim, inter.author)

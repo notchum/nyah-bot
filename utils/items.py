@@ -1,6 +1,8 @@
 from enum import Enum
 from typing import List
 
+import disnake
+
 from models import NyahPlayer
 from helpers import Mongo
 from utils import Emojis
@@ -101,8 +103,8 @@ class PlayerBaseItem():
     def inv_str(self):
         return f"{self.emoji} x{self.amount}"
 
-    async def use(self):
-        pass
+    async def use(self) -> None:
+        await self.owner.remove_inventory_item(self.type.value, 1)
 
 
 class PlayerChestItem(PlayerBaseItem):
@@ -115,12 +117,49 @@ class PlayerChestItem(PlayerBaseItem):
             amount=amount
         )
 
-    async def use(self):
-        # chest_size = 3
-        # result = await mongo.fetch_random_waifus(chest_size)
-        # for waifu in result:
-        #     self.owner.generate_claim(waifu)
-        pass
+    async def use(self, inter: disnake.ApplicationCommandInteraction) -> None:
+        chest_size = 3
+        result = await mongo.fetch_random_waifus(
+            number=chest_size,
+            aggregations=[
+                {"$match": {
+                    "popularity_rank": {"$lt": 3000}
+                }}
+            ]
+        )
+
+        description = ""
+        embeds = []
+        claims = []
+        for waifu in result:
+            claim = await self.owner.generate_claim(waifu)
+            await mongo.insert_claim(claim)
+            claims.append(claim)
+            
+            embed = disnake.Embed(
+                title="Chest",
+                color=disnake.Color.fuchsia(),
+                url="https://www.youtube.com/watch?v=Uj9SAdIGfdw"
+            )
+            embed.set_image(url=waifu.image_url)
+            embeds.append(embed)
+            
+            description += f"- __**{waifu.name}**__ ({claim.stats_str}) | {claim.price_str}\n"
+        
+        for embed in embeds:
+            embed.description = description
+
+        message = await inter.edit_original_response(embeds=embeds)
+
+        for claim in claims:
+            claim.guild_id=message.guild.id
+            claim.channel_id=message.channel.id
+            claim.message_id=message.id
+            claim.jump_url=message.jump_url
+            claim.timestamp=message.created_at
+            await mongo.update_claim(claim)
+        
+        await super().use()
 
 
 class PlayerTraitScrollItem(PlayerBaseItem):
@@ -133,8 +172,9 @@ class PlayerTraitScrollItem(PlayerBaseItem):
             amount=amount
         )
 
-    async def use(self):
-        pass
+    async def use(self, inter: disnake.ApplicationCommandInteraction):
+        return
+        await super().use()
 
 class PlayerShonenStoneItem(PlayerBaseItem):
     def __init__(self, owner: NyahPlayer, amount: int):
@@ -146,8 +186,9 @@ class PlayerShonenStoneItem(PlayerBaseItem):
             amount=amount
         )
 
-    async def use(self):
-        pass
+    async def use(self, inter: disnake.ApplicationCommandInteraction):
+        return
+        await super().use()
 
 
 class PlayerEnergyBoostItem(PlayerBaseItem):
@@ -160,8 +201,9 @@ class PlayerEnergyBoostItem(PlayerBaseItem):
             amount=amount
         )
 
-    async def use(self):
-        pass
+    async def use(self, inter: disnake.ApplicationCommandInteraction):
+        return
+        await super().use()
 
 
 class ItemFactory:

@@ -61,7 +61,16 @@ class WaifuNameGuessView(disnake.ui.View):
         num_buttons = 3
         num_buttons_per_row = 3
 
-        result = await mongo.fetch_random_waifus(num_buttons - 1, [{"$sort": {"popularity_rank": 1}}, {"$limit": 500}, {"$match": {"name": {"$nin": [answer, None]}}}])
+        result = await mongo.fetch_random_waifus(
+            number=num_buttons - 1,
+            aggregations=[
+                {"$match": {
+                    "name": {"$nin": [answer, None]},
+                    "popularity_rank": {"$lt": 600}
+                }}
+            ]
+        )
+        
         choices = [waifu.name for waifu in result]
         choices.append(answer)
         random.shuffle(choices)
@@ -98,7 +107,15 @@ class WaifuBustGuessView(disnake.ui.View):
         num_buttons = 3
         num_buttons_per_row = 3
 
-        result = await mongo.fetch_random_waifus(num_buttons - 1, [{"$sort": {"popularity_rank": 1}}, {"$limit": 500}, {"$match": {"bust": {"$nin": [answer, None]}}}])
+        result = await mongo.fetch_random_waifus(
+            number=num_buttons - 1,
+            aggregations=[
+                {"$match": {
+                    "bust": {"$nin": [answer, None]},
+                    "popularity_rank": {"$lt": 600}
+                }}
+            ]
+        )
         choices = [waifu.bust for waifu in result]
         choices.append(answer)
         random.shuffle(choices)
@@ -135,7 +152,15 @@ class WaifuAgeGuessView(disnake.ui.View):
         num_buttons = 3
         num_buttons_per_row = 3
 
-        result = await mongo.fetch_random_waifus(num_buttons - 1, [{"$sort": {"popularity_rank": 1}}, {"$limit": 500}, {"$match": {"age": {"$nin": [answer, None]}}}])
+        result = await mongo.fetch_random_waifus(
+            number=num_buttons - 1,
+            aggregations=[
+                {"$match": {
+                    "age": {"$nin": [answer, None]},
+                    "popularity_rank": {"$lt": 600}
+                }}
+            ]
+        )
         choices = [waifu.age for waifu in result]
         choices.append(answer)
         random.shuffle(choices)

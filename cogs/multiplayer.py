@@ -54,9 +54,9 @@ class Multiplayer(commands.Cog):
             similarity_scores.append(similarity_score)
         
         # Check if there's a similarity score greater than 20%
-        # if max(similarity_scores) < 0.20:
-        #     bot_rating = max(user_rating + random.randint(-int(user_rating * 0.03), int(user_rating * 0.10)), 0)
-        #     return self.bot.user, bot_rating
+        if max(similarity_scores) < 0.20:
+            bot_rating = max(user_rating + random.randint(-int(user_rating * 0.03), int(user_rating * 0.10)), 0)
+            return self.bot.user, bot_rating
 
         # Select the opponent with the highest similarity score
         best_opponent = neighbors[similarity_scores.index(max(similarity_scores))]
@@ -64,7 +64,7 @@ class Multiplayer(commands.Cog):
         return opponent, best_opponent.score
 
     async def generate_bot_claim(self, total_sp: int) -> Claim:
-        waifu = await self.bot.mongo.fetch_random_waifu([{"$sort": {"popularity_rank": 1}}, {"$limit": 100}])
+        waifu = await self.bot.mongo.fetch_random_waifu([{"$match": {"popularity_rank": {"$lt": 200}}}])
 
         skills = [0,0,0,0,0]
         ten_percent = int(total_sp * 0.10)
