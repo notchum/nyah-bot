@@ -1,3 +1,4 @@
+import random
 import logging
 from datetime import datetime, timedelta
 from typing import Optional, List
@@ -134,7 +135,28 @@ class NyahPlayer(Document):
         await claim.roll_traits()
         await claim.calculate_price()
         
-        return claim        
+        return claim
+    
+    async def check_wishlist(self) -> str | None:
+        rand_num = random.random()
+        cumulative_chance = 0
+
+        # Iterate through the slugs in the wishlist to determine the selected slug
+        for slug in set(self.wishlist):
+            # Calculate the chance for the current slug
+            slug_chance = 0.05 * self.wishlist.count(slug)
+            
+            # Check if the random number falls within the chance range for this slug
+            if rand_num >= cumulative_chance and rand_num < cumulative_chance + slug_chance:
+                # Slug selected, remove it from the wishlist and return it
+                self.wishlist = [item for item in self.wishlist if item != slug]
+                return slug
+            
+            # Update the cumulative chance
+            cumulative_chance += slug_chance
+
+        # If no slug was selected
+        return None
 
     async def add_user_xp(self, xp: int, user: disnake.Member | disnake.User = None, channel: disnake.TextChannel = None) -> None:
         self.xp += xp

@@ -1240,19 +1240,19 @@ class Waifus(commands.Cog):
             )
         
         await inter.response.defer()
+
+        # Check the user's wishlist to see if they get lucky
+        wishlist_slug = await nyah_player.check_wishlist()
+        if wishlist_slug:
+            new_waifu = await self.bot.mongo.fetch_waifu(wishlist_slug)
+            #!!! REMOVE ONCE RANKS ARE FIXED
+            if not new_waifu.popularity_rank:
+                new_waifu.popularity_rank = random.randint(1000, 5000)
+                new_waifu.like_rank = random.randint(1000, 5000)
+                new_waifu.trash_rank = random.randint(1000, 5000)
+            #!!! REMOVE ONCE RANKS ARE FIXED
         
-        # Get a random waifu from the db with wishlist chance
-        if nyah_player.wishlist:
-            wishlist_slug = random.choice(nyah_player.wishlist)
-            wishlist_chance = 0.05 * nyah_player.wishlist.count(wishlist_slug)
-            if random.random() < wishlist_chance:
-                new_waifu = await self.bot.mongo.fetch_waifu(wishlist_slug)
-                new_waifu.popularity_rank = random.randint(1000, 5000) #!!! REMOVE
-                new_waifu.like_rank = random.randint(1000, 5000) #!!! REMOVE
-                new_waifu.trash_rank = random.randint(1000, 5000) #!!! REMOVE
-                nyah_player.wishlist = [item for item in nyah_player.wishlist if item != wishlist_slug]
-            else:
-                new_waifu = await self.bot.mongo.fetch_random_waifu()
+        # Get a fully random waifu from the db
         else:
             new_waifu = await self.bot.mongo.fetch_random_waifu()
         
