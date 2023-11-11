@@ -50,53 +50,22 @@ class Fun(commands.Cog):
         )
     
     @commands.slash_command()
-    async def slots(
-        self,
-        inter: disnake.ApplicationCommandInteraction,
-        bet: int = commands.Param(gt=0)
-    ):
+    async def slots(self, inter: disnake.ApplicationCommandInteraction):
         """ Play a game of slots. """
         nyah_player = await self.bot.mongo.fetch_nyah_player(inter.author)
+        machine = SlotMachine(nyah_player)
 
-        if bet > nyah_player.money:
+        if nyah_player.money < machine.bet:
             return await inter.response.send_message(
-                embed=ErrorEmbed("You don't have enough nyahcoins!"),
+                embed=ErrorEmbed(f"You don't have enough money to play slots! You need at least `{machine.min_bet:,}` {Emojis.COINS}"),
                 ephemeral=True
             )
         
         await inter.response.defer()
 
-        machine = SlotMachine()
-
         slots_view = SlotsView(machine, inter.author)
-        message = await inter.edit_original_response(embed=machine.embeds[0], view=slots_view)
+        message = await inter.edit_original_response(embed=machine.current_embed, view=slots_view)
         slots_view.message = message
-
-        await slots_view.wait()
-        
-        await nyah_player.add_user_money(-bet)
-
-        for embed in machine.embeds:
-            await inter.edit_original_response(embed=embed)
-            await asyncio.sleep(0.5)
-        
-        payout = machine.calculate_payout(bet)
-        if payout > 0:
-            await nyah_player.add_user_money(payout)
-            
-            result_embed = disnake.Embed(
-                title="You won!",
-                description=f"You won `{payout:,}` {Emojis.COINS}!",
-                color=disnake.Color.green()
-            )
-        else:
-            result_embed = disnake.Embed(
-                title="You lost!",
-                description=f"You lost `{bet:,}` {Emojis.COINS}!",
-                color=disnake.Color.red()
-            )
-
-        await inter.edit_original_response(embeds=[machine.embeds[-1], result_embed])
 
     ##*************************************************##
     ##********          AUTOCOMPLETES           *******##
