@@ -98,6 +98,10 @@ class WaifuMenuView(disnake.ui.View):
     async def title(self, button: disnake.ui.Button, interaction: disnake.MessageInteraction) -> None:
         pass
     
+    @disnake.ui.button(emoji="✖️", style=disnake.ButtonStyle.red)
+    async def exit(self, button: disnake.ui.Button, inter: disnake.MessageInteraction) -> None:
+        await inter.response.edit_message(view=None)
+
     @disnake.ui.button(row=1)
     async def marry_or_divorce(self, button: disnake.ui.Button, interaction: disnake.MessageInteraction) -> None:
         current_embed = self.embeds[self.embed_index]
