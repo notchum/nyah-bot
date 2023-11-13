@@ -100,6 +100,7 @@ class WaifuMenuView(disnake.ui.View):
     
     @disnake.ui.button(emoji="✖️", style=disnake.ButtonStyle.red)
     async def exit(self, button: disnake.ui.Button, inter: disnake.MessageInteraction) -> None:
+        self.stop()
         await inter.response.edit_message(view=None)
 
     @disnake.ui.button(row=1)
