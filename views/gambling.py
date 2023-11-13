@@ -12,27 +12,26 @@ class Symbol:
     BAR    = "<:Slot_Bar:1172053260736155648>"
     BELL   = "<:Slot_Bell:1172053214561050625>"
     BLANK  = "<:Slot_Blank:1172366193324204094>"
-    # CHERRY = "<:Slot_Cherry:1172366208742461440>"
-    CHERRY = "🍒"
-    # GRAPE  = "<:Slot_Grapes:1172366211691065384>"
-    GRAPE  = "🍇"
-    # LEMON  = "<:Slot_Lemon:1172366210306949163>"
-    LEMON = "🍋"
-    # ORANGE = "<:Slot_Orange:1172366212513148980>"
-    ORANGE = "🍊"
+    CHERRY = "<:Slot_Cherry:1172366208742461440>"
+    GRAPE  = "<:Slot_Grapes:1172366211691065384>"
+    LEMON  = "<:Slot_Lemon:1172366210306949163>"
+    ORANGE = "<:Slot_Orange:1172366212513148980>"
 
-    PINEAPPLE = "🍍"
-    STRAWBERRY = "🍓"
-    WATERMELON = "🍉"
-    BANANA = "🍌"
+    # CHERRY = "🍒"
+    # GRAPE  = "🍇"
+    # LEMON = "🍋"
+    # ORANGE = "🍊"
+    # PINEAPPLE = "🍍"
+    # STRAWBERRY = "🍓"
+    # WATERMELON = "🍉"
+    # BANANA = "🍌"
 
 
 class SlotMachine:
     class Reel:
-        def __init__(self, length: int = 14):
+        def __init__(self, length: int = 10):
             symbol_list = [Symbol.SEVEN, Symbol.BAR, Symbol.BELL, Symbol.ORANGE,
-                           Symbol.CHERRY, Symbol.GRAPE, Symbol.LEMON, Symbol.PINEAPPLE,
-                           Symbol.STRAWBERRY, Symbol.WATERMELON, Symbol.BANANA]
+                           Symbol.CHERRY, Symbol.GRAPE, Symbol.LEMON]
 
             # Ensure at least 1 orange, 1 cherry, and 1 BAR
             self.symbols = [Symbol.ORANGE]
@@ -203,6 +202,7 @@ class SlotsView(disnake.ui.View):
             await asyncio.sleep(0.2)
 
         payout = self.machine.calculate_payout(self.machine.bet)
+        self.machine.last_payout = payout
         if payout > 0:
             await self.machine.player.add_user_money(payout)
         
@@ -211,11 +211,20 @@ class SlotsView(disnake.ui.View):
             return
         
         for child in self.children:
-            child.disabled = False
-        self.decrease_bet.disabled = True
-        
-        self.machine.last_payout = payout
-        self.machine.bet = self.machine.min_bet
+                child.disabled = False
+
+        if self.machine.player.money < self.machine.bet:
+            self.machine.bet = self.machine.min_bet
+            self.decrease_bet.disabled = True
+        elif self.machine.bet == self.machine.max_bet:
+            self.increase_bet.disabled = True
+            self.decrease_bet.disabled = False
+        elif self.machine.bet == self.machine.min_bet:
+            self.decrease_bet.disabled = True
+            self.increase_bet.disabled = False
+        else:
+            self.increase_bet.disabled = False
+            self.decrease_bet.disabled = False
 
         await interaction.edit_original_response(embed=self.machine.current_embed, view=self)
 
