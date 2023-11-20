@@ -49,6 +49,7 @@ class NyahConfig(Document):
     
     timestamp_last_season_end: datetime
 
+
 class NyahGuild(Document):
     class Settings:
         name = "guilds"
@@ -88,6 +89,10 @@ class NyahPlayer(Document):
     
     wishlist: List[str]
     inventory: List[InventoryItem]
+
+    last_command_name: Optional[str] = None
+    last_command_channel_id: Optional[int] = None
+    last_command_message_id: Optional[int] = None
     
     timestamp_last_duel: Optional[datetime] = None
     timestamp_last_claim: Optional[datetime] = None
