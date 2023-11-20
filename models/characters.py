@@ -116,12 +116,13 @@ class Claim(Document):
         NyahPlayer = import_module("models").NyahPlayer
         player = await NyahPlayer.find_one(NyahPlayer.user_id == self.user_id) # using query instead of fetch_nyah_player() to avoid circular import
         
-        random_stat = lambda l: random.randint(0, max(random.randint(1, 10), min(100, l * 10)))
-        self.attack = random_stat(player.level)
-        self.defense = random_stat(player.level)
-        self.health = random_stat(player.level)
-        self.speed = random_stat(player.level)
-        self.magic = random_stat(player.level)
+        # random_stat = lambda l: random.randint(0, max(random.randint(1, 10), min(100, l * 10)))
+        random_stat = lambda: random.randint(0, 100)
+        self.attack = random_stat()
+        self.defense = random_stat()
+        self.health = random_stat()
+        self.speed = random_stat()
+        self.magic = random_stat()
     
     async def roll_traits(self) -> None:
         NyahPlayer = import_module("models").NyahPlayer

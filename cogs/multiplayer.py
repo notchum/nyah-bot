@@ -396,9 +396,9 @@ class Multiplayer(commands.Cog):
             value=opps_claim.skill_str
         )
         
-        # Set timestamp in db
-        nyah_player.timestamp_last_duel = disnake.utils.utcnow()
-        await self.bot.mongo.update_nyah_player(nyah_player)
+        # Set timestamp in db TODO
+        # nyah_player.timestamp_last_duel = disnake.utils.utcnow()
+        # await self.bot.mongo.update_nyah_player(nyah_player)
 
         # Generate the results of the duel for the user to choose from
         duel_choices = []
