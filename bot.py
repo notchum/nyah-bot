@@ -9,6 +9,7 @@ import disnake
 from disnake import Activity, ActivityType
 from disnake.ext import commands
 from beanie import init_beanie
+from beanie.operators import Set
 from motor.motor_asyncio import AsyncIOMotorClient
 
 from helpers import Mongo, API
@@ -49,7 +50,8 @@ class NyahBot(commands.InteractionBot):
         self.config: Config = kwargs.pop("config", None)
         self.logger: logging.Logger = kwargs.pop("logger", None)
         super().__init__(*args, **kwargs)
-        self.after_slash_command_invoke(self.foobar)
+        self.before_slash_command_invoke(self.before_invoke)
+        self.after_slash_command_invoke(self.after_invoke)
         self.activity = Activity(type=ActivityType.watching, name=f"v{VERSION}")
     
     async def setup_hook(self):
@@ -112,47 +114,44 @@ class NyahBot(commands.InteractionBot):
             except Exception as e:
                 self.logger.error(f"Error deleting {file}: {e}")
         os.rmdir(self.cache_dir)
-
-    async def foobar(self, inter: disnake.ApplicationCommandInteraction):
-        if inter.data.name == "skillmywaifu":
-            message = await inter.original_response()
-            await self.client["_nyah"].locks.find_one_and_update(
-                {"_id": inter.author.id},
-                {"$set": {
-                    "last_command_name": inter.data.name,
-                    "last_command_channel_id": inter.channel.id,
-                    "last_command_message_id": message.id
-                    }
-                },
-                upsert=True
-            )
-        else:
-            result = await self.client["_nyah"].locks.find_one(
-                {"_id": inter.author.id}
-            )
-            channel_id = result["last_command_channel_id"]
-            message_id = result["last_command_message_id"]
-            print(channel_id, message_id)
-            
-            channel = self.get_channel(channel_id)
-            message = await channel.fetch_message(message_id)
-            
-            if message.components:
-                for component in message.components:
-                    if isinstance(component, (disnake.Button, disnake.BaseSelectMenu)):
-                        component.disabled = True
-                    elif isinstance(component, disnake.ActionRow):
-                        for child in component.children:
-                            if isinstance(child, (disnake.Button, disnake.BaseSelectMenu)):
-                                child.disabled = True
-                    
-            # p_message = channel.get_partial_message(message_id)
-            # await p_message.edit(view=None)
-            
-            # p_channel = self.get_partial_messageable(channel_id, type=disnake.TextChannel)
-            # p_message = p_channel.get_partial_message(message_id)
-            # print(p_message)
+    
+    async def before_invoke(self, inter: disnake.ApplicationCommandInteraction):
+        # get the player
+        nyah_player = await NyahPlayer.find_one(
+            NyahPlayer.user_id == inter.author.id
+        )
+        channel_id = nyah_player.last_command_channel_id
+        message_id = nyah_player.last_command_message_id
+        if not channel_id or not message_id:
+            return
         
+        # grab the channel
+        # p_channel = self.get_partial_messageable(channel_id, type=disnake.TextChannel)
+        channel = self.get_channel(channel_id)
+        if not channel:
+            channel = await self.fetch_channel(channel_id)
+        
+        # attempt to grab the message partial
+        p_message = channel.get_partial_message(message_id)
+        if p_message:
+            return await p_message.edit(view=None)
+        
+        # if that fails, fetch the message
+        message = await channel.fetch_message(message_id)
+        if message:
+            return await message.edit(view=None)
+
+    async def after_invoke(self, inter: disnake.ApplicationCommandInteraction):
+        message = await inter.original_response()
+        await NyahPlayer.find_one(
+            NyahPlayer.user_id == inter.author.id
+        ).update(
+            Set({
+                NyahPlayer.last_command_name: inter.data.name,
+                NyahPlayer.last_command_channel_id: inter.channel.id,
+                NyahPlayer.last_command_message_id: message.id
+            })
+        )
 
     async def get_waifu_base_embed(self, waifu: Waifu) -> disnake.Embed:
         """ Get a bare-bones embed for a waifu.
