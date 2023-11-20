@@ -601,7 +601,7 @@ class Waifus(commands.Cog):
             war = Event(
                 event_id=waifu_war_event.id,
                 guild_id=guild.id,
-                state=disnake.GuildScheduledEventStatus.active,
+                state=disnake.GuildScheduledEventStatus.active.value,
                 timestamp_start=disnake.utils.utcnow(),
                 timestamp_end=None
             )
