@@ -27,7 +27,7 @@ from models import (
     Event,
 )
 
-VERSION = "0.8.1"
+VERSION = "0.8.3"
 
 Config = namedtuple(
     "Config",
@@ -116,10 +116,10 @@ class NyahBot(commands.InteractionBot):
         os.rmdir(self.cache_dir)
     
     async def before_invoke(self, inter: disnake.ApplicationCommandInteraction):
-        # get the player
         nyah_player = await NyahPlayer.find_one(
             NyahPlayer.user_id == inter.author.id
         )
+        
         channel_id = nyah_player.last_command_channel_id
         message_id = nyah_player.last_command_message_id
         if not channel_id or not message_id:
@@ -142,16 +142,21 @@ class NyahBot(commands.InteractionBot):
             return await message.edit(view=None)
 
     async def after_invoke(self, inter: disnake.ApplicationCommandInteraction):
-        message = await inter.original_response()
-        await NyahPlayer.find_one(
+        nyah_player = await NyahPlayer.find_one(
             NyahPlayer.user_id == inter.author.id
-        ).update(
-            Set({
-                NyahPlayer.last_command_name: inter.data.name,
-                NyahPlayer.last_command_channel_id: inter.channel.id,
-                NyahPlayer.last_command_message_id: message.id
-            })
         )
+        
+        message = await inter.original_response()
+        if not message.components or message.flags.ephemeral:
+            nyah_player.last_command_name = None
+            nyah_player.last_command_channel_id = None
+            nyah_player.last_command_message_id = None
+        else:
+            nyah_player.last_command_name = inter.data.name
+            nyah_player.last_command_channel_id = inter.channel.id
+            nyah_player.last_command_message_id = message.id
+        
+        await nyah_player.save()
 
     async def get_waifu_base_embed(self, waifu: Waifu) -> disnake.Embed:
         """ Get a bare-bones embed for a waifu.
