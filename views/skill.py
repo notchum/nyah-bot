@@ -44,6 +44,7 @@ class WaifuSkillView(disnake.ui.View):
             await nyah_player.add_user_money(-Money.SKILL_COST.value)
 
             await self.claim.roll_skills()
+            await self.claim.apply_trait_modifiers()
             await mongo.update_claim(self.claim)
 
             waifu = await mongo.fetch_waifu(self.claim.slug)

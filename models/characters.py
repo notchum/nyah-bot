@@ -113,10 +113,6 @@ class Claim(Document):
         self.state = WaifuState.COOLDOWN.value
     
     async def roll_skills(self) -> None:
-        NyahPlayer = import_module("models").NyahPlayer
-        player = await NyahPlayer.find_one(NyahPlayer.user_id == self.user_id) # using query instead of fetch_nyah_player() to avoid circular import
-        
-        # random_stat = lambda l: random.randint(0, max(random.randint(1, 10), min(100, l * 10)))
         random_stat = lambda: random.randint(0, 100)
         self.attack = random_stat()
         self.defense = random_stat()
@@ -143,6 +139,12 @@ class Claim(Document):
         if self.trait_uncommon: trait_uncommon.apply_modifiers(self)
         if self.trait_rare: trait_rare.apply_modifiers(self)
         if self.trait_legendary: trait_legendary.apply_modifiers(self)
+    
+    async def apply_trait_modifiers(self) -> None:
+        if self.trait_common: traits.get_trait(traits.TraitTypes.COMMON, self.trait_common).apply_modifiers(self)
+        if self.trait_uncommon: traits.get_trait(traits.TraitTypes.UNCOMMON, self.trait_uncommon).apply_modifiers(self)
+        if self.trait_rare: traits.get_trait(traits.TraitTypes.RARE, self.trait_rare).apply_modifiers(self)
+        if self.trait_legendary: traits.get_trait(traits.TraitTypes.LEGENDARY, self.trait_legendary).apply_modifiers(self)
     
     async def calculate_price(self) -> None:
         # Normalize each ranking, adding some various permutations to a list
