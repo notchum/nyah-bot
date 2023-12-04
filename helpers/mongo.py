@@ -214,6 +214,8 @@ class Mongo():
             Claim.slug == slug
         ).to_list()
 
+    async def update_all_claims(self, field: str, value: Any) -> None:
+        await Claim.find_all().update(Set({field: value}))
 
 
     async def fetch_harem_count(self, user: disnake.Member | disnake.User) -> int:

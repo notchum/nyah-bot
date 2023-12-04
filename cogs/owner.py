@@ -209,6 +209,28 @@ class Owner(commands.Cog):
 
         return await inter.edit_original_response(embed=embed)
 
+    @owner.sub_command()
+    async def end_season(self, inter: disnake.ApplicationCommandInteraction):
+        """ End the current season. """
+        await inter.response.defer(ephemeral=True)
+
+        await self.bot.mongo.update_all_nyah_players("score", 100)
+        await self.bot.mongo.update_all_nyah_players("level", 0)
+        await self.bot.mongo.update_all_nyah_players("xp", 0)
+        await self.bot.mongo.update_all_nyah_players("money", 0)
+        await self.bot.mongo.update_all_nyah_players("timestamp_last_claim", None)
+        await self.bot.mongo.update_all_nyah_players("timestamp_last_duel", None)
+        await self.bot.mongo.update_all_nyah_players("timestamp_last_minigame", None)
+
+        await self.bot.mongo.update_all_claims("state", WaifuState.INACTIVE.value)
+        await self.bot.mongo.update_all_claims("index", None)
+
+        nyah_config = await self.bot.mongo.fetch_nyah_config()
+        nyah_config.timestamp_last_season_end = disnake.utils.utcnow()
+        await self.bot.mongo.update_nyah_config(nyah_config)
+
+        await inter.edit_original_response(embed=SuccessEmbed("Season ended!"))
+
     ##*************************************************##
     ##********          AUTOCOMPLETES           *******##
     ##*************************************************##
