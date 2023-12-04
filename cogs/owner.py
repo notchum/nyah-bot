@@ -123,7 +123,7 @@ class Owner(commands.Cog):
         )
 
     @owner.sub_command()
-    async def set_user_attributes(
+    async def update_player(
         self,
         inter: disnake.ApplicationCommandInteraction,
         user: disnake.User,
@@ -154,6 +154,38 @@ class Owner(commands.Cog):
 
         return await inter.response.send_message(
             embed=SuccessEmbed("Updated user attributes!"),
+            ephemeral=True
+        )
+
+    @owner.sub_command()
+    async def update_config(
+        self,
+        inter: disnake.ApplicationCommandInteraction,
+        waifu_war_hour: int = None,
+        waifu_max_marriages: int = None,
+        interval_claim_mins: int = None,
+        interval_duel_mins: int = None,
+        interval_minigame_mins: int = None,
+        interval_season_days: int = None
+    ):
+        """ Set attributes for the config. """
+        if waifu_war_hour == None and waifu_max_marriages == None and interval_claim_mins == None and interval_duel_mins == None and interval_minigame_mins == None and interval_season_days == None:
+            return await inter.response.send_message(
+                embed=ErrorEmbed("No attributes provided!"),
+                ephemeral=True
+            )
+
+        nyah_config = await self.bot.mongo.fetch_nyah_config()
+        if waifu_war_hour != None: nyah_config.waifu_war_hour = waifu_war_hour
+        if waifu_max_marriages != None: nyah_config.waifu_max_marriages = waifu_max_marriages
+        if interval_claim_mins != None: nyah_config.interval_claim_mins = interval_claim_mins
+        if interval_duel_mins != None: nyah_config.interval_duel_mins = interval_duel_mins
+        if interval_minigame_mins != None: nyah_config.interval_minigame_mins = interval_minigame_mins
+        if interval_season_days != None: nyah_config.interval_season_days = interval_season_days
+        await self.bot.mongo.update_nyah_config(nyah_config)
+
+        return await inter.response.send_message(
+            embed=SuccessEmbed("Updated config attributes!"),
             ephemeral=True
         )
 
