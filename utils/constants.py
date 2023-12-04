@@ -53,6 +53,7 @@ class Money(Enum):
 
     SKILL_COST    = 1000 # cost to reroll a waifu's skills
     WISHLIST_COST = 5000 # cost to add a waifu to wishlist
+    DIVORCE_COST  = 5000 # cost to divorce a waifu
 
     WAIFU_PRICE   = 100
 

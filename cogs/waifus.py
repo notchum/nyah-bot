@@ -1451,12 +1451,104 @@ class Waifus(commands.Cog):
         skill_view.message = message
         return
 
+    @commands.slash_command()
+    async def marrymywaifu(
+        self,
+        inter: disnake.ApplicationCommandInteraction,
+        waifu: str
+    ):
+        """ Marry your waifu!
+
+            Parameters
+            ----------
+            waifu: `str`
+                The waifu to marry.
+        """
+        # Parse string input for waifu select
+        try:
+            index = int(waifu.split(".")[0])
+        except:
+            return await inter.response.send_message(
+                embed=ErrorEmbed(f"`{waifu}` is not a valid waifu!"),
+                ephemeral=True
+            )
+
+        harem_size = await self.bot.mongo.fetch_harem_count(inter.author)
+        if index > harem_size or index <= 0:
+            return await inter.response.send_message(
+                embed=ErrorEmbed(f"`{waifu}` does not have a valid index!"),
+                ephemeral=True
+            )
+        
+        await inter.response.defer()
+
+        # Get claim from db
+        claim = await self.bot.mongo.fetch_claim_by_index(inter.author, index)
+
+        # Get waifu
+        waifu = await self.bot.mongo.fetch_waifu(claim.slug)
+
+        # Send message with waifu and new skill points
+        embed = await self.bot.get_waifu_harem_embed(claim)
+        embed.description = f"Marry **__{waifu.name}__**?"
+        marry_view = WaifuMarryView(claim, inter.author)
+        message = await inter.edit_original_response(embed=embed, view=marry_view)
+        marry_view.message = message
+        return
+
+    @commands.slash_command()
+    async def divorcemywaifu(
+        self,
+        inter: disnake.ApplicationCommandInteraction,
+        waifu: str
+    ):
+        """ Divorce your waifu!
+
+            Parameters
+            ----------
+            waifu: `str`
+                The waifu to divorce.
+        """
+        # Parse string input for waifu select
+        try:
+            index = int(waifu.split(".")[0])
+        except:
+            return await inter.response.send_message(
+                embed=ErrorEmbed(f"`{waifu}` is not a valid waifu!"),
+                ephemeral=True
+            )
+
+        harem_size = await self.bot.mongo.fetch_harem_count(inter.author)
+        if index > harem_size or index <= 0:
+            return await inter.response.send_message(
+                embed=ErrorEmbed(f"`{waifu}` does not have a valid index!"),
+                ephemeral=True
+            )
+        
+        await inter.response.defer()
+
+        # Get claim from db
+        claim = await self.bot.mongo.fetch_claim_by_index(inter.author, index)
+
+        # Get waifu
+        waifu = await self.bot.mongo.fetch_waifu(claim.slug)
+
+        # Send message with waifu and new skill points
+        embed = await self.bot.get_waifu_harem_embed(claim)
+        embed.description = f"Divorce **__{waifu.name}__** for `{Money.DIVORCE_COST.value:,}` {Emojis.COINS}?"
+        divorce_view = WaifuDivorceView(claim, inter.author)
+        message = await inter.edit_original_response(embed=embed, view=divorce_view)
+        divorce_view.message = message
+        return
+
     ##*************************************************##
     ##********          AUTOCOMPLETES           *******##
     ##*************************************************##
 
     @skillmywaifu.autocomplete("waifu")
     @managemywaifus.autocomplete("waifu")
+    @marrymywaifu.autocomplete("waifu")
+    @divorcemywaifu.autocomplete("waifu")
     async def harem_autocomplete(
         self,
         inter: disnake.ApplicationCommandInteraction,

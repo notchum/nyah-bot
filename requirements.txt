@@ -1,5 +1,4 @@
 disnake
-rethinkdb
 aiofiles
 aiohttp_client_cache
 python-dotenv
