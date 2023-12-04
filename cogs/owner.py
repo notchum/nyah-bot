@@ -218,6 +218,7 @@ class Owner(commands.Cog):
         await self.bot.mongo.update_all_nyah_players("level", 0)
         await self.bot.mongo.update_all_nyah_players("xp", 0)
         await self.bot.mongo.update_all_nyah_players("money", 0)
+        await self.bot.mongo.update_all_nyah_players("wishlist", [])
         await self.bot.mongo.update_all_nyah_players("timestamp_last_claim", None)
         await self.bot.mongo.update_all_nyah_players("timestamp_last_duel", None)
         await self.bot.mongo.update_all_nyah_players("timestamp_last_minigame", None)

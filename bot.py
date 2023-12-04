@@ -27,7 +27,7 @@ from models import (
     Event,
 )
 
-VERSION = "0.8.4"
+VERSION = "0.8.5"
 
 Config = namedtuple(
     "Config",
