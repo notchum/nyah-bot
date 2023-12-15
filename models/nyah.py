@@ -182,8 +182,8 @@ class NyahPlayer(Document):
         await self.save()
 
     async def add_user_mmr(self, mmr: int) -> None:
-        if self.score + mmr <= 0:
-            self.score = 0
+        if self.score + mmr <= 100:
+            self.score = 100
         else:
             self.score += mmr
         await self.save()

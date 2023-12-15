@@ -23,7 +23,6 @@ class Multiplayer(commands.Cog):
     ##*************************************************##
 
     async def find_duel_opponent(self, guild: disnake.Guild, user: disnake.User | disnake.Member) -> Tuple[disnake.User, int]:
-        # Select user directly above you in score, else select user below
         nyah_players = await self.bot.mongo.fetch_all_nyah_players()
         nyah_player = await self.bot.mongo.fetch_nyah_player(user)
 
@@ -35,7 +34,7 @@ class Multiplayer(commands.Cog):
         num_neighbors = min(total_players - 1, 4)  # Max 4 neighbors (2 above, 2 below)
 
         for i, neighbor in enumerate(nyah_players):
-            if await self.bot.mongo.fetch_harem_married_count(neighbor) == 0:
+            if await self.bot.mongo.fetch_harem_married_count(neighbor) != 3:
                 continue
             if neighbor.user_id != nyah_player.user_id:
                 if i < num_neighbors or (total_players - i) <= num_neighbors:
@@ -59,7 +58,10 @@ class Multiplayer(commands.Cog):
         #     return self.bot.user, bot_rating
 
         # Select the opponent with the highest similarity score
-        best_opponent = neighbors[similarity_scores.index(max(similarity_scores))]
+        # best_opponent = neighbors[similarity_scores.index(max(similarity_scores))]
+            
+        # Select a random opponent
+        best_opponent = random.choice(neighbors)
         opponent = await guild.fetch_member(best_opponent.user_id)
         return opponent, best_opponent.score
 
@@ -169,12 +171,8 @@ class Multiplayer(commands.Cog):
         return await inter.response.send_message(embed=embed)
 
     @commands.slash_command()
-    async def duel(
-        self, 
-        inter: disnake.ApplicationCommandInteraction,
-        waifu: str
-    ):
-        """ Use your best waifu to duel other user's waifus! """
+    async def duel(self, inter: disnake.ApplicationCommandInteraction):
+        """ Use your waifus to duel other user's waifus! """
         # Gather user's db info
         nyah_player = await self.bot.mongo.fetch_nyah_player(inter.author)
 
@@ -187,28 +185,21 @@ class Multiplayer(commands.Cog):
                 ephemeral=True
             )
         
-        # Parse string input for waifu select
-        try:
-            index = int(waifu.split(".")[0])
-        except:
+        # Gather the config
+        nyah_config = await self.bot.mongo.fetch_nyah_config()
+        
+        # Make sure user has a full harem
+        harem_married_size = await self.bot.mongo.fetch_harem_married_count(inter.author)
+        if harem_married_size != nyah_config.waifu_max_marriages:
             return await inter.response.send_message(
-                embed=ErrorEmbed(f"`{waifu}` is not a valid waifu!"),
-                ephemeral=True
+                embed=ErrorEmbed(f"You need `{nyah_config.waifu_max_marriages}` married waifus to duel!")
             )
-
-        users_claim = await self.bot.mongo.fetch_claim_by_index(inter.author, index)
-        if not users_claim:
-            return await inter.response.send_message(
-                embed=ErrorEmbed(f"`{waifu}` is not a valid character!"),
-                ephemeral=True
-            )
-        if not users_claim.is_married:
-            return await inter.response.send_message(
-                embed=ErrorEmbed(f"`{waifu}` is not a married character!"),
-                ephemeral=True
-            )
-
+        
         await inter.response.defer()
+        
+        # Get one of the user's married waifus
+        users_harem = await self.bot.mongo.fetch_harem_married(inter.author)
+        users_claim = random.choice(users_harem)
         
         # Find opponent
         opponent, opponent_rating = await self.find_duel_opponent(inter.guild, inter.author)
@@ -288,6 +279,11 @@ class Multiplayer(commands.Cog):
         # Calculate and update user's MMR
         rating_change = self.calculate_new_rating(nyah_player.score, opponent_rating, duel_view.author_won)
         await nyah_player.add_user_mmr(rating_change)
+
+        # Opponents lose a slight amount of MMR to discourage inactivity
+        if opponent.id != self.bot.user.id and duel_view.author_won:
+            opps_nyah_player = await self.bot.mongo.fetch_nyah_player(opponent)
+            await opps_nyah_player.add_user_mmr(-int(rating_change * 0.35))
 
         # If user won
         if duel_view.author_won:
@@ -457,7 +453,6 @@ class Multiplayer(commands.Cog):
     ##********          AUTOCOMPLETES           *******##
     ##*************************************************##
 
-    @duel.autocomplete("waifu")
     @casual.autocomplete("waifu")
     async def harem_autocomplete(
         self,
