@@ -6,6 +6,7 @@ import disnake
 from models import NyahPlayer
 from helpers import Mongo
 from utils import Emojis
+from views import CharacterSelectView
 
 mongo = Mongo()
 
@@ -173,8 +174,20 @@ class PlayerTraitScrollItem(PlayerBaseItem):
         )
 
     async def use(self, inter: disnake.ApplicationCommandInteraction):
-        return
+        harem = await mongo.fetch_harem(inter.author)
+
+        embed = disnake.Embed(
+            title=f"Trait Scroll {Emojis.ITEM_TRAIT_SCROLL}",
+            description=f"You have `x{self.amount}` Trait Scrolls available to use.\n\n"
+                        f"Please select a character to use the Trait Scroll on.",
+            color=disnake.Color.fuchsia()
+        )
+        waifu_dropdown = CharacterSelectView(inter.author, harem)
+        message = await inter.edit_original_response(embed=embed, view=waifu_dropdown)
+        waifu_dropdown.message = message
+
         await super().use()
+
 
 class PlayerShonenStoneItem(PlayerBaseItem):
     def __init__(self, owner: NyahPlayer, amount: int):

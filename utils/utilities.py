@@ -74,7 +74,7 @@ def chunkify(to_chunk: str) -> list:
         `list`: A list containing the 'chunks' of strings capped
             at 1000 characters each
     """
-    len_chunks = -(len(to_chunk) // -1000) # upside-down floor (ceiling)
+    len_chunks = ceildiv(len(to_chunk), 1000)
     chunks = []
     for i in range(len_chunks):
         chunked_str = to_chunk[(1000 * i) : (1000 if i == 0 else 1000 * (i + 1))]

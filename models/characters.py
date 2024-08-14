@@ -69,6 +69,7 @@ class Claim(Document):
     
     id: UUID = Field(default_factory=uuid4)
     slug: str
+    name: str
 
     guild_id: Optional[int] = None
     channel_id: Optional[int] = None

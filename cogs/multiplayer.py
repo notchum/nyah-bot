@@ -152,7 +152,7 @@ class Multiplayer(commands.Cog):
 
         nyah_players = await self.bot.mongo.fetch_active_nyah_players()
         if not nyah_players:
-            embed.title = "Waifu War Leaderboard"
+            embed.title = "Top Weebs"
             embed.description = "No one is on the scoreboard yet! Use `/getmywaifu` to get started!"
             return embed
         
@@ -161,7 +161,7 @@ class Multiplayer(commands.Cog):
         for i, player in enumerate(nyah_players, 1):
             if i == 1:
                 rank_one_member = await self.bot.fetch_user(player.user_id)
-                embed.set_author(name="Waifu War Leaderboard", icon_url=rank_one_member.display_avatar.url)
+                embed.set_author(name="Top Weebs", icon_url=rank_one_member.display_avatar.url)
             ranking_str += f"`{i}` **{player.score}**\n"
             member_str += f"<@{player.user_id}>\n"
 
