@@ -112,7 +112,7 @@ class Waifus(commands.Cog):
         embed = disnake.Embed(
             title="⚔️ THE WAIFU WAR IS SCHEDULED ⚔️",
             description=f"- {ww_role.mention} __**mark yourself as interested**__ to this event to enter this war!\n"
-                        f"- Starts: {utils.get_dyn_date_long_time_long(start_time)}\n\n"
+                        f"- Starts: {disnake.utils.format_dt(start_time, "D")}\n\n"
                         f"{quote}",
             color=disnake.Color.random(),
         )
@@ -479,7 +479,7 @@ class Waifus(commands.Cog):
             embed = disnake.Embed(
                 title="⚔️ WAIFU WAR REMINDER ⚔️",
                 description=f"- {ww_role.mention} __**mark yourself as interested**__ to this event to enter this war!\n"
-                            f"- The Waifu War is starting {utils.get_dyn_time_relative(waifu_war_event.scheduled_start_time)}!",
+                            f"- The Waifu War is starting {disnake.utils.format_dt(waifu_war_event.scheduled_start_time, "R")}!",
                 color=disnake.Colour.random(),
             )
             await waifu_war_channel.send(
@@ -747,7 +747,7 @@ class Waifus(commands.Cog):
             battle_embed = disnake.Embed(
                 title=f"{match_title}  •  Battle {current_battle.number}",
                 description=f"**__{red_waifu.name}__** vs. **__{blue_waifu.name}__**\n"
-                            f"Voting ends: {utils.get_dyn_time_relative(ends_at)}",
+                            f"Voting ends: {disnake.utils.format_dt(ends_at, "R")}",
                 color=disnake.Color.random()
             ).set_image(url=vs_img_url)
 
@@ -935,7 +935,7 @@ class Waifus(commands.Cog):
         if await nyah_player.user_is_on_cooldown(Cooldowns.CLAIM):
             next_claim_at = await nyah_player.user_cooldown_expiration_time(Cooldowns.CLAIM)
             if now < next_claim_at:
-                fmt_claim_times = f"❄️ {utils.get_dyn_time_relative(next_claim_at)} ({utils.get_dyn_time_short(next_claim_at)})"
+                fmt_claim_times = f"❄️ {disnake.utils.format_dt(next_claim_at, "R")} ({disnake.utils.format_dt(next_claim_at, "t")})"
             else:
                 fmt_claim_times = "🟢 **Ready**"
         else:
@@ -945,7 +945,7 @@ class Waifus(commands.Cog):
         if await nyah_player.user_is_on_cooldown(Cooldowns.DUEL):
             next_duel_at = await nyah_player.user_cooldown_expiration_time(Cooldowns.DUEL)
             if now < next_duel_at:
-                fmt_duel_times = f"❄️ {utils.get_dyn_time_relative(next_duel_at)} ({utils.get_dyn_time_short(next_duel_at)})"
+                fmt_duel_times = f"❄️ {disnake.utils.format_dt(next_duel_at, "R")} ({disnake.utils.format_dt(next_duel_at, "t")})"
             else:
                 fmt_duel_times = "🟢 **Ready**"
         else:
@@ -955,7 +955,7 @@ class Waifus(commands.Cog):
         if await nyah_player.user_is_on_cooldown(Cooldowns.MINIGAME):
             next_minigame_at = await nyah_player.user_cooldown_expiration_time(Cooldowns.MINIGAME)
             if now < next_minigame_at:
-                fmt_minigame_times = f"❄️ {utils.get_dyn_time_relative(next_minigame_at)} ({utils.get_dyn_time_short(next_minigame_at)})"
+                fmt_minigame_times = f"❄️ {disnake.utils.format_dt(next_minigame_at, "R")} ({disnake.utils.format_dt(next_minigame_at, "t")})"
             else:
                 fmt_minigame_times = "🟢 **Ready**"
         else:
@@ -1009,7 +1009,7 @@ class Waifus(commands.Cog):
             next_minigame_at = await nyah_player.user_cooldown_expiration_time(Cooldowns.MINIGAME)
             return await inter.response.send_message(
                 content=f"{inter.author.mention} you are on a minigame cooldown now.\n"
-                        f"Try again {utils.get_dyn_time_relative(next_minigame_at)} ({utils.get_dyn_time_short(next_minigame_at)})",
+                        f"Try again {disnake.utils.format_dt(next_minigame_at, "R")} ({disnake.utils.format_dt(next_minigame_at, "t")})",
                 ephemeral=True
             )
         
@@ -1227,7 +1227,7 @@ class Waifus(commands.Cog):
             next_claim_at = await nyah_player.user_cooldown_expiration_time(Cooldowns.CLAIM)
             return await inter.response.send_message(
                 content=f"Whoa now! That's too many waifus right now - this isn't a hanime, big guy.\n"
-                        f"Try again {utils.get_dyn_time_relative(next_claim_at)} ({utils.get_dyn_time_short(next_claim_at)})",
+                        f"Try again {disnake.utils.format_dt(next_claim_at, "R")} ({disnake.utils.format_dt(next_claim_at, "t")})",
                 ephemeral=True
             )
         

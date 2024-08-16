@@ -119,7 +119,7 @@ class Owner(commands.Cog):
         start_time = disnake.utils.utcnow() + datetime.timedelta(minutes=time_delta_min)
         await self.bot.waifus_cog.schedule_waifu_war_event(inter.guild, start_time)
         return await inter.edit_original_response(
-            embed=SuccessEmbed(f"Scheduled event for {utils.get_dyn_date_long_time_long(start_time)}")
+            embed=SuccessEmbed(f"Scheduled event for {disnake.utils.format_dt(start_time, "D")}")
         )
 
     @owner.sub_command()

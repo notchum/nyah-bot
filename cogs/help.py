@@ -90,7 +90,7 @@ class Help(commands.Cog):
             title="What is a Waifu War?",
             color=disnake.Color.random(),
             description=f"- A Waifu War is a bracket-style tournament that you and your harem can participate in."
-                        f" There is a Waifu War held every day at {utils.get_dyn_time_short(start_time)}\n"
+                        f" There is a Waifu War held every day at {disnake.utils.format_dt(start_time, "t")}\n"
                         f"- To enter a Waifu War, mark yourself as interested to the event in this Discord server.\n"
                         f"  - Next scheduled Waifu War: {waifu_war_event_link}\n"
                         f"- Your harem will be matched up against another player's harem during each round of the tournament."

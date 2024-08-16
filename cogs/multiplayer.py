@@ -146,7 +146,7 @@ class Multiplayer(commands.Cog):
         nyah_config = await self.bot.mongo.fetch_nyah_config()
         season_end = nyah_config.timestamp_last_season_end + datetime.timedelta(days=nyah_config.interval_season_days)
         embed = disnake.Embed(
-            description=f"Season ends {utils.get_dyn_time_relative(season_end)}",
+            description=f"Season ends {disnake.utils.format_dt(season_end, "R")}",
             color=disnake.Color.random()
         )
 
@@ -181,7 +181,7 @@ class Multiplayer(commands.Cog):
             next_duel_at = await nyah_player.user_cooldown_expiration_time(Cooldowns.DUEL)
             return await inter.response.send_message(
                 content=f"{inter.author.mention} you are on a duel cooldown now.\n"
-                        f"Try again {utils.get_dyn_time_relative(next_duel_at)} ({utils.get_dyn_time_short(next_duel_at)})",
+                        f"Try again {disnake.utils.format_dt(next_duel_at, "R")} ({disnake.utils.format_dt(next_duel_at, "t")})",
                 ephemeral=True
             )
         
@@ -225,7 +225,7 @@ class Multiplayer(commands.Cog):
         duel_embed = disnake.Embed(
             description=f"### {inter.author.mention} vs. {opponent.mention}\n"
                         f"- Choose your fate by selecting __**three**__ moves below!\n"
-                        f"- Duel ends {utils.get_dyn_time_relative(end_at)}",
+                        f"- Duel ends {disnake.utils.format_dt(end_at, "R")}",
             color=disnake.Color.yellow()
         ) \
         .set_image(url=duel_image_url) \
@@ -326,7 +326,7 @@ class Multiplayer(commands.Cog):
         #     next_duel_at = await nyah_player.user_cooldown_expiration_time(Cooldowns.DUEL)
         #     return await inter.response.send_message(
         #         content=f"{inter.author.mention} you are on a duel cooldown now.\n"
-        #                 f"Try again {utils.get_dyn_time_relative(next_duel_at)} ({utils.get_dyn_time_short(next_duel_at)})",
+        #                 f"Try again {disnake.utils.format_dt(next_duel_at, "R")} ({disnake.utils.format_dt(next_duel_at, "t")})",
         #         ephemeral=True
         #     )
         
@@ -379,7 +379,7 @@ class Multiplayer(commands.Cog):
         duel_embed = disnake.Embed(
             description=f"### {inter.author.mention} vs. {opponent.mention}\n"
                         f"- Choose your fate by selecting __**three**__ moves below!\n"
-                        f"- Duel ends {utils.get_dyn_time_relative(end_at)}",
+                        f"- Duel ends {disnake.utils.format_dt(end_at, "R")}",
             color=disnake.Color.yellow()
         ) \
         .set_image(url=duel_image_url) \
