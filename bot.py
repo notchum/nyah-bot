@@ -1,4 +1,5 @@
 import os
+import shutil
 import logging
 import tempfile
 import platform
@@ -12,20 +13,9 @@ from beanie import init_beanie
 from beanie.operators import Set
 from motor.motor_asyncio import AsyncIOMotorClient
 
+import models
 from helpers import Mongo, API
 from utils import WaifuState
-from models import (
-    Waifu,
-    Claim,
-    NyahConfig,
-    NyahPlayer,
-    NyahGuild,
-    Vote,
-    Battle,
-    Match,
-    Round,
-    Event,
-)
 
 VERSION = "0.9.0"
 
@@ -45,59 +35,71 @@ Config = namedtuple(
     ],
 )
 
+
 class NyahBot(commands.InteractionBot):
     def __init__(self, *args, **kwargs):
         self.config: Config = kwargs.pop("config", None)
         self.logger: logging.Logger = kwargs.pop("logger", None)
+        self.version = VERSION
         super().__init__(*args, **kwargs)
         self.before_slash_command_invoke(self.before_invoke)
         self.after_slash_command_invoke(self.after_invoke)
         self.activity = Activity(type=ActivityType.watching, name=f"v{VERSION}")
     
     async def setup_hook(self):
+        # Initialize temporary directory
+        self.create_temp_dir()
+        self.logger.debug(f"Initialized temp directory {self.temp_dir}")
+
         # Load cogs
-        for extension in [filename[:-3] for filename in os.listdir("cogs") if filename.endswith(".py")]:
+        for extension in utils.get_cog_names():
             try:
-                self.load_extension(f"cogs.{extension}")
+                self.load_extension(extension)
             except Exception as e:
                 exception = f"{type(e).__name__}: {e}"
-                self.logger.exception(f"Failed to load extension {extension}!\t{exception}")
-
-        # Initialize cache directory
-        self.cache_dir = tempfile.mkdtemp()
-        self.logger.debug(f"Initialized cache directory {self.cache_dir}")
+                self.logger.exception(
+                    f"Failed to load extension {extension}!\t{exception}"
+                )
 
         # Initialize database
         self.client = AsyncIOMotorClient(self.config.DATABASE_URI, io_loop=self.loop)
         if self.config.TEST_MODE:
+            await init_beanie(self.client["waifus"], document_models=[models.Waifu])
+            await init_beanie(self.client["_nyah"], document_models=[models.NyahConfig, models.NyahGuild, models.NyahPlayer])
+            await init_beanie(self.client["_waifus"], document_models=[models.Claim])
+            await init_beanie(self.client["_wars"], document_models=[models.Event, models.Match, models.Battle, models.Round, models.Vote])
             self.logger.warning("Running in test mode. Using test database.")
-            await init_beanie(self.client.waifus, document_models=[Waifu])
-            await init_beanie(self.client["_nyah"], document_models=[NyahConfig, NyahGuild, NyahPlayer])
-            await init_beanie(self.client["_waifus"], document_models=[Claim])
-            await init_beanie(self.client["_wars"], document_models=[Event, Match, Battle, Round, Vote])
         else:
-            await init_beanie(self.client.nyah, document_models=[NyahConfig, NyahGuild, NyahPlayer])
-            await init_beanie(self.client.waifus, document_models=[Waifu, Claim])
-            await init_beanie(self.client.wars, document_models=[Event, Match, Battle, Round, Vote])
-        self.mongo = Mongo()
+            await init_beanie(self.client["nyah"], document_models=[models.NyahConfig, models.NyahGuild, models.NyahPlayer])
+            await init_beanie(self.client["waifus"], document_models=[models.Waifu, models.Claim])
+            await init_beanie(self.client["wars"], document_models=[models.Event, models.Match, models.Battle, models.Round, models.Vote])
+            self.logger.success("Connected to database.")
 
+        # Create the global bot settings entry if it doesn't exist
+        await self.create_settings_entry()
+        
         # Initialize aiohttp session
         self.session = aiohttp_client_cache.CachedSession(
-            cache=aiohttp_client_cache.CacheBackend(expire_after=600)
+            cache=aiohttp_client_cache.CacheBackend(expire_after=600),
+            loop=self.loop
         )
+
+        # Set up interfaces
         self.api = API(self.session, self.cache_dir)
+        self.mongo = Mongo()
 
     async def on_ready(self):
+        # fmt: off
         self.logger.info("------")
-        self.logger.info(f"{self.user.name} v{VERSION}")
+        self.logger.info(f"{self.user.name} v{self.version}")
         self.logger.info(f"ID: {self.user.id}")
         self.logger.info(f"Python version: {platform.python_version()}")
         self.logger.info(f"Disnake API version: {disnake.__version__}")
         self.logger.info(f"Running on: {platform.system()} {platform.release()} ({os.name})")
         self.logger.info("------")
+        # fmt: on
 
     async def close(self):
-        self.clear_cache_dir()
         await self.session.close()
         await super().close()
 
@@ -105,19 +107,34 @@ class NyahBot(commands.InteractionBot):
     def waifus_cog(self) -> commands.Cog:
         return self.get_cog("Waifus")
 
-    def clear_cache_dir(self):
-        for file in os.listdir(self.cache_dir):
-            file_path = os.path.join(self.cache_dir, file)
+    def create_temp_dir(self):
+        self.temp_dir = os.path.join(tempfile.gettempdir(), "tmp-nyah-bot")
+        if not os.path.exists(self.temp_dir):
+            os.mkdir(self.temp_dir)
+
+    def clear_temp_dir(self):
+        for file in os.listdir(self.temp_dir):
+            file_path = os.path.join(self.temp_dir, file)
             try:
-                if os.path.isfile(file_path):
-                    os.remove(file_path)
+                if os.path.isfile(file_path) or os.path.islink(file_path):
+                    os.unlink(file_path)
+                elif os.path.isdir(file_path):
+                    shutil.rmtree(file_path)
             except Exception as e:
                 self.logger.error(f"Error deleting {file}: {e}")
-        os.rmdir(self.cache_dir)
-    
+
+    async def create_settings_entry(self):
+        return
+        settings_doc = await models.BotSettings.find_all().to_list()
+        if len(settings_doc) == 0:
+            settings_doc = await models.BotSettings.insert_one(
+                models.BotSettings(toggle=False)
+            )
+            self.logger.success(f"Created settings entry for my-bot [{settings_doc.id}]")
+
     async def before_invoke(self, inter: disnake.ApplicationCommandInteraction):
-        nyah_player = await NyahPlayer.find_one(
-            NyahPlayer.user_id == inter.author.id
+        nyah_player = await models.NyahPlayer.find_one(
+            models.NyahPlayer.user_id == inter.author.id
         )
         
         channel_id = nyah_player.last_command_channel_id
@@ -142,8 +159,8 @@ class NyahBot(commands.InteractionBot):
             return await message.edit(view=None)
 
     async def after_invoke(self, inter: disnake.ApplicationCommandInteraction):
-        nyah_player = await NyahPlayer.find_one(
-            NyahPlayer.user_id == inter.author.id
+        nyah_player = await models.NyahPlayer.find_one(
+            models.NyahPlayer.user_id == inter.author.id
         )
         
         message = await inter.original_response()
@@ -158,7 +175,7 @@ class NyahBot(commands.InteractionBot):
         
         await nyah_player.save()
 
-    async def get_waifu_base_embed(self, waifu: Waifu) -> disnake.Embed:
+    async def get_waifu_base_embed(self, waifu: models.Waifu) -> disnake.Embed:
         """ Get a bare-bones embed for a waifu.
             - Name
             - Husbando classification
@@ -186,7 +203,7 @@ class NyahBot(commands.InteractionBot):
 
         return embed
 
-    async def get_waifu_core_embed(self, waifu: Waifu) -> disnake.Embed:
+    async def get_waifu_core_embed(self, waifu: models.Waifu) -> disnake.Embed:
         """ Get an ultra-detailed embed for a waifu.
             - Alternate names
             - Age & DOB
@@ -210,7 +227,7 @@ class NyahBot(commands.InteractionBot):
             .add_field(name="Hip", value=waifu.hip if waifu.hip else "-")
         return embed
 
-    async def get_waifu_skills_embed(self, claim: Claim) -> disnake.Embed:
+    async def get_waifu_skills_embed(self, claim: models.Claim) -> disnake.Embed:
         waifu = await self.mongo.fetch_waifu(claim.slug)
         
         embed = await self.get_waifu_base_embed(waifu)
@@ -221,7 +238,7 @@ class NyahBot(commands.InteractionBot):
         embed.set_image(url=claim.image_url)
         return embed
 
-    async def get_waifu_claim_embed(self, claim: Claim, owner: disnake.User | disnake.Member) -> disnake.Embed:
+    async def get_waifu_claim_embed(self, claim: models.Claim, owner: disnake.User | disnake.Member) -> disnake.Embed:
         """ Get an embed of a waifu just claimed.
             - Price listed.
             - Skills listed.
@@ -243,7 +260,7 @@ class NyahBot(commands.InteractionBot):
         embed.set_footer(text=f"{claim.id}")
         return embed
 
-    async def get_waifu_harem_embed(self, claim: Claim) -> disnake.Embed:
+    async def get_waifu_harem_embed(self, claim: models.Claim) -> disnake.Embed:
         """ Get an embed of a waifu in a harem.
             - Embed color represents state.
             - Skills listed.

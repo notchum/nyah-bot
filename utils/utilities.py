@@ -1,6 +1,7 @@
 import re
 import uuid
 import traceback
+from typing import List
 
 import disnake
 
@@ -38,6 +39,16 @@ get_dyn_date_long = lambda t: f"<t:{int(t.timestamp())}:D>"
 get_dyn_date_long_time_short = lambda t: f"<t:{int(t.timestamp())}:f>"
 get_dyn_date_long_time_long = lambda t: f"<t:{int(t.timestamp())}:F>"
 get_dyn_time_relative = lambda t: f"<t:{int(t.timestamp())}:R>"
+
+def get_cog_names() -> List[str]:
+    """Get the names of every cog/extension that should be loaded.
+
+    Returns
+    -------
+    List[:class:`str`]
+        The cogs/extensions that should be loaded with `load_extension`.
+    """
+    return [ext_name for ext_name in disnake.utils.search_directory("cogs")]
 
 ##*************************************************##
 ##********          GENERAL UTILS           *******##

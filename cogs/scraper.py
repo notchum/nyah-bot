@@ -142,9 +142,9 @@ class Scraper(commands.Cog):
             new_waifu.name = new_waifu.name.strip()
             new_waifu.tags = [tag.strip().lower() for tag in new_waifu.tags if tag != "Remove Tag"]
             if unranked_str not in body:
-                new_waifu.popularity_rank = int(re.findall("\d+", new_waifu.popularity_rank)[0])
-                new_waifu.like_rank = int(re.findall("\d+", new_waifu.like_rank)[0])
-                new_waifu.trash_rank = int(re.findall("\d+", new_waifu.trash_rank)[0])
+                new_waifu.popularity_rank = int(re.findall(r'\d+', new_waifu.popularity_rank)[0])
+                new_waifu.like_rank = int(re.findall(r'\d+', new_waifu.like_rank)[0])
+                new_waifu.trash_rank = int(re.findall(r'\d+', new_waifu.trash_rank)[0])
             else:
                 self.last_check_unranked = True
             if new_waifu.date_of_birth:

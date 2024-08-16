@@ -89,7 +89,7 @@ class Waifus(commands.Cog):
                     quote = ""
                 else:
                     body = await response.json()
-                    quote = f"_{body['quote']}_\n\- {body['character']}, \"{body['anime']}\""
+                    quote = f"_{body['quote']}_\n\\- {body['character']}, \"{body['anime']}\""
         except:
             quote = ""
         
