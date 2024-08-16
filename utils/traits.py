@@ -2,7 +2,7 @@ import random
 from enum import Enum
 from typing import List
 
-from util import Money
+from utils.constants import Money
 
 class TraitTypes(Enum):
     COMMON = 0

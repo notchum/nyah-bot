@@ -10,7 +10,7 @@ from pydantic import BaseModel, Field
 
 import utils
 from models import Waifu, Claim
-from util import Emojis, WaifuState, Cooldowns, Money
+from utils.constants import Emojis, WaifuState, Cooldowns, Money
 
 
 cooldown_attribute_map = {

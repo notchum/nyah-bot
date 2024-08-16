@@ -5,7 +5,7 @@ from loguru import logger
 
 import models
 from helpers import Mongo, ErrorEmbed
-from util import Emojis
+from utils.constants import Emojis
 
 mongo = Mongo()
 

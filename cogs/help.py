@@ -5,8 +5,8 @@ from disnake.ext import commands
 
 import utils
 from bot import NyahBot
-from util import Money, Emojis
-import util.traits as traits
+from utils.constants import Money, Emojis
+import utils.traits as traits
 from views import WaifuPaginator
 
 class Help(commands.Cog):

@@ -3,7 +3,7 @@ from disnake.ext import commands
 
 from bot import NyahBot
 from helpers import ErrorEmbed
-from util import Emojis
+from utils.constants import Emojis
 from views.gambling import SlotMachine, SlotsView
 
 class Fun(commands.Cog):

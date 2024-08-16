@@ -5,7 +5,7 @@ from typing import List
 import disnake
 
 import models
-from util import Emojis
+from utils.constants import Emojis
 
 class Symbol:
     SEVEN  = "<:Slot_7:1172053243690487808>"

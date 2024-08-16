@@ -2,7 +2,7 @@ from typing import List
 
 import disnake
 
-from util import Emojis
+from utils.constants import Emojis
 
 
 class WaifuPaginator(disnake.ui.View):

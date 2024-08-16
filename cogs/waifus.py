@@ -15,9 +15,9 @@ import utils
 from bot import NyahBot
 from models import Claim, Event
 from helpers import ErrorEmbed
-from util import Emojis, WaifuState, Cooldowns, Experience, Money
-from util.bracket import Bracket
-from util.items import ItemFactory
+from utils.constants import Emojis, WaifuState, Cooldowns, Experience, Money
+from utils.bracket import Bracket
+from utils.items import ItemFactory
 from views import *
 
 class Waifus(commands.Cog):

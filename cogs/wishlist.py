@@ -6,7 +6,7 @@ from disnake.ext import commands
 
 from bot import NyahBot
 from helpers import ErrorEmbed
-from util import Emojis, Money
+from utils.constants import Emojis, Money
 from views import WaifuWishlistView
 
 class Wishlist(commands.Cog):

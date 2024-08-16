@@ -9,7 +9,7 @@ from loguru import logger
 import models
 import utils
 from helpers import Mongo, SuccessEmbed, ErrorEmbed
-from util import Emojis
+from utils.constants import Emojis
 
 mongo = Mongo()
 

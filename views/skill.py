@@ -3,7 +3,7 @@ from loguru import logger
 
 import models
 from helpers import Mongo
-from util import Emojis, Money
+from utils.constants import Emojis, Money
 
 mongo = Mongo()
 

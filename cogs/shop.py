@@ -6,8 +6,8 @@ from disnake.ext import commands
 
 from bot import NyahBot
 from helpers import SuccessEmbed, ErrorEmbed
-from util import Emojis
-import util.items
+from utils.constants import Emojis
+import utils.items
 
 class Shop(commands.Cog):
     def __init__(self, bot: commands.Bot):
@@ -25,7 +25,7 @@ class Shop(commands.Cog):
 
         nyah_player = await self.bot.mongo.fetch_nyah_player(inter.author)
 
-        items_str = "\n".join([item.shop_str for item in util.items.SHOP_ITEMS])
+        items_str = "\n".join([item.shop_str for item in utils.items.SHOP_ITEMS])
         embed = disnake.Embed(
             title="ITEM SHOP",
             description=f"Use `/buy` to purchase any item! Balance: `{nyah_player.money:,}` {Emojis.COINS}\n\n"
@@ -39,7 +39,7 @@ class Shop(commands.Cog):
     async def buy(
         self,
         inter: disnake.ApplicationCommandInteraction,
-        item: util.items.ItemTypes,
+        item: utils.items.ItemTypes,
         amount: int = 1
     ):
         """ Buy an item from the shop!
@@ -55,7 +55,7 @@ class Shop(commands.Cog):
 
         nyah_player = await self.bot.mongo.fetch_nyah_player(inter.author)
 
-        shop_item = util.items.get_shop_item(item)
+        shop_item = utils.items.get_shop_item(item)
         total_price = shop_item.price * amount
 
         if total_price > nyah_player.money:
@@ -108,7 +108,7 @@ class Shop(commands.Cog):
                     embed=ErrorEmbed(f"You don't have `{item}` in your inventory!")
                 )
             
-            player_item = util.items.ItemFactory.create_item(inventory_item.type, nyah_player, inventory_item.amount)
+            player_item = utils.items.ItemFactory.create_item(inventory_item.type, nyah_player, inventory_item.amount)
             await player_item.use(inter)
             return
         
@@ -126,11 +126,11 @@ class Shop(commands.Cog):
         if len(nyah_player.inventory) == 0:
             return [f"Your inventory is empty!"]
 
-        player_inventory: List[util.items.PlayerBaseItem] = []
+        player_inventory: List[utils.items.PlayerBaseItem] = []
         for inv_item in nyah_player.inventory:
             if inv_item.amount == 0:
                 continue
-            item = util.items.ItemFactory.create_item(inv_item.type, nyah_player, inv_item.amount)
+            item = utils.items.ItemFactory.create_item(inv_item.type, nyah_player, inv_item.amount)
             player_inventory.append(item)
         if len(player_inventory) == 0:
             return [f"Your inventory is empty!"]

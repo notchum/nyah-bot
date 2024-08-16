@@ -15,7 +15,7 @@ from motor.motor_asyncio import AsyncIOMotorClient
 import models
 import utils
 from helpers import Mongo, API
-from util import WaifuState
+from utils.constants import WaifuState
 
 VERSION = "0.9.0"
 

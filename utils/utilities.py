@@ -4,7 +4,7 @@ from typing import List
 
 import disnake
 
-from util import Experience
+from utils.constants import Experience
 
 ##*************************************************##
 ##********            NYAH UTILS            *******##

@@ -4,7 +4,7 @@ import disnake
 
 import models
 from helpers import Mongo
-from util import Emojis
+from utils.constants import Emojis
 
 mongo = Mongo()
 

@@ -2,7 +2,7 @@ import disnake
 
 from models import Waifu, Claim
 from helpers import Mongo
-from util import WaifuState
+from utils.constants import WaifuState
 
 mongo = Mongo()
 

@@ -6,7 +6,7 @@ import pymongo
 from beanie.operators import Set, NotIn
 
 import models
-from util import WaifuState
+from utils.constants import WaifuState
 
 
 class Mongo():

@@ -12,7 +12,7 @@ import models
 import utils
 from bot import NyahBot
 from helpers import ErrorEmbed
-from util import Cooldowns, Experience
+from utils.constants import Cooldowns, Experience
 from views import WaifuDuelView
 
 

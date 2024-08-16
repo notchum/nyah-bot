@@ -7,7 +7,7 @@ from loguru import logger
 
 from bot import NyahBot
 from helpers import SuccessEmbed, ErrorEmbed
-from util import Cooldowns, WaifuState
+from utils.constants import Cooldowns, WaifuState
 
 
 class Owner(commands.Cog):
