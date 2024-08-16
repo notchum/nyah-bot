@@ -11,10 +11,10 @@ from PIL import Image
 from disnake.ext import commands, tasks
 from loguru import logger
 
+import utils
 from bot import NyahBot
 from models import Claim, Event
 from helpers import ErrorEmbed
-from helpers import utilities as utils
 from util import Emojis, WaifuState, Cooldowns, Experience, Money
 from util.bracket import Bracket
 from util.items import ItemFactory
@@ -365,7 +365,7 @@ class Waifus(commands.Cog):
             bg_img.paste(fg_img, box=center_place(fg_img, bb[bb_inx]), mask=fg_img)
 
         # save the image
-        output_path = os.path.join(self.bot.cache_dir, f"{red_waifu.id}.vs.{blue_waifu.id}.png")
+        output_path = os.path.join(self.bot.temp_dir, f"{red_waifu.id}.vs.{blue_waifu.id}.png")
 
         bg_img.save(output_path)
         logger.info(f"Created image {output_path}")

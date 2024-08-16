@@ -7,8 +7,8 @@ from google_images_search import GoogleImagesSearch
 from loguru import logger
 
 import models
+import utils
 from helpers import Mongo, SuccessEmbed, ErrorEmbed
-from helpers import utilities as utils
 from util import Emojis
 
 mongo = Mongo()

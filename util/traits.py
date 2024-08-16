@@ -2,7 +2,6 @@ import random
 from enum import Enum
 from typing import List
 
-import models
 from util import Money
 
 class TraitTypes(Enum):
@@ -30,7 +29,7 @@ class CharacterTrait:
         self.trait_number = trait_number
         self.modifiers = modifiers 
 
-    def apply_modifiers(self, claim: models.Claim):
+    def apply_modifiers(self, claim):
         for modifier, value in self.modifiers.items():
             value = value / 100
             if modifier == StatModifiers.ATTACK_UP:

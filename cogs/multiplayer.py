@@ -9,9 +9,9 @@ from disnake.ext import commands
 from loguru import logger
 
 import models
+import utils
 from bot import NyahBot
 from helpers import ErrorEmbed
-from helpers import utilities as utils
 from util import Cooldowns, Experience
 from views import WaifuDuelView
 

@@ -40,7 +40,6 @@ async def main():
     # Create bot
     bot = NyahBot(
         config=config,
-        logger=logger,
         test_guilds=[776929597567795247, 759514108625682473, 1169450511133589604],
         intents=intents,
     )

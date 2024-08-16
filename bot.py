@@ -13,8 +13,8 @@ from beanie import init_beanie
 from motor.motor_asyncio import AsyncIOMotorClient
 
 import models
+import utils
 from helpers import Mongo, API
-from helpers import utilities as utils
 from util import WaifuState
 
 VERSION = "0.9.0"
@@ -83,7 +83,7 @@ class NyahBot(commands.InteractionBot):
         )
 
         # Set up interfaces
-        self.api = API(self.session, self.cache_dir)
+        self.api = API(self.session, self.temp_dir)
         self.mongo = Mongo()
 
     async def on_ready(self):

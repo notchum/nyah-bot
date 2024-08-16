@@ -3,8 +3,8 @@ import datetime
 import disnake
 from disnake.ext import commands
 
+import utils
 from bot import NyahBot
-from helpers import utilities as utils
 from util import Money, Emojis
 import util.traits as traits
 from views import WaifuPaginator

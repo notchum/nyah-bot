@@ -6,6 +6,7 @@ from util import WaifuState
 
 mongo = Mongo()
 
+# fmt: off
 class SuccessEmbed(disnake.Embed):
     def __init__(self, description: str = None):
         super().__init__(
@@ -14,6 +15,7 @@ class SuccessEmbed(disnake.Embed):
             color=disnake.Color.green()
         )
 
+
 class ErrorEmbed(disnake.Embed):
     def __init__(self, description: str = None):
         super().__init__(
@@ -21,6 +23,7 @@ class ErrorEmbed(disnake.Embed):
             description=description,
             color=disnake.Color.red()
         )
+# fmt: on
 
 
 class WaifuBaseEmbed(disnake.Embed):

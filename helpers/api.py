@@ -6,9 +6,9 @@ from loguru import logger
 
 
 class API():
-    def __init__(self, session: aiohttp_client_cache.CachedSession, cache_dir: str) -> None:
+    def __init__(self, session: aiohttp_client_cache.CachedSession, temp_dir: str) -> None:
         self.session = session
-        self.cache_dir = cache_dir
+        self.temp_dir = temp_dir
 
     async def download_image(self, url: str) -> str | None:
         """ Download an image from a URL.
@@ -21,7 +21,7 @@ class API():
         """
         try:
             image_filename = os.path.basename(url).split("?")[0]
-            image_path = os.path.join(self.cache_dir, image_filename)
+            image_path = os.path.join(self.temp_dir, image_filename)
 
             if not os.path.exists(image_path):
                 async with self.session.get(url) as response:

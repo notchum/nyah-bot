@@ -3,8 +3,8 @@ from typing import List
 
 import disnake
 
+import utils
 from helpers import Mongo
-from helpers import utilities as utils
 from util import Emojis
 
 mongo = Mongo()

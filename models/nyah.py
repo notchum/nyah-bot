@@ -8,8 +8,8 @@ from beanie import Document
 from beanie.operators import NotIn
 from pydantic import BaseModel, Field
 
+import utils
 from models import Waifu, Claim
-from helpers import utilities as utils
 from util import Emojis, WaifuState, Cooldowns, Money
 
 
