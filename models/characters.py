@@ -9,8 +9,8 @@ from beanie import Document
 from beanie.operators import Set
 from beanie.odm.bulk import BulkWriter
 
-from utils import Emojis, WaifuState, Money
-import utils.traits as traits
+from util import Emojis, WaifuState, Money
+import util.traits as traits
 
 class Waifu(Document):
     class Settings:

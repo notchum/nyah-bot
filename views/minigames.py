@@ -1,12 +1,10 @@
 import random
-import logging
 from typing import List
 
 import disnake
 
 from helpers import Mongo
 
-logger = logging.getLogger("nyahbot")
 mongo = Mongo()
 
 class MinigameButton(disnake.ui.Button):

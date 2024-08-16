@@ -1,14 +1,16 @@
 import uuid
 
 import disnake
+from loguru import logger
 
-from models import Harem, Claim
-from helpers import Mongo
+import models
+from helpers import Mongo, ErrorEmbed
+from util import Emojis
 
 mongo = Mongo()
 
 class CharacterDropdown(disnake.ui.StringSelect["CharacterSelectView"]):
-    def __init__(self, characters: Harem):
+    def __init__(self, characters: models.Harem):
         options = [
             disnake.SelectOption(label=character.name, value=str(character.id))
             for character in characters
@@ -44,7 +46,7 @@ class CharacterDropdown(disnake.ui.StringSelect["CharacterSelectView"]):
 class CharacterSelectView(disnake.ui.View):
     message: disnake.Message
 
-    def __init__(self, author: disnake.User | disnake.Member, characters: Harem):
+    def __init__(self, author: disnake.User | disnake.Member, characters: models.Harem):
         super().__init__()
         self.author = author
 
@@ -57,7 +59,7 @@ class CharacterSelectView(disnake.ui.View):
         await self.message.edit(view=None)
 
 class CharacterConfirmView(disnake.ui.View):
-    def __init__(self, claim: Claim, author: disnake.User | disnake.Member, reference_view: disnake.ui.View) -> None:
+    def __init__(self, claim: models.Claim, author: disnake.User | disnake.Member, reference_view: disnake.ui.View) -> None:
         super().__init__()
         self.claim = claim
         self.embed = embed

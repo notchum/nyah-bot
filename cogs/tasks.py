@@ -2,61 +2,40 @@ import os
 import datetime
 import tempfile
 
-import disnake
 from disnake.ext import commands, tasks
+from loguru import logger
 
 from bot import NyahBot
 
 class Tasks(commands.Cog):
     def __init__(self, bot: commands.Bot):
         self.bot: NyahBot = bot
-        self.clean_cache_dir.start()
+        self.clean_temp_dir.start()
 
-    ##*************************************************##
-    ##********           ABSTRACTIONS           *******##
-    ##*************************************************##
+    @tasks.loop(hours=1.0)
+    async def clean_temp_dir(self):
+        """Clears all files from the bot's temporary directory."""
+        logger.debug(
+            f"Cleaning temp directory... [loop #{self.clean_temp_dir.current_loop}]"
+        )
 
-    ##*************************************************##
-    ##********              EVENTS              *******##
-    ##*************************************************##
+        # The first iteration of this task is executed when
+        # the bot starts. This checks if we are in that
+        # initial loop
+        if self.clean_temp_dir.current_loop == 0:
+            # If there is anything that needs to
+            # happen on the first iteration of a
+            # task, then put it here.
+            pass
 
-    ##*************************************************##
-    ##********              TASKS               *******##
-    ##*************************************************##
+        # Delete all files from the temporary directory
+        self.bot.clear_temp_dir()
+        logger.info("Finished clearing temp directory.")
 
-    @tasks.loop(hours=1)
-    async def clean_cache_dir(self):
-        """ Clean the cache directory periodically. """
-        self.bot.logger.debug(f"Cleaning cache directory... [loop #{self.clean_cache_dir.current_loop}]")
-
-        if not os.path.exists(self.bot.cache_dir):
-            self.bot.logger.debug("Cache directory does not exist. Recreating...")
-            self.bot.cache_dir = tempfile.mkdtemp()
-            self.bot.api.cache_dir = self.bot.cache_dir
-            self.bot.logger.debug(f"Reinitialized cache directory {self.bot.cache_dir}")
-
-        for file in os.listdir(self.bot.cache_dir):
-            # Only delete files that are older than 1 hour
-            file_path = os.path.join(self.bot.cache_dir, file)
-            if os.path.getmtime(file_path) < (datetime.datetime.now() - datetime.timedelta(hours=1)).timestamp():
-                try:
-                    if os.path.isfile(file_path):
-                        os.remove(file_path)
-                        self.bot.logger.info(f"Deleted {file}")
-                except Exception as e:
-                    self.bot.logger.error(f"Error deleting {file}: {e}")
-
-    @clean_cache_dir.before_loop
-    async def init_clean_cache_dir(self):
+    @clean_temp_dir.before_loop
+    async def wait_before_tasks(self):
         await self.bot.wait_until_ready()
 
-    ##*************************************************##
-    ##********             COMMANDS             *******##
-    ##*************************************************##
-
-    ##*************************************************##
-    ##********          AUTOCOMPLETES           *******##
-    ##*************************************************##
 
 def setup(bot: commands.Bot):
     bot.add_cog(Tasks(bot))

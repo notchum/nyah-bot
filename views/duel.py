@@ -1,10 +1,7 @@
 import random
-import logging
 from typing import List
 
 import disnake
-
-logger = logging.getLogger("nyahbot")
 
 embed_colors = {
     -3: disnake.Color.dark_red(),

@@ -1,10 +1,8 @@
-import os
-
 import disnake
 from disnake.ext import commands
 
 from bot import NyahBot
-from helpers import SuccessEmbed, ErrorEmbed
+from helpers import ErrorEmbed
 
 nsfw_map = {
     "white": "SFW",
@@ -15,22 +13,6 @@ nsfw_map = {
 class MyAnimeList(commands.Cog):
     def __init__(self, bot: commands.Bot):
         self.bot: NyahBot = bot
-    
-    ##*************************************************##
-    ##********           ABSTRACTIONS           *******##
-    ##*************************************************##
-
-    ##*************************************************##
-    ##********              EVENTS              *******##
-    ##*************************************************##
-
-    ##*************************************************##
-    ##********              TASKS               *******##
-    ##*************************************************##
-
-    ##*************************************************##
-    ##********             COMMANDS             *******##
-    ##*************************************************##
 
     @commands.slash_command()
     async def anime(
@@ -159,9 +141,6 @@ class MyAnimeList(commands.Cog):
         embed.set_thumbnail(url=mga_details['main_picture']['medium'])
         return await inter.edit_original_response(embed=embed)
 
-    ##*************************************************##
-    ##********          AUTOCOMPLETES           *******##
-    ##*************************************************##
 
 def setup(bot: commands.Bot):
     bot.add_cog(MyAnimeList(bot))

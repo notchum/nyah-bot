@@ -1,18 +1,16 @@
-import logging
-
 import disnake
+from loguru import logger
 
-from models import Claim
+import models
 from helpers import Mongo
-from utils import Emojis, Money
+from util import Emojis, Money
 
-logger = logging.getLogger("nyahbot")
 mongo = Mongo()
 
 class WaifuSkillView(disnake.ui.View):
     message: disnake.Message
     
-    def __init__(self, claim: Claim, author: disnake.User | disnake.Member) -> None:
+    def __init__(self, claim: models.Claim, author: disnake.User | disnake.Member) -> None:
         super().__init__(timeout=30.0)
         self.claim = claim
         self.author = author

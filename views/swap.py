@@ -1,14 +1,12 @@
 import copy
-import logging
 from typing import List
 
 import disnake
 
 from helpers import Mongo
-from utils import Emojis
-import utils.utilities as utils
+from helpers import utilities as utils
+from util import Emojis
 
-logger = logging.getLogger("nyahbot")
 mongo = Mongo()
 
 class SwapDropdown(disnake.ui.StringSelect["WaifuSwapView"]):

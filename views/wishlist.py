@@ -1,16 +1,14 @@
-import logging
-
 import disnake
+from loguru import logger
 
-from models import Waifu
+import models
 from helpers import Mongo
-from utils import Emojis, Money
+from util import Emojis, Money
 
-logger = logging.getLogger("nyahbot")
 mongo = Mongo()
 
 class WaifuWishlistView(disnake.ui.View):
-    def __init__(self, embed: disnake.Embed, waifu: Waifu, author: disnake.User | disnake.Member) -> None:
+    def __init__(self, embed: disnake.Embed, waifu: models.Waifu, author: disnake.User | disnake.Member) -> None:
         super().__init__()
         self.embed = embed
         self.waifu = waifu

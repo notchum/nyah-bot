@@ -9,15 +9,16 @@ from collections import deque
 import disnake
 from PIL import Image
 from disnake.ext import commands, tasks
+from loguru import logger
 
 from bot import NyahBot
 from models import Claim, Event
-from helpers import SuccessEmbed, ErrorEmbed
+from helpers import ErrorEmbed
+from helpers import utilities as utils
+from util import Emojis, WaifuState, Cooldowns, Experience, Money
+from util.bracket import Bracket
+from util.items import ItemFactory
 from views import *
-from utils import Emojis, WaifuState, Cooldowns, Experience, Money
-import utils.utilities as utils
-from utils.bracket import Bracket
-from utils.items import ItemFactory
 
 class Waifus(commands.Cog):
     def __init__(self, bot: commands.Bot):
@@ -85,7 +86,7 @@ class Waifus(commands.Cog):
         try:
             async with self.bot.session.get(url="https://animechan.xyz/api/random") as response:
                 if response.status != 200:
-                    self.bot.logger.error(f"Animechan API returned status '{response.status}'")
+                    logger.error(f"Animechan API returned status '{response.status}'")
                     quote = ""
                 else:
                     body = await response.json()
@@ -121,7 +122,7 @@ class Waifus(commands.Cog):
                     f"https://discord.com/events/{guild.id}/{waifu_war_event.id}",
             embed=embed,
         )
-        self.bot.logger.info(f"{guild.name}[{guild.id}] | "
+        logger.info(f"{guild.name}[{guild.id}] | "
                              f"{waifu_war_event.name}[{waifu_war_event.id}] | "
                              f"Created scheduled Waifu War event for {waifu_war_event.scheduled_start_time}")
 
@@ -147,7 +148,7 @@ class Waifus(commands.Cog):
             ).set_image(url="https://media.discordapp.net/attachments/741072426984538122/748586578074664980/DzEZ4UsXgAAcFjN.png")
             await waifu_war_channel.send(embed=embed)
             await event.edit(status=disnake.GuildScheduledEventStatus.completed)
-            return self.bot.logger.warning(f"{event.guild.name}[{event.guild.id}] | "
+            return logger.warning(f"{event.guild.name}[{event.guild.id}] | "
                                            f"{event.name}[{event.id}] | "
                                            f"Waifu War event cancelled due to not enough users")
 
@@ -155,11 +156,11 @@ class Waifus(commands.Cog):
             loop = tasks.Loop(self.waifu_wars, minutes=3.0)
             loop.start(event)
             self.waifu_war_tasks[event.guild.id] = loop
-            self.bot.logger.info(f"{event.guild.name}[{event.guild.id}] | "
+            logger.info(f"{event.guild.name}[{event.guild.id}] | "
                                  f"{event.name}[{event.id}] | "
                                  f"Waifu War started!")
         else:
-            return self.bot.logger.error(f"{event.guild.name}[{event.guild.id}] | "
+            return logger.error(f"{event.guild.name}[{event.guild.id}] | "
                                          f"{event.name}[{event.id}] | "
                                          f"Guild already has Waifu War task running!")
         
@@ -185,11 +186,11 @@ class Waifus(commands.Cog):
             loop: tasks.Loop = self.waifu_war_tasks[event.guild.id]
             loop.stop()
             await event.edit(status=disnake.GuildScheduledEventStatus.completed)
-            self.bot.logger.info(f"{event.guild.name}[{event.guild.id}] | "
+            logger.info(f"{event.guild.name}[{event.guild.id}] | "
                                  f"{event.name}[{event.id}] | "
                                  f"Waifu War ended!")
         else:
-            return self.bot.logger.error(f"{event.guild.name}[{event.guild.id}] | "
+            return logger.error(f"{event.guild.name}[{event.guild.id}] | "
                                          f"{event.name}[{event.id}] | "
                                          f"Guild doesn't have a Waifu War task running!")
         
@@ -367,12 +368,12 @@ class Waifus(commands.Cog):
         output_path = os.path.join(self.bot.cache_dir, f"{red_waifu.id}.vs.{blue_waifu.id}.png")
 
         bg_img.save(output_path)
-        self.bot.logger.info(f"Created image {output_path}")
+        logger.info(f"Created image {output_path}")
 
         # upload the image to discord (free image hosting)
         image_host_channel = await self.bot.fetch_channel(1164613880538992760)
         image_host_msg = await image_host_channel.send(file=disnake.File(output_path))
-        self.bot.logger.info(f"Uploaded image {image_host_msg.attachments[0].url}")
+        logger.info(f"Uploaded image {image_host_msg.attachments[0].url}")
 
         # return the URL of the image
         return image_host_msg.attachments[0].url
@@ -392,7 +393,7 @@ class Waifus(commands.Cog):
         if disnake.utils.utcnow() < season_end_datetime:
             return
         
-        return self.bot.logger.debug(f"{guild.name}'s WAIFU WAR SEASON SHOULD END")
+        return logger.debug(f"{guild.name}'s WAIFU WAR SEASON SHOULD END")
         
         nyah_guild = await self.bot.mongo.fetch_nyah_guild(guild)
         waifu_war_channel = await guild.fetch_channel(nyah_config.waifu_war_channel_id)
@@ -434,7 +435,7 @@ class Waifus(commands.Cog):
             .run(conn)
         # TODO update season results in db
 
-        self.bot.logger.info(f"{guild.name}[{guild.id}] | "
+        logger.info(f"{guild.name}[{guild.id}] | "
                              f"Waifu War season has been reset!")
 
     async def delete_waifu_war_threads(self, guild: disnake.Guild) -> None:
@@ -450,7 +451,7 @@ class Waifus(commands.Cog):
         for t in waifu_war_channel.threads:
             if t.owner_id == self.bot.user.id and (disnake.utils.utcnow() - t.created_at).total_seconds() >= 3600 * 20: # 20 hrs
                 await t.delete()
-                self.bot.logger.info(f"{guild.name}[{guild.id}] | "
+                logger.info(f"{guild.name}[{guild.id}] | "
                                      f"{waifu_war_channel.name}[{waifu_war_channel.id}] | "
                                      f"Deleted waifu war thread '{t.name}'[{t.id}]")
 
@@ -487,7 +488,7 @@ class Waifus(commands.Cog):
                         f"https://discord.com/events/{guild.id}/{waifu_war_event.id}",
                 embed=embed,
             )
-            self.bot.logger.info(f"{guild.name}[{guild.id}] | "
+            logger.info(f"{guild.name}[{guild.id}] | "
                                  f"{waifu_war_event.name}[{waifu_war_event.id}] | "
                                  f"Sent 10-minute reminder for Waifu War event")
 
@@ -560,7 +561,7 @@ class Waifus(commands.Cog):
     @tasks.loop(minutes=1.0)
     async def waifu_housekeeping(self):
         """ Background task to check for waifu war maintenance. """
-        self.bot.logger.debug(f"Executing waifu housekeeping... [loop #{self.waifu_housekeeping.current_loop}]")
+        logger.debug(f"Executing waifu housekeeping... [loop #{self.waifu_housekeeping.current_loop}]")
 
         for guild in self.bot.guilds:
             # add/remove waifu war role from users
@@ -590,11 +591,11 @@ class Waifus(commands.Cog):
         """
         guild = waifu_war_event.guild
         loop: tasks.Loop = self.waifu_war_tasks[guild.id]
-        self.bot.logger.debug(f"Executing Waifu War manager... [loop #{loop.current_loop}]")
+        logger.debug(f"Executing Waifu War manager... [loop #{loop.current_loop}]")
         
         # If the waifu war event is not active, then don't continue
         if waifu_war_event and waifu_war_event.status != disnake.GuildScheduledEventStatus.active:
-            return self.bot.logger.error(f"{guild.name}[{guild.id}] started Waifu War manager but the event is inactive")
+            return logger.error(f"{guild.name}[{guild.id}] started Waifu War manager but the event is inactive")
 
         # Only create the bracket on the first pass
         if loop.current_loop == 0:
@@ -643,9 +644,9 @@ class Waifus(commands.Cog):
         bracket = Bracket(war)
 
         #TODO Print the bracket
-        # self.bot.logger.debug(f"guildname[guildid] Waifu War bracket:")
+        # logger.debug(f"guildname[guildid] Waifu War bracket:")
         # for line in bracket.__str__().split("\n"):
-        #     self.bot.logger.debug(line)
+        #     logger.debug(line)
 
         # Get current round
         current_round = bracket.get_current_round()
@@ -656,7 +657,7 @@ class Waifus(commands.Cog):
             # Get a gif 
             async with self.bot.session.get(url="https://nekos.best/api/v2/thumbsup") as response:
                 if response.status != 200:
-                    self.bot.logger.error(f"nekos.best API returned status code `{response.status}`")
+                    logger.error(f"nekos.best API returned status code `{response.status}`")
                     gif_url="https://img1.ak.crunchyroll.com/i/spire2/180a8752234002128be1dd4459e3e8bd1308352623_full.jpg"
                 else:
                     body = await response.json()
@@ -826,7 +827,7 @@ class Waifus(commands.Cog):
                     embed.description = f"{winning_user.mention}'s **__{waifu.name}__** won with {vote_info['winner']['count']} votes!\n" \
                                         f"{losing_user.mention} lost the round with {vote_info['loser']['count']} votes!"
                 case _:
-                    self.bot.logger.error(f"No result returned for battle '{current_battle.id}'")
+                    logger.error(f"No result returned for battle '{current_battle.id}'")
             await battle_message.reply(embed=embed)
 
             # If the loser doesn't have any waifus left, then set the winner of the match
@@ -1118,7 +1119,7 @@ class Waifus(commands.Cog):
 
         # Create the embed with the result of the user's answer
         if minigame_view.author_won:
-            self.bot.logger.debug(f"{inter.author.name} beat minigame '{minigame}'")
+            logger.debug(f"{inter.author.name} beat minigame '{minigame}'")
             result_embed = disnake.Embed(
                 title="Correct!",
                 description=correct_description + 
@@ -1129,7 +1130,7 @@ class Waifus(commands.Cog):
             await nyah_player.add_user_money(win_amount)
             await nyah_player.add_user_xp(Experience.MINIGAME_WIN.value, inter.author, inter.channel)
         else:
-            self.bot.logger.debug(f"{inter.author.name} lost minigame '{minigame}'")
+            logger.debug(f"{inter.author.name} lost minigame '{minigame}'")
             result_embed = disnake.Embed(
                 title="Wrong!",
                 description=wrong_description +
@@ -1286,7 +1287,7 @@ class Waifus(commands.Cog):
         await self.bot.mongo.update_nyah_player(nyah_player)
         await nyah_player.add_user_xp(Experience.CLAIM.value, inter.author, inter.channel)
 
-        self.bot.logger.info(f"{inter.guild.name}[{inter.guild.id}] | "
+        logger.info(f"{inter.guild.name}[{inter.guild.id}] | "
                              f"{inter.channel.name}[{inter.channel.id}] | "
                              f"{inter.author}[{inter.author.id}] | "
                              f"Claimed {new_waifu.slug}[{claim.id}]")
@@ -1513,6 +1514,7 @@ class Waifus(commands.Cog):
         result = await self.bot.mongo.fetch_waifu_tags()
         comp = re.compile(f"(?i)^{user_input}")
         return deque(filter(comp.match, result), maxlen=25)
+
 
 def setup(bot: commands.Bot):
     bot.add_cog(Waifus(bot))

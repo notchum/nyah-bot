@@ -4,18 +4,14 @@ import disnake
 from disnake.ext import commands
 
 from bot import NyahBot
+from helpers import utilities as utils
+from util import Money, Emojis
+import util.traits as traits
 from views import WaifuPaginator
-from utils import Money, Emojis
-import utils.traits as traits
-import utils.utilities as utils
 
 class Help(commands.Cog):
     def __init__(self, bot: commands.Bot):
         self.bot: NyahBot = bot
-
-    ##*************************************************##
-    ##********           ABSTRACTIONS           *******##
-    ##*************************************************##
 
     async def get_waifu_war_event(self, guild: disnake.Guild) -> None | disnake.GuildScheduledEvent:
         """ Gets the Waifu War event for the guild.
@@ -36,18 +32,6 @@ class Help(commands.Cog):
             if event.name == "Waifu War":
                 return event
         return None
-
-    ##*************************************************##
-    ##********              EVENTS              *******##
-    ##*************************************************##
-
-    ##*************************************************##
-    ##********              TASKS               *******##
-    ##*************************************************##
-
-    ##*************************************************##
-    ##********             COMMANDS             *******##
-    ##*************************************************##
 
     @commands.slash_command()
     async def info(self, inter: disnake.ApplicationCommandInteraction):
@@ -163,9 +147,6 @@ class Help(commands.Cog):
         waifu_page_view.message = message
         return
 
-    ##*************************************************##
-    ##********          AUTOCOMPLETES           *******##
-    ##*************************************************##
 
 def setup(bot: commands.Bot):
     bot.add_cog(Help(bot))

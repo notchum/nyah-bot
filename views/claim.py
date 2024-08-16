@@ -1,12 +1,10 @@
-import logging
-
 import disnake
+from loguru import logger
 
 from models import Claim
 from helpers import Mongo
-from utils import Emojis, WaifuState
+from util import Emojis
 
-logger = logging.getLogger("nyahbot")
 mongo = Mongo()
 
 class WaifuClaimView(disnake.ui.View):

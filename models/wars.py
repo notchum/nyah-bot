@@ -2,8 +2,8 @@ from datetime import datetime
 from typing import Optional
 from uuid import UUID, uuid4
 
-from pydantic import Field
 from beanie import Document
+from pydantic import Field
 
 
 class Vote(Document):

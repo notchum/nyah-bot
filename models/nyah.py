@@ -1,19 +1,18 @@
 import random
-import logging
 from datetime import datetime, timedelta
 from typing import Optional, List
 from uuid import UUID, uuid4
 
 import disnake
-from pydantic import BaseModel, Field
 from beanie import Document
 from beanie.operators import NotIn
+from pydantic import BaseModel, Field
 
 from models import Waifu, Claim
-from utils import Emojis, WaifuState, Cooldowns, Money
-import utils.utilities as utils
+from helpers import utilities as utils
+from util import Emojis, WaifuState, Cooldowns, Money
 
-logger = logging.getLogger("nyahbot")
+
 cooldown_attribute_map = {
     Cooldowns.CLAIM: {
         "interval": "interval_claim_mins",

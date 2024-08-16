@@ -1,17 +1,16 @@
 import os
 import copy
-import logging
 from typing import List
 
 import disnake
 from google_images_search import GoogleImagesSearch
+from loguru import logger
 
-from models import Claim
+import models
 from helpers import Mongo, SuccessEmbed, ErrorEmbed
-from utils import Emojis
-import utils.utilities as utils
+from helpers import utilities as utils
+from util import Emojis
 
-logger = logging.getLogger("nyahbot")
 mongo = Mongo()
 
 class WaifuMenuView(disnake.ui.View):
@@ -251,7 +250,7 @@ class WaifuMenuView(disnake.ui.View):
 
 
 class WaifuImageSelectView(disnake.ui.View):
-    def __init__(self, embeds: List[disnake.Embed], claim: Claim, author: disnake.User | disnake.Member, reference_view: disnake.ui.View) -> None:
+    def __init__(self, embeds: List[disnake.Embed], claim: models.Claim, author: disnake.User | disnake.Member, reference_view: disnake.ui.View) -> None:
         super().__init__()
         self.embeds = embeds
         self.claim = claim
@@ -325,7 +324,7 @@ class WaifuImageSelectView(disnake.ui.View):
 
 
 class MarryDivorceView(disnake.ui.View):
-    def __init__(self, claim: Claim, embed: disnake.Embed, author: disnake.User | disnake.Member, reference_view: disnake.ui.View) -> None:
+    def __init__(self, claim: models.Claim, embed: disnake.Embed, author: disnake.User | disnake.Member, reference_view: disnake.ui.View) -> None:
         super().__init__()
         self.claim = claim
         self.embed = embed

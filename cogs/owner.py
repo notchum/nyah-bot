@@ -3,31 +3,16 @@ import datetime
 
 import disnake
 from disnake.ext import commands
+from loguru import logger
 
 from bot import NyahBot
 from helpers import SuccessEmbed, ErrorEmbed
-from utils import Cooldowns, WaifuState
-import utils.utilities as utils
+from util import Cooldowns, WaifuState
+
 
 class Owner(commands.Cog):
     def __init__(self, bot: commands.Bot):
         self.bot: NyahBot = bot
-
-    ##*************************************************##
-    ##********           ABSTRACTIONS           *******##
-    ##*************************************************##
-
-    ##*************************************************##
-    ##********              EVENTS              *******##
-    ##*************************************************##
-
-    ##*************************************************##
-    ##********              TASKS               *******##
-    ##*************************************************##
-
-    ##*************************************************##
-    ##********             COMMANDS             *******##
-    ##*************************************************##
 
     @commands.is_owner()
     @commands.slash_command(guild_ids=[776929597567795247, 759514108625682473])
@@ -209,7 +194,7 @@ class Owner(commands.Cog):
         if user:
             nyah_player = await self.bot.mongo.fetch_nyah_player(user)
             await nyah_player.reset_cooldown(cooldown)
-            self.bot.logger.info(f"{inter.guild.name}[{inter.guild.id}] | "
+            logger.info(f"{inter.guild.name}[{inter.guild.id}] | "
                                     f"Reset `{cooldown}` for {user.name}#{user.discriminator}[{user.id}]!")
             return await inter.response.send_message(
                 embed=SuccessEmbed(f"Reset `{cooldown}` for {user.name}#{user.discriminator}[{user.id}]!"),
@@ -217,7 +202,7 @@ class Owner(commands.Cog):
             )
         else:
             await self.bot.mongo.update_all_nyah_players(f"timestamp_last_{cooldown.name.lower()}", None)
-            self.bot.logger.info(f"{inter.guild.name}[{inter.guild.id}] | "
+            logger.info(f"{inter.guild.name}[{inter.guild.id}] | "
                                     f"Reset `{cooldown}` for all members!")
             return await inter.response.send_message(
                 embed=SuccessEmbed(f"Reset `{cooldown}` for all members!"),
@@ -264,9 +249,6 @@ class Owner(commands.Cog):
 
         await inter.edit_original_response(embed=SuccessEmbed("Season ended!"))
 
-    ##*************************************************##
-    ##********          AUTOCOMPLETES           *******##
-    ##*************************************************##
 
 def setup(bot: commands.Bot):
     bot.add_cog(Owner(bot))

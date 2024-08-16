@@ -1,15 +1,12 @@
-import logging
-
 import disnake
 
-from models import Battle, Vote
+import models
 from helpers import Mongo
 
-logger = logging.getLogger("nyahbot")
 mongo = Mongo()
 
 class WarVoteView(disnake.ui.View):
-    def __init__(self, battle: Battle) -> None:
+    def __init__(self, battle: models.Battle) -> None:
         super().__init__(timeout=None)
         self.battle = battle
     
@@ -19,7 +16,7 @@ class WarVoteView(disnake.ui.View):
     
     @disnake.ui.button(emoji="🗳️", style=disnake.ButtonStyle.red)
     async def vote_red(self, button: disnake.ui.Button, inter: disnake.MessageInteraction) -> None:
-        vote = Vote(
+        vote = models.Vote(
             battle_id=self.battle.id,
             waifu_vote_id=self.battle.waifu_red_id,
             user_id=inter.author.id,
@@ -40,7 +37,7 @@ class WarVoteView(disnake.ui.View):
     
     @disnake.ui.button(emoji="🗳️", style=disnake.ButtonStyle.blurple)
     async def vote_blue(self, button: disnake.ui.Button, inter: disnake.MessageInteraction) -> None:
-        vote = Vote(
+        vote = models.Vote(
             battle_id=self.battle.id,
             waifu_vote_id=self.battle.waifu_blue_id,
             user_id=inter.author.id,

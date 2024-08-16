@@ -1,26 +1,24 @@
 import random
 import asyncio
 import datetime
-from typing import Tuple, List
 from collections import deque
+from typing import Tuple, List
 
 import disnake
 from disnake.ext import commands
+from loguru import logger
 
+import models
 from bot import NyahBot
-from models import Claim
-from helpers import SuccessEmbed, ErrorEmbed
-from utils import Cooldowns, Experience
+from helpers import ErrorEmbed
+from helpers import utilities as utils
+from util import Cooldowns, Experience
 from views import WaifuDuelView
-import utils.utilities as utils
+
 
 class Multiplayer(commands.Cog):
     def __init__(self, bot: commands.Bot):
         self.bot: NyahBot = bot
-
-    ##*************************************************##
-    ##********           ABSTRACTIONS           *******##
-    ##*************************************************##
 
     async def find_duel_opponent(self, guild: disnake.Guild, user: disnake.User | disnake.Member) -> Tuple[disnake.User, int]:
         nyah_players = await self.bot.mongo.fetch_all_nyah_players()
@@ -65,7 +63,7 @@ class Multiplayer(commands.Cog):
         opponent = await guild.fetch_member(best_opponent.user_id)
         return opponent, best_opponent.score
 
-    async def generate_bot_claim(self, total_sp: int) -> Claim:
+    async def generate_bot_claim(self, total_sp: int) -> models.Claim:
         waifu = await self.bot.mongo.fetch_random_waifu([{"$match": {"popularity_rank": {"$lt": 200}}}])
 
         skills = [0,0,0,0,0]
@@ -77,7 +75,7 @@ class Multiplayer(commands.Cog):
                 break
             skills[i] = min(100, random.randint(1, max_sp))
         
-        return Claim(
+        return models.Claim(
             slug=waifu.slug,
             user_id=self.bot.user.id,
             image_url=waifu.image_url,
@@ -95,7 +93,7 @@ class Multiplayer(commands.Cog):
             magic_mod=0,
         )
 
-    def calculate_total_score(self, claim: Claim) -> float:
+    def calculate_total_score(self, claim: models.Claim) -> float:
         base_score = (claim.attack + claim.attack_mod) * 0.4 + \
                      (claim.defense + claim.defense_mod) * 0.35 + \
                      (claim.health + claim.health_mod) * 0.36 + \
@@ -114,7 +112,7 @@ class Multiplayer(commands.Cog):
         expected_probability_a = 1 / (1 + 10**((player_b_rating - player_a_rating) / 400))
         expected_probability_b = 1 - expected_probability_a
 
-        self.bot.logger.debug(f"Expected probability of player A winning: {expected_probability_a}")
+        logger.debug(f"Expected probability of player A winning: {expected_probability_a}")
 
         if player_a_won:
             new_rating_a = player_a_rating + k_factor * (1 - expected_probability_a)
@@ -127,18 +125,6 @@ class Multiplayer(commands.Cog):
         rating_difference_b = new_rating_b - player_b_rating
 
         return round(rating_difference_a)
-
-    ##*************************************************##
-    ##********              EVENTS              *******##
-    ##*************************************************##
-
-    ##*************************************************##
-    ##********              TASKS               *******##
-    ##*************************************************##
-
-    ##*************************************************##
-    ##********             COMMANDS             *******##
-    ##*************************************************##
 
     @commands.slash_command()
     async def leaderboard(self, inter: disnake.ApplicationCommandInteraction):
@@ -205,7 +191,7 @@ class Multiplayer(commands.Cog):
         opponent, opponent_rating = await self.find_duel_opponent(inter.guild, inter.author)
         if not opponent:
             return await inter.edit_original_response(content=f"Couldn't find an opponent!")
-        self.bot.logger.debug(f"Duel created: {nyah_player.score}.{inter.author.name}[{inter.author.id}] vs "
+        logger.debug(f"Duel created: {nyah_player.score}.{inter.author.name}[{inter.author.id}] vs "
                               f"{opponent_rating}.{opponent.name}[{opponent.id}]")
 
         # Select both user's waifus
@@ -256,7 +242,7 @@ class Multiplayer(commands.Cog):
                     duel_choices.append(True)
                 else:
                     duel_choices.append(False)
-        self.bot.logger.debug(duel_choices)
+        logger.debug(duel_choices)
 
         # Send the message
         message = await inter.edit_original_response(embed=duel_embed)
@@ -305,7 +291,7 @@ class Multiplayer(commands.Cog):
             )
             await nyah_player.add_user_xp(Experience.DUEL_LOSS.value, inter.author, inter.channel)
 
-        self.bot.logger.debug(f"{inter.author.name}'s new rating: {nyah_player.score}")
+        logger.debug(f"{inter.author.name}'s new rating: {nyah_player.score}")
 
         # Edit message to add embed with the result of the match
         return await inter.edit_original_response(embeds=[duel_embed, result_embed])
@@ -410,7 +396,7 @@ class Multiplayer(commands.Cog):
                     duel_choices.append(True)
                 else:
                     duel_choices.append(False)
-        self.bot.logger.debug(duel_choices)
+        logger.debug(duel_choices)
 
         # Send the message
         message = await inter.edit_original_response(embed=duel_embed)
@@ -449,10 +435,6 @@ class Multiplayer(commands.Cog):
         # Edit message to add embed with the result of the match
         return await inter.edit_original_response(embeds=[duel_embed, result_embed])
 
-    ##*************************************************##
-    ##********          AUTOCOMPLETES           *******##
-    ##*************************************************##
-
     @casual.autocomplete("waifu")
     async def harem_autocomplete(
         self,
@@ -479,6 +461,7 @@ class Multiplayer(commands.Cog):
                 waifu_names.append(formatted_name)
         
         return deque(waifu_names, maxlen=25)
+
 
 def setup(bot: commands.Bot):
     bot.add_cog(Multiplayer(bot))

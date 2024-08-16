@@ -1,10 +1,9 @@
 import os
-import logging
 
 import aiofiles
 import aiohttp_client_cache
+from loguru import logger
 
-logger = logging.getLogger("nyahbot")
 
 class API():
     def __init__(self, session: aiohttp_client_cache.CachedSession, cache_dir: str) -> None:

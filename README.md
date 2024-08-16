@@ -1,5 +1,5 @@
 # nyah-bot
-A Discord bot built for waifus.
+A Discord bot built for waifus. Created from [discord-bot-template](https://github.com/notchum/discord-bot-template).
 
 ## Features
 - Waifus
@@ -83,20 +83,20 @@ Every Python package can be installed using:
 $ pip install -r requirements.txt
 ```
 - [disnake](https://docs.disnake.dev/en/latest/api.html)
-- [RethinkDB](https://github.com/rethinkdb/rethinkdb)
+- [motor](https://github.com/mongodb/motor)
+- [beanie](https://github.com/BeanieODM/beanie)
 - [aiofiles](https://pypi.org/project/aiofiles/)
-- [aiohttp](https://pypi.org/project/aiohttp/)
+- [aiohttp-client-cache](https://github.com/requests-cache/aiohttp-client-cache)
 - [python-dotenv](https://pypi.org/project/python-dotenv/)
 - [loguru](https://github.com/Delgan/loguru)
+- [ruff](https://github.com/astral-sh/ruff)
 - [Google-Images-Search](https://github.com/arrrlo/Google-Images-Search)
-- [lxml](https://lxml.de/)
-- [cssselect](https://lxml.de/cssselect.html)
 - [Pillow](https://python-pillow.org/)
 
 ### Running nyah-bot
 Then run the bot using: 
 ```sh
-$ python nyahbot.py
+$ python launcher.py
 ```
 
 ### Building Docker Image

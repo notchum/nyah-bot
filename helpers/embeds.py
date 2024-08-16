@@ -1,10 +1,8 @@
-import datetime
-
 import disnake
 
 from models import Waifu, Claim
 from helpers import Mongo
-from utils import WaifuState
+from util import WaifuState
 
 mongo = Mongo()
 

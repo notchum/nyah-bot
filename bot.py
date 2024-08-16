@@ -1,6 +1,5 @@
 import os
 import shutil
-import logging
 import tempfile
 import platform
 from collections import namedtuple
@@ -9,13 +8,14 @@ import aiohttp_client_cache
 import disnake
 from disnake import Activity, ActivityType
 from disnake.ext import commands
+from loguru import logger
 from beanie import init_beanie
-from beanie.operators import Set
 from motor.motor_asyncio import AsyncIOMotorClient
 
 import models
 from helpers import Mongo, API
-from utils import WaifuState
+from helpers import utilities as utils
+from util import WaifuState
 
 VERSION = "0.9.0"
 
@@ -31,7 +31,6 @@ Config = namedtuple(
         "GOOGLE_KEY",
         "GOOGLE_SEARCH_ID",
         "PROXY_HTTP_URL",
-        "WEBSCRAPE_URL",
     ],
 )
 
@@ -39,7 +38,6 @@ Config = namedtuple(
 class NyahBot(commands.InteractionBot):
     def __init__(self, *args, **kwargs):
         self.config: Config = kwargs.pop("config", None)
-        self.logger: logging.Logger = kwargs.pop("logger", None)
         self.version = VERSION
         super().__init__(*args, **kwargs)
         self.before_slash_command_invoke(self.before_invoke)
@@ -49,7 +47,7 @@ class NyahBot(commands.InteractionBot):
     async def setup_hook(self):
         # Initialize temporary directory
         self.create_temp_dir()
-        self.logger.debug(f"Initialized temp directory {self.temp_dir}")
+        logger.debug(f"Initialized temp directory {self.temp_dir}")
 
         # Load cogs
         for extension in utils.get_cog_names():
@@ -57,7 +55,7 @@ class NyahBot(commands.InteractionBot):
                 self.load_extension(extension)
             except Exception as e:
                 exception = f"{type(e).__name__}: {e}"
-                self.logger.exception(
+                logger.exception(
                     f"Failed to load extension {extension}!\t{exception}"
                 )
 
@@ -68,12 +66,12 @@ class NyahBot(commands.InteractionBot):
             await init_beanie(self.client["_nyah"], document_models=[models.NyahConfig, models.NyahGuild, models.NyahPlayer])
             await init_beanie(self.client["_waifus"], document_models=[models.Claim])
             await init_beanie(self.client["_wars"], document_models=[models.Event, models.Match, models.Battle, models.Round, models.Vote])
-            self.logger.warning("Running in test mode. Connected to test database.")
+            logger.warning("Running in test mode. Connected to test database.")
         else:
             await init_beanie(self.client["nyah"], document_models=[models.NyahConfig, models.NyahGuild, models.NyahPlayer])
             await init_beanie(self.client["waifus"], document_models=[models.Waifu, models.Claim])
             await init_beanie(self.client["wars"], document_models=[models.Event, models.Match, models.Battle, models.Round, models.Vote])
-            self.logger.success("Connected to database.")
+            logger.success("Connected to database.")
 
         # Create the global bot settings entry if it doesn't exist
         await self.create_settings_entry()
@@ -90,13 +88,13 @@ class NyahBot(commands.InteractionBot):
 
     async def on_ready(self):
         # fmt: off
-        self.logger.info("------")
-        self.logger.info(f"{self.user.name} v{self.version}")
-        self.logger.info(f"ID: {self.user.id}")
-        self.logger.info(f"Python version: {platform.python_version()}")
-        self.logger.info(f"Disnake API version: {disnake.__version__}")
-        self.logger.info(f"Running on: {platform.system()} {platform.release()} ({os.name})")
-        self.logger.info("------")
+        logger.info("------")
+        logger.info(f"{self.user.name} v{self.version}")
+        logger.info(f"ID: {self.user.id}")
+        logger.info(f"Python version: {platform.python_version()}")
+        logger.info(f"Disnake API version: {disnake.__version__}")
+        logger.info(f"Running on: {platform.system()} {platform.release()} ({os.name})")
+        logger.info("------")
         # fmt: on
 
     async def close(self):
@@ -117,7 +115,7 @@ class NyahBot(commands.InteractionBot):
                 elif os.path.isdir(file_path):
                     shutil.rmtree(file_path)
             except Exception as e:
-                self.logger.error(f"Error deleting {file}: {e}")
+                logger.error(f"Error deleting {file}: {e}")
 
     async def create_settings_entry(self):
         return #TODO remove when settings is renamed
@@ -126,7 +124,7 @@ class NyahBot(commands.InteractionBot):
             settings_doc = await models.BotSettings.insert_one(
                 models.BotSettings(toggle=False)
             )
-            self.logger.success(f"Created settings entry for my-bot [{settings_doc.id}]")
+            logger.success(f"Created settings entry for nyah-bot [{settings_doc.id}]")
 
     @property
     def waifus_cog(self) -> commands.Cog:

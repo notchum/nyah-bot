@@ -5,29 +5,13 @@ import disnake
 from disnake.ext import commands
 
 from bot import NyahBot
+from helpers import ErrorEmbed
+from util import Emojis, Money
 from views import WaifuWishlistView
-from helpers import SuccessEmbed, ErrorEmbed
-from utils import Emojis, Money
 
 class Wishlist(commands.Cog):
     def __init__(self, bot: commands.Bot):
         self.bot: NyahBot = bot
-
-    ##*************************************************##
-    ##********           ABSTRACTIONS           *******##
-    ##*************************************************##
-
-    ##*************************************************##
-    ##********              EVENTS              *******##
-    ##*************************************************##
-
-    ##*************************************************##
-    ##********              TASKS               *******##
-    ##*************************************************##
-
-    ##*************************************************##
-    ##********             COMMANDS             *******##
-    ##*************************************************##
 
     @commands.slash_command()
     async def wishlist(self, inter: disnake.ApplicationCommandInteraction):
@@ -103,10 +87,6 @@ class Wishlist(commands.Cog):
 
         return await inter.edit_original_response(embed=embed)
 
-    ##*************************************************##
-    ##********          AUTOCOMPLETES           *******##
-    ##*************************************************##
-
     @add.autocomplete("waifu")
     async def waifu_name_autocomplete(
         self,
@@ -117,6 +97,7 @@ class Wishlist(commands.Cog):
             user_input = "a"
         waifus = await self.bot.mongo.fetch_waifus_by_name(user_input)
         return deque([f"{waifu.name} [{waifu.series[0]}]" for waifu in waifus if len(waifu.series)], maxlen=25)
+
 
 def setup(bot: commands.Bot):
     bot.add_cog(Wishlist(bot))

@@ -1,11 +1,11 @@
-import random
 import asyncio
+import random
 from typing import List
 
 import disnake
 
-from models import NyahPlayer
-from utils import Emojis
+import models
+from util import Emojis
 
 class Symbol:
     SEVEN  = "<:Slot_7:1172053243690487808>"
@@ -55,7 +55,7 @@ class SlotMachine:
         def get_face_symbols(self, num_rows: int) -> List[Symbol]:
             return self.symbols[:num_rows]
     
-    def __init__(self, player: NyahPlayer, num_reels: int = 3, num_rows: int = 3, num_paylines: int = 1):
+    def __init__(self, player: models.NyahPlayer, num_reels: int = 3, num_rows: int = 3, num_paylines: int = 1):
         if num_reels < 3:
             raise ValueError("Number of reels must be at least 3")
         if num_rows < 3:

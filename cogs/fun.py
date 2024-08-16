@@ -1,32 +1,14 @@
-import asyncio
-
 import disnake
 from disnake.ext import commands
 
 from bot import NyahBot
-from helpers import SuccessEmbed, ErrorEmbed
-from utils import Emojis
+from helpers import ErrorEmbed
+from util import Emojis
 from views.gambling import SlotMachine, SlotsView
 
 class Fun(commands.Cog):
     def __init__(self, bot: commands.Bot):
         self.bot: NyahBot = bot
-
-    ##*************************************************##
-    ##********           ABSTRACTIONS           *******##
-    ##*************************************************##
-
-    ##*************************************************##
-    ##********              EVENTS              *******##
-    ##*************************************************##
-
-    ##*************************************************##
-    ##********              TASKS               *******##
-    ##*************************************************##
-
-    ##*************************************************##
-    ##********             COMMANDS             *******##
-    ##*************************************************##
 
     @commands.slash_command()
     async def ddlc(
@@ -44,6 +26,7 @@ class Fun(commands.Cog):
             text: `str`
                 Meme text.
         """
+        #TODO
         return await inter.response.send_message(
             embed=ErrorEmbed("Not implemented :("),
             ephemeral=True
@@ -67,9 +50,6 @@ class Fun(commands.Cog):
         message = await inter.edit_original_response(embed=machine.current_embed, view=slots_view)
         slots_view.message = message
 
-    ##*************************************************##
-    ##********          AUTOCOMPLETES           *******##
-    ##*************************************************##
 
 def setup(bot: commands.Bot):
     bot.add_cog(Fun(bot))

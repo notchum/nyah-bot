@@ -3,9 +3,9 @@ from typing import List
 
 import disnake
 
-from models import NyahPlayer
+import models
 from helpers import Mongo
-from utils import Emojis
+from util import Emojis
 from views import CharacterSelectView
 
 mongo = Mongo()
@@ -91,7 +91,7 @@ class PlayerBaseItem():
         name: str,
         type: ItemTypes,
         emoji: str,
-        owner: NyahPlayer,
+        owner: models.NyahPlayer,
         amount: int
     ):
         self.name = name
@@ -109,7 +109,7 @@ class PlayerBaseItem():
 
 
 class PlayerChestItem(PlayerBaseItem):
-    def __init__(self, owner: NyahPlayer, amount: int):
+    def __init__(self, owner: models.NyahPlayer, amount: int):
         super().__init__(
             name="Chest",
             type=ItemTypes.ITEM_CHEST_KEY,
@@ -164,7 +164,7 @@ class PlayerChestItem(PlayerBaseItem):
 
 
 class PlayerTraitScrollItem(PlayerBaseItem):
-    def __init__(self, owner: NyahPlayer, amount: int):
+    def __init__(self, owner: models.NyahPlayer, amount: int):
         super().__init__(
             name="Trait Scroll",
             type=ItemTypes.ITEM_TRAIT_SCROLL,
@@ -190,7 +190,7 @@ class PlayerTraitScrollItem(PlayerBaseItem):
 
 
 class PlayerShonenStoneItem(PlayerBaseItem):
-    def __init__(self, owner: NyahPlayer, amount: int):
+    def __init__(self, owner: models.NyahPlayer, amount: int):
         super().__init__(
             name="Trait Scroll",
             type=ItemTypes.ITEM_TRAIT_SCROLL,
@@ -205,7 +205,7 @@ class PlayerShonenStoneItem(PlayerBaseItem):
 
 
 class PlayerEnergyBoostItem(PlayerBaseItem):
-    def __init__(self, owner: NyahPlayer, amount: int):
+    def __init__(self, owner: models.NyahPlayer, amount: int):
         super().__init__(
             name="Trait Scroll",
             type=ItemTypes.ITEM_TRAIT_SCROLL,
@@ -221,7 +221,7 @@ class PlayerEnergyBoostItem(PlayerBaseItem):
 
 class ItemFactory:
     @staticmethod
-    def create_item(item_type: int, owner: NyahPlayer, amount: int):
+    def create_item(item_type: int, owner: models.NyahPlayer, amount: int):
         match ItemTypes(item_type):
             case ItemTypes.ITEM_CHEST_KEY:
                 return PlayerChestItem(owner, amount)

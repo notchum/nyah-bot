@@ -1,12 +1,12 @@
 import os
 import asyncio
-import logging
-import logging.handlers
 
 import disnake
+from loguru import logger
 from dotenv import load_dotenv
 
 from bot import NyahBot, Config
+
 
 async def main():
     # Load the environment variables
@@ -23,31 +23,14 @@ async def main():
         GOOGLE_KEY=os.environ["GOOGLE_KEY"],
         GOOGLE_SEARCH_ID=os.environ["GOOGLE_SEARCH_ID"],
         PROXY_HTTP_URL=os.environ["PROXY_HTTP_URL"],
-        WEBSCRAPE_URL=os.environ["WEBSCRAPE_URL"],
     )
 
     # Create logger
-    if config.DISNAKE_LOGGING:
-        logger = logging.getLogger("disnake")
-    else:
-        logger = logging.getLogger("nyahbot")
-    logger.setLevel(logging.DEBUG if config.DEBUG else logging.INFO)
-
-    if not os.path.exists("log"):
-        os.makedirs("log")
-    handler = logging.handlers.TimedRotatingFileHandler(
-        filename="log/nyah-bot.log",
-        when="midnight",
-        encoding="utf-8",
-        backupCount=5,  # Rotate through 5 files
+    logger.add(
+        "logs/nyah-bot.log", level="DEBUG" if config.DEBUG else "INFO", rotation="12:00"
     )
-    formatter = logging.Formatter("%(asctime)s | %(levelname)-8s | %(name)s:%(funcName)s:%(lineno)d - %(message)s")
-    handler.setFormatter(formatter)
-    logger.addHandler(handler)
-
-    handler = logging.StreamHandler()
-    handler.setFormatter(formatter)
-    logger.addHandler(handler)
+    if config.DISNAKE_LOGGING:
+        pass  # TODO logger = logging.getLogger("disnake")
 
     # Create intents
     intents = disnake.Intents.default()
@@ -63,5 +46,6 @@ async def main():
     )
     await bot.setup_hook()
     await bot.start(config.DISCORD_BOT_TOKEN)
+
 
 asyncio.run(main())

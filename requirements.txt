@@ -1,11 +1,10 @@
 disnake
-rethinkdb
+motor
+beanie
 aiofiles
 aiohttp_client_cache
 python-dotenv
-motor
-beanie
+loguru
+ruff
 Google-Images-Search
-lxml
-cssselect
 Pillow
