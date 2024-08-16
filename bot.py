@@ -68,7 +68,7 @@ class NyahBot(commands.InteractionBot):
             await init_beanie(self.client["_nyah"], document_models=[models.NyahConfig, models.NyahGuild, models.NyahPlayer])
             await init_beanie(self.client["_waifus"], document_models=[models.Claim])
             await init_beanie(self.client["_wars"], document_models=[models.Event, models.Match, models.Battle, models.Round, models.Vote])
-            self.logger.warning("Running in test mode. Using test database.")
+            self.logger.warning("Running in test mode. Connected to test database.")
         else:
             await init_beanie(self.client["nyah"], document_models=[models.NyahConfig, models.NyahGuild, models.NyahPlayer])
             await init_beanie(self.client["waifus"], document_models=[models.Waifu, models.Claim])
@@ -103,10 +103,6 @@ class NyahBot(commands.InteractionBot):
         await self.session.close()
         await super().close()
 
-    @property
-    def waifus_cog(self) -> commands.Cog:
-        return self.get_cog("Waifus")
-
     def create_temp_dir(self):
         self.temp_dir = os.path.join(tempfile.gettempdir(), "tmp-nyah-bot")
         if not os.path.exists(self.temp_dir):
@@ -124,13 +120,17 @@ class NyahBot(commands.InteractionBot):
                 self.logger.error(f"Error deleting {file}: {e}")
 
     async def create_settings_entry(self):
-        return
+        return #TODO remove when settings is renamed
         settings_doc = await models.BotSettings.find_all().to_list()
         if len(settings_doc) == 0:
             settings_doc = await models.BotSettings.insert_one(
                 models.BotSettings(toggle=False)
             )
             self.logger.success(f"Created settings entry for my-bot [{settings_doc.id}]")
+
+    @property
+    def waifus_cog(self) -> commands.Cog:
+        return self.get_cog("Waifus")
 
     async def before_invoke(self, inter: disnake.ApplicationCommandInteraction):
         nyah_player = await models.NyahPlayer.find_one(
