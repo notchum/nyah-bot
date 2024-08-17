@@ -25,8 +25,8 @@ class Waifus(commands.Cog):
         self.bot: NyahBot = bot
         self.last_date = datetime.date.today()
         self.waifu_housekeeping.start()
-        self.waifu_war_creation.start()
-        self.waifu_war_tasks = {}   
+        # self.waifu_war_creation.start()
+        self.waifu_war_tasks = {}
 
     ##*************************************************##
     ##********           ABSTRACTIONS           *******##
