@@ -29,7 +29,6 @@ Config = namedtuple(
         "MAL_CLIENT_ID",
         "GOOGLE_KEY",
         "GOOGLE_SEARCH_ID",
-        "PROXY_HTTP_URL",
     ],
 )
 

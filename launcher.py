@@ -22,7 +22,6 @@ async def main():
         MAL_CLIENT_ID=os.environ["MAL_CLIENT_ID"],
         GOOGLE_KEY=os.environ["GOOGLE_KEY"],
         GOOGLE_SEARCH_ID=os.environ["GOOGLE_SEARCH_ID"],
-        PROXY_HTTP_URL=os.environ["PROXY_HTTP_URL"],
     )
 
     # Create logger
