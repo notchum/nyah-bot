@@ -25,7 +25,7 @@ In the Discord Developer Application Portal, under "Settings" > "OAuth2" > "URL 
 ### Bot Permissions
 In the same "URL Generator" settings page, a new selection box should have appeared - "Bot Permissions". Check the boxes listed below:
 - Manage Roles
-- Read Messages/View Channels
+- View Channels
 - Manage Events
 - Create Events
 - Send Messages
@@ -36,6 +36,7 @@ In the same "URL Generator" settings page, a new selection box should have appea
 - Attach Files
 - Read Message History
 - Use External Emojis
+- Create Polls
 
 ---
 
