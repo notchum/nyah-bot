@@ -9,7 +9,7 @@ from beanie import Document
 from beanie.operators import Set
 from beanie.odm.bulk import BulkWriter
 
-import utils
+import utils.traits as traits
 from utils.constants import Emojis, WaifuState, Money
 
 class Waifu(Document):
@@ -125,7 +125,7 @@ class Claim(Document):
         NyahPlayer = import_module("models").NyahPlayer
         player = await NyahPlayer.find_one(NyahPlayer.user_id == self.user_id) # using query instead of fetch_nyah_player() to avoid circular import
         
-        trait_dropper = utils.traits.CharacterTraitDropper(player.level)
+        trait_dropper = traits.CharacterTraitDropper(player.level)
         trait_common = trait_dropper.drop_common_trait()
         trait_uncommon = trait_dropper.drop_uncommon_trait()
         trait_rare = trait_dropper.drop_rare_trait()

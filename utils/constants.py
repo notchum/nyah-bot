@@ -2,6 +2,9 @@ import datetime
 from enum import Enum
 
 class Emojis:
+    CHECK_MARK = "✔️"
+    CROSS_MARK = "✖️"
+
     COINS      = "<:coins:1158472639413764178>"
     SWAP       = "<:replace:1158888082343477258>"
     PREV_PAGE  = "<:leftWaifu:1158460793063477420>"

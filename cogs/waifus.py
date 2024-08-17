@@ -14,7 +14,7 @@ from loguru import logger
 import utils
 from bot import NyahBot
 from models import Claim, Event
-from helpers import ErrorEmbed
+from helpers import ErrorEmbed, WaifuCoreEmbed, WaifuClaimEmbed, WaifuHaremEmbed
 from utils.constants import Emojis, WaifuState, Cooldowns, Experience, Money
 from utils.bracket import Bracket
 from utils.items import ItemFactory
@@ -1208,7 +1208,7 @@ class Waifus(commands.Cog):
         
         embeds = []
         for waifu in result:
-            embed = await self.bot.get_waifu_core_embed(waifu)
+            embed = WaifuCoreEmbed(waifu)
             embeds.append(embed)
         
         dex_view = await WaifuDexView.create_instance(embeds, inter.author)
@@ -1261,7 +1261,7 @@ class Waifus(commands.Cog):
         claim = await nyah_player.generate_claim(new_waifu)
         
         # Send the waifu
-        waifu_embed = await self.bot.get_waifu_claim_embed(claim, inter.author)
+        waifu_embed = WaifuClaimEmbed(new_waifu, claim)
         claim_view = WaifuClaimView(claim, inter.author)
         message = await inter.edit_original_response(
             content=f"**A {'husbando' if new_waifu.husbando else 'waifu'} for {inter.author.mention} :3**",
@@ -1393,7 +1393,8 @@ class Waifus(commands.Cog):
         
         embeds: typing.List[disnake.Embed] = list()
         for claim in harem:
-            embed = await self.bot.get_waifu_harem_embed(claim)
+            w = await self.bot.mongo.fetch_waifu(claim.slug)
+            embed = WaifuHaremEmbed(w, claim)
             embed.set_footer(text=claim.id)
             embeds.append(embed)
 
@@ -1445,7 +1446,7 @@ class Waifus(commands.Cog):
         waifu = await self.bot.mongo.fetch_waifu(claim.slug)
 
         # Send message with waifu and new skill points
-        embed = await self.bot.get_waifu_skills_embed(claim)
+        embed = WaifuClaimEmbed(waifu, claim)
         embed.description = f"Reroll **__{waifu.name}'s__** skills for `{Money.SKILL_COST.value:,}` {Emojis.COINS}?"
         skill_view = WaifuSkillView(claim, inter.author)
         message = await inter.edit_original_response(embed=embed, view=skill_view)

@@ -62,6 +62,6 @@ class WaifuSkillView(disnake.ui.View):
         self.reroll.label = "Reroll Skills Again?"
         await inter.response.edit_message(embeds=[self.message.embeds[0], confirmation_embed], view=self)
 
-    @disnake.ui.button(label="Cancel", emoji="✖️", style=disnake.ButtonStyle.red)
+    @disnake.ui.button(label="Cancel", emoji=Emojis.CROSS_MARK, style=disnake.ButtonStyle.red)
     async def cancel(self, button: disnake.ui.Button, inter: disnake.MessageInteraction) -> None:
         await inter.response.edit_message(view=None)

@@ -5,7 +5,7 @@ import disnake
 from disnake.ext import commands
 
 from bot import NyahBot
-from helpers import ErrorEmbed
+from helpers import ErrorEmbed, WaifuBaseEmbed
 from utils.constants import Emojis, Money
 from views import WaifuWishlistView
 
@@ -48,7 +48,7 @@ class Wishlist(commands.Cog):
                 embed=ErrorEmbed(f"Couldn't find `{name}` in the waifu database!")
             )
         
-        embed = await self.bot.get_waifu_base_embed(waifu)
+        embed = WaifuBaseEmbed(waifu)
         embed.description = f"Wishlist __**{waifu.name}**__ for `{Money.WISHLIST_COST.value:,}` {Emojis.COINS}?"
         
         wishlist_view = WaifuWishlistView(

@@ -61,7 +61,7 @@ class WaifuWishlistView(disnake.ui.View):
 
         await inter.response.edit_message(embeds=[self.embed, confirmation_embed], view=None)
     
-    @disnake.ui.button(label="Cancel", emoji="✖️", style=disnake.ButtonStyle.red)
+    @disnake.ui.button(label="Cancel", emoji=Emojis.CROSS_MARK, style=disnake.ButtonStyle.red)
     async def cancel(self, button: disnake.ui.Button, inter: disnake.MessageInteraction) -> None:
         cancel_embed = disnake.Embed(
             description=f"Wishlisting cancelled.\n",

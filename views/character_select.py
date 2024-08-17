@@ -1,145 +1,75 @@
 import uuid
 
 import disnake
-from loguru import logger
 
 import models
-from helpers import Mongo, ErrorEmbed
+from helpers import Mongo, WaifuClaimEmbed
 from utils.constants import Emojis
 
 mongo = Mongo()
 
 class CharacterDropdown(disnake.ui.StringSelect["CharacterSelectView"]):
-    def __init__(self, characters: models.Harem):
+    def __init__(self, harem: models.Harem):
         options = [
-            disnake.SelectOption(label=character.name, value=str(character.id))
-            for character in characters
+            disnake.SelectOption(label=claim.name, value=str(claim.id))
+            for claim in harem
         ]
         super().__init__(placeholder="Select one of your characters", options=options)
+        self.harem = harem
 
     async def callback(self, inter: disnake.MessageInteraction):
-        self.view.stop()
         choice = self.values[0]
-        selected_character_id = uuid.UUID(choice)
+        selected_claim_id = uuid.UUID(choice)
+        for claim in self.harem:
+            if claim.id == selected_claim_id:
+                self.view.confirm.disabled = False
+                self.view.current_claim = claim
+                self.placeholder = f"Are you sure you want to select {claim.name} [{claim.base_stats} BS]?"
+                
+                waifu = await mongo.fetch_waifu(claim.slug)
+                await inter.response.edit_message(
+                    embeds=[inter.message.embeds[0], WaifuClaimEmbed(waifu, claim)],
+                    view=self.view
+                )
+                
+                break
 
-        claim = await mongo.fetch_claim(selected_character_id)
-        
-        embed = disnake.Embed(
-            description=f"Are you sure you want to select **__{claim.name}__**?",
-            color=disnake.Color.greyple()
-        )
-
-        
-
-        await inter.response.edit_message(
-            embeds=[current_embed, embed],
-            view=MarryDivorceView(
-                claim=claim,
-                embed=current_embed,
-                author=self.author, 
-                reference_view=self
-            )
-        )
-
-        await inter.response.edit_message(f"You chose {choice}", view=None)
 
 class CharacterSelectView(disnake.ui.View):
     message: disnake.Message
+    selected_claim: models.Claim
 
-    def __init__(self, author: disnake.User | disnake.Member, characters: models.Harem):
+    def __init__(self, author: disnake.User | disnake.Member, harem: models.Harem):
         super().__init__()
         self.author = author
+        self.harem = harem
+        self.current_claim = None
 
-        self.add_item(CharacterDropdown(characters))
-
+        self.add_item(CharacterDropdown(self.harem))
+        self.confirm.disabled = True
+    
     async def interaction_check(self, interaction: disnake.MessageInteraction) -> bool:
         return interaction.user.id == self.author.id
 
     async def on_timeout(self) -> None:
-        await self.message.edit(view=None)
+        if self.message:
+            await self.message.edit(view=None)
+        await super().on_timeout()
 
-class CharacterConfirmView(disnake.ui.View):
-    def __init__(self, claim: models.Claim, author: disnake.User | disnake.Member, reference_view: disnake.ui.View) -> None:
-        super().__init__()
-        self.claim = claim
-        self.embed = embed
-        self.author = author
-        self.reference_view = reference_view
-
-        for child in reference_view.children:
-            if isinstance(child, disnake.ui.Button) and child.label in ["Marry", "Divorce"]:
-                self.marry_divorce_button = child
-                match self.marry_divorce_button.label:
-                    case "Marry":
-                        self.confirm.label="Confirm Marry?"
-                        self.confirm.emoji=Emojis.STATE_MARRIED
-                    case "Divorce":
-                        self.confirm.label="Confirm Divorce?"
-                        self.confirm.emoji=Emojis.STATE_UNMARRIED
-                    case _:
-                        logger.error(f"Invalid type: {self.type}")
-
-    async def interaction_check(self, interaction: disnake.MessageInteraction) -> bool:
-        return interaction.author.id == self.author.id
-
-    @disnake.ui.button(style=disnake.ButtonStyle.green)
+    @disnake.ui.button(label="Confirm", emoji=Emojis.CHECK_MARK, style=disnake.ButtonStyle.green, row=1)
     async def confirm(self, button: disnake.ui.Button, interaction: disnake.MessageInteraction) -> None:
-        match self.marry_divorce_button.label:
-            case "Marry":
-                self.claim.marry()
-                await mongo.update_claim(self.claim)
-                
-                self.embed.color = disnake.Color.green()
-                status_field_index = next((i for i, field in enumerate(self.embed.fields) if field.name == "Status"), None)
-                if status_field_index is not None:
-                    self.embed.set_field_at(
-                        index=status_field_index,
-                        name="Status",
-                        value=f"{Emojis.STATE_MARRIED} Married"
-                    )
+        self.selected_claim = self.current_claim
+        await interaction.response.edit_message(view=None)
+        self.stop()
 
-                self.marry_divorce_button.label = "Divorce"
-                self.marry_divorce_button.emoji = Emojis.STATE_UNMARRIED
-
-                waifu = await mongo.fetch_waifu(self.claim.slug)
-                result_embed = disnake.Embed(
-                    description=f"Married **__{waifu.name}__** {Emojis.STATE_MARRIED}",
-                    color=disnake.Color.fuchsia()
-                )
-            case "Divorce":
-                self.claim.divorce()
-                await mongo.update_claim(self.claim)
-
-                self.embed.color = disnake.Color.red()
-                status_field_index = next((i for i, field in enumerate(self.embed.fields) if field.name == "Status"), None)
-                if status_field_index is not None:
-                    self.embed.set_field_at(
-                        index=status_field_index,
-                        name="Status",
-                        value=f"{Emojis.STATE_UNMARRIED} Unmarried"
-                    )
-                
-                self.marry_divorce_button.label = "Marry"
-                self.marry_divorce_button.emoji = Emojis.STATE_MARRIED
-                
-                waifu = await mongo.fetch_waifu(self.claim.slug)
-                result_embed = disnake.Embed(
-                    description=f"Divorced **__{waifu.name}__** {Emojis.STATE_UNMARRIED}",
-                    color=disnake.Color.dark_blue()
-                )
-            case _:
-                logger.error(f"Invalid type: {self.type}")
-                error_embed = ErrorEmbed("Something went wrong!")
-                return await interaction.response.edit_message(
-                    embed=error_embed,
-                    view=None
-                )
-        
-        await interaction.response.edit_message(
-            embeds=[self.embed, result_embed],
-            view=self.reference_view
-        )
-
-    @disnake.ui.button(label="Cancel", emoji="✖️", style=disnake.ButtonStyle.red)
+    @disnake.ui.button(label="Cancel", emoji=Emojis.CROSS_MARK, style=disnake.ButtonStyle.red, row=1)
     async def cancel(self, button: disnake.ui.Button, interaction: disnake.MessageInteraction) -> None:
-        await interaction.response.edit_message(embed=self.embed, view=self.reference_view)
+        embed = disnake.Embed(
+            description="Cancelled",
+            color=disnake.Color.red()
+        )
+        await interaction.response.edit_message(
+            embeds=[interaction.message.embeds[0], embed],
+            view=None
+        )
+        self.stop()

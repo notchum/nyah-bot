@@ -107,6 +107,7 @@ class NyahPlayer(Document):
         
         claim = Claim(
             slug=waifu.slug,
+            name=waifu.name,
             guild_id=None,
             channel_id=None,
             message_id=None,

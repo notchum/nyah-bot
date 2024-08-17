@@ -97,7 +97,7 @@ class WaifuMenuView(disnake.ui.View):
     async def title(self, button: disnake.ui.Button, interaction: disnake.MessageInteraction) -> None:
         pass
     
-    @disnake.ui.button(emoji="✖️", style=disnake.ButtonStyle.red)
+    @disnake.ui.button(emoji=Emojis.CROSS_MARK, style=disnake.ButtonStyle.red)
     async def exit(self, button: disnake.ui.Button, inter: disnake.MessageInteraction) -> None:
         self.stop()
         await inter.response.edit_message(view=None)
@@ -293,7 +293,7 @@ class WaifuImageSelectView(disnake.ui.View):
     async def title(self, button: disnake.ui.Button, interaction: disnake.MessageInteraction) -> None:
         pass
     
-    @disnake.ui.button(label="Select Image", emoji="✔️", style=disnake.ButtonStyle.green, row=1)
+    @disnake.ui.button(label="Select Image", emoji=Emojis.CHECK_MARK, style=disnake.ButtonStyle.green, row=1)
     async def choose_image(self, button: disnake.ui.Button, interaction: disnake.MessageInteraction) -> None:
         current_embed = self.embeds[self.embed_index]
         self.reference_view.embeds[self.reference_view.embed_index] = current_embed
@@ -314,7 +314,7 @@ class WaifuImageSelectView(disnake.ui.View):
                     f"{interaction.author}[{interaction.author.id}] | "
                     f"Selected image {current_embed.image.url} for {self.claim.slug}[{self.claim.id}]")
         
-    @disnake.ui.button(label="Cancel", emoji="✖️", style=disnake.ButtonStyle.red, row=1)
+    @disnake.ui.button(label="Cancel", emoji=Emojis.CROSS_MARK, style=disnake.ButtonStyle.red, row=1)
     async def cancel(self, button: disnake.ui.Button, interaction: disnake.MessageInteraction) -> None:
         for current_embed in reversed(self.embeds):
             if current_embed.image.url == self.claim.image_url:
@@ -417,6 +417,6 @@ class MarryDivorceView(disnake.ui.View):
             view=self.reference_view
         )
 
-    @disnake.ui.button(label="Cancel", emoji="✖️", style=disnake.ButtonStyle.red, row=1)
+    @disnake.ui.button(label="Cancel", emoji=Emojis.CROSS_MARK, style=disnake.ButtonStyle.red, row=1)
     async def cancel(self, button: disnake.ui.Button, interaction: disnake.MessageInteraction) -> None:
         await interaction.response.edit_message(embed=self.embed, view=self.reference_view)

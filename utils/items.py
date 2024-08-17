@@ -4,7 +4,7 @@ from typing import List
 import disnake
 
 import models
-from helpers import Mongo
+from helpers import Mongo, WaifuClaimEmbed
 from utils.constants import Emojis
 from views import CharacterSelectView
 
@@ -179,14 +179,34 @@ class PlayerTraitScrollItem(PlayerBaseItem):
         embed = disnake.Embed(
             title=f"Trait Scroll {Emojis.ITEM_TRAIT_SCROLL}",
             description=f"You have `x{self.amount}` Trait Scrolls available to use.\n\n"
-                        f"Please select a character to use the Trait Scroll on.",
+                        f"Please select a character to use the Trait Scroll on.\n\n"
+                        f"Once your desired character is selected, click **Confirm** {Emojis.CHECK_MARK}.",
             color=disnake.Color.fuchsia()
         )
         waifu_dropdown = CharacterSelectView(inter.author, harem)
         message = await inter.edit_original_response(embed=embed, view=waifu_dropdown)
         waifu_dropdown.message = message
+        waifu_dropdown.selected_claim = None
 
-        await super().use()
+        await waifu_dropdown.wait()
+        
+        if isinstance(waifu_dropdown.selected_claim, models.Claim):
+            claim = waifu_dropdown.selected_claim
+            await claim.roll_traits()
+            await mongo.update_claim(claim)
+            waifu = await mongo.fetch_waifu(claim.slug)
+
+            await super().use()
+
+            embed = disnake.Embed(
+                title=f"Trait Scroll {Emojis.ITEM_TRAIT_SCROLL}",
+                description=f"Trait scroll successfully applied to **__{claim.name}__**.\n\n"
+                            f"You now have `x{self.amount}` Trait Scrolls available to use.",
+                color=disnake.Color.green()
+            )
+            await inter.edit_original_response(
+                embeds=[embed, WaifuClaimEmbed(waifu, claim)]
+            )
 
 
 class PlayerShonenStoneItem(PlayerBaseItem):
