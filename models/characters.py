@@ -80,7 +80,7 @@ class Claim(Document):
     image_url: str
     cached_images_urls: List[str]
 
-    state: WaifuState = Field()
+    state: WaifuState = Field(None)
     index: Optional[int] = None
     price: int
     tier: Tiers = Field()

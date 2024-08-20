@@ -77,10 +77,12 @@ class Multiplayer(commands.Cog):
         
         return models.Claim(
             slug=waifu.slug,
+            name=waifu.name,
             user_id=self.bot.user.id,
             image_url=waifu.image_url,
             cached_images_urls=[],
             price=0,
+            tier=1,
             attack=skills[0],
             defense=skills[1],
             health=skills[2],
