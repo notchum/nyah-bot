@@ -36,7 +36,7 @@ load_dotenv()
 print(f"Database URI: {os.getenv('DATABASE_URI')}")
 client = MongoClient(os.getenv("DATABASE_URI"))
 print("Connected to MongoDB Atlas!")
-db = client['_waifus']
+db = client['waifus']
 claims = db['claims']
 print(f"Collection name: {db.name}.{claims.name}")
 db = client['waifus']
@@ -54,18 +54,18 @@ for record in claims.find():
     
     waifu = waifus.find_one({"slug": record["slug"]})
     if waifu is None:
-        print(f"Skipping {claim_id}, waifu not found for slug {record['slug']}")
-        continue
-    if waifu['popularity_rank'] is None:
-        print(f"Skipping {claim_id}, no rank found for waifu slug {record['slug']}")
-        continue
-    if waifu['popularity_rank'] > total_characters:
-        print(f"Skipping {claim_id}, rank is too high for {record['slug']}")
-        continue
-
-    tier = tier_from_rank(total_characters, waifu['popularity_rank'])
+        print(f"Defaulting {claim_id}, waifu not found for slug {record['slug']}")
+        tier = Tiers.BRONZE
+    elif waifu['popularity_rank'] is None:
+        print(f"Defaulting {claim_id}, no rank found for waifu slug {record['slug']}")
+        tier = Tiers.BRONZE
+    elif waifu['popularity_rank'] > total_characters:
+        print(f"Defaulting {claim_id}, rank is too high for {record['slug']}")
+        tier = Tiers.BRONZE
+    else:
+        tier = tier_from_rank(total_characters, waifu['popularity_rank'])
+        print(f"Updating {claim_id} with 'tier': {tier}")
     
-    print(f"Updating {claim_id} with 'tier': {tier}")
     claims.find_one_and_update(
         {"_id": record["_id"]},
         {"$set": {"tier": tier.value}}

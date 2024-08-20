@@ -61,6 +61,9 @@ def rank_from_tier(total_characters: int, tier: Tiers) -> range:
     return range(start_rank, end_rank)
 
 def tier_from_rank(total_characters: int, popularity_rank: int) -> Tiers:
+    if popularity_rank > total_characters:
+        return Tiers.BRONZE
+    
     percentile = (total_characters - popularity_rank + 1) / total_characters * 100
 
     for tier, (start_percentile, end_percentile) in TIER_PERCENTILE_MAP.items():
