@@ -1,4 +1,4 @@
-disnake
+disnake @ git+https://github.com/Snipy7374/disnake@ft/polls
 motor
 beanie
 aiofiles
