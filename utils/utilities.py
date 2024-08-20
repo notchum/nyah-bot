@@ -4,7 +4,7 @@ from typing import List
 
 import disnake
 
-from utils.constants import Experience
+from utils.constants import Experience, Tiers, TIER_PERCENTILE_MAP
 
 ##*************************************************##
 ##********            NYAH UTILS            *******##
@@ -49,6 +49,25 @@ def calculate_accumulated_xp(level: int) -> int:
         xp_accumulated += xp_needed
     return xp_accumulated
 
+def rank_from_tier(total_characters: int, tier: Tiers) -> range:
+    if tier not in TIER_PERCENTILE_MAP:
+        raise ValueError("Invalid tier provided.")
+    
+    start_percentile, end_percentile = TIER_PERCENTILE_MAP[tier]
+
+    start_rank = round(total_characters * (1 - end_percentile / 100)) + 1
+    end_rank = round(total_characters * (1 - start_percentile / 100))
+
+    return range(start_rank, end_rank)
+
+def tier_from_rank(total_characters: int, popularity_rank: int) -> Tiers:
+    percentile = (total_characters - popularity_rank + 1) / total_characters * 100
+
+    for tier, (start_percentile, end_percentile) in TIER_PERCENTILE_MAP.items():
+        if start_percentile < percentile <= end_percentile:
+            return tier
+    
+    raise ValueError("No valid tier found for the given percentile.")
 
 ##*************************************************##
 ##********          DISCORD UTILS           *******##
@@ -232,7 +251,7 @@ def extract_uuid(input_string: str) -> str | None:
         The UUID or `None` if no UUID is found.
     """
     # Regular expression to match any version 4 UUID
-    uuid_pattern = r"[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-4[0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}"
+    uuid_pattern = r"[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12}"
 
     # Find the first matching UUID in the input string
     uuid_match = re.search(uuid_pattern, input_string)

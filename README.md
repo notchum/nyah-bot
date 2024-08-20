@@ -110,3 +110,8 @@ Optionally, if you have a need for multiple image versions, tag the image with a
 $ docker build -t nyah-bot:<version> .
 ```
 Refer to [Deployment](#deployment) for a guide on running the Docker image(s) you just built.
+
+---
+
+## Credits
+- Tier emojis sourced from https://emoji.gg/pack/6055-gradient-role-icons-ores

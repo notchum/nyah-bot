@@ -10,7 +10,7 @@ from beanie.operators import Set
 from beanie.odm.bulk import BulkWriter
 
 import utils.traits as traits
-from utils.constants import Emojis, WaifuState, Money
+from utils.constants import Emojis, WaifuState, Money, Tiers
 
 class Waifu(Document):
     class Settings:
@@ -80,9 +80,10 @@ class Claim(Document):
     image_url: str
     cached_images_urls: List[str]
 
-    state: Optional[int] = None # WaifuState
+    state: WaifuState = Field()
     index: Optional[int] = None
     price: int
+    tier: Tiers = Field()
 
     attack: int
     defense: int
@@ -105,13 +106,13 @@ class Claim(Document):
     timestamp_cooldown: Optional[datetime] = None
 
     def marry(self) -> None:
-        self.state = WaifuState.ACTIVE.value
+        self.state = WaifuState.ACTIVE
     
     def divorce(self) -> None:
-        self.state = WaifuState.INACTIVE.value
+        self.state = WaifuState.INACTIVE
     
     def cooldown(self) -> None:
-        self.state = WaifuState.COOLDOWN.value
+        self.state = WaifuState.COOLDOWN
     
     async def roll_skills(self) -> None:
         random_stat = lambda: random.randint(0, 100)
@@ -211,7 +212,7 @@ class Claim(Document):
 
     @property
     def is_married(self) -> bool:
-        return self.state == WaifuState.ACTIVE.value
+        return self.state == WaifuState.ACTIVE
 
     @property
     def base_stats(self) -> int:

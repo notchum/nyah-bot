@@ -9,17 +9,18 @@ from loguru import logger
 import models
 import utils
 from helpers import Mongo, SuccessEmbed, ErrorEmbed
-from utils.constants import Emojis
+from utils.constants import Emojis, WaifuState, WAIFUSTATE_TITLE_MAP
 
 mongo = Mongo()
 
 class WaifuMenuView(disnake.ui.View):
     message: disnake.Message
 
-    def __init__(self, embeds: List[disnake.Embed], author: disnake.User | disnake.Member) -> None:
+    def __init__(self, embeds: List[disnake.Embed], author: disnake.User | disnake.Member, harem: models.Harem) -> None:
         super().__init__()
         self.embeds = embeds
         self.author = author
+        self.harem = harem
         
         self.gis = GoogleImagesSearch(os.environ["GOOGLE_KEY"], os.environ["GOOGLE_SEARCH_ID"])
         self.embed_index = 0
@@ -47,13 +48,13 @@ class WaifuMenuView(disnake.ui.View):
         await self.set_marry_divorce_button()
 
     async def set_marry_divorce_button(self):
-        current_embed = self.embeds[self.embed_index]
+        current_claim = self.harem[self.embed_index]
         
-        if current_embed.color == disnake.Color.green():
+        if current_claim.state == WaifuState.ACTIVE:
             self.marry_or_divorce.label = "Divorce"
             self.marry_or_divorce.emoji = Emojis.STATE_UNMARRIED
             self.marry_or_divorce.disabled = False
-        elif current_embed.color == disnake.Color.red():
+        elif current_claim.state == WaifuState.INACTIVE:
             nyah_config = await mongo.fetch_nyah_config()
             num_marriages = await mongo.fetch_harem_married_count(self.author)
 
@@ -64,7 +65,7 @@ class WaifuMenuView(disnake.ui.View):
 
             self.marry_or_divorce.label = "Marry"
             self.marry_or_divorce.emoji = Emojis.STATE_MARRIED
-        elif current_embed.color == disnake.Color.blue():
+        elif current_claim.state == WaifuState.COOLDOWN:
             self.marry_or_divorce.disabled = True
 
     @disnake.ui.button(emoji=Emojis.PREV_PAGE)
@@ -105,10 +106,7 @@ class WaifuMenuView(disnake.ui.View):
     @disnake.ui.button(row=1)
     async def marry_or_divorce(self, button: disnake.ui.Button, interaction: disnake.MessageInteraction) -> None:
         current_embed = self.embeds[self.embed_index]
-        uuid = utils.extract_uuid(current_embed.footer.text)
-        
-        claim = await mongo.fetch_claim(uuid)
-        waifu = await mongo.fetch_waifu(claim.slug)
+        current_claim = self.harem[self.embed_index]
         
         match self.marry_or_divorce.label:
             case "Marry":
@@ -120,12 +118,12 @@ class WaifuMenuView(disnake.ui.View):
             # await interaction.response.edit_message(embed=current_embed, view=self)
             # return
                 embed = disnake.Embed(
-                    description=f"Are you sure you want to marry **__{waifu.name}__**?",
+                    description=f"Are you sure you want to marry **__{current_claim.name}__**?",
                     color=disnake.Color.greyple()
                 )
             case "Divorce":
                 embed = disnake.Embed(
-                    description=f"Are you sure you want to divorce **__{waifu.name}__**?",
+                    description=f"Are you sure you want to divorce **__{current_claim.name}__**?",
                     color=disnake.Color.greyple()
                 )
             case _:
@@ -134,7 +132,7 @@ class WaifuMenuView(disnake.ui.View):
         await interaction.response.edit_message(
             embeds=[current_embed, embed],
             view=MarryDivorceView(
-                claim=claim,
+                claim=current_claim,
                 embed=current_embed,
                 author=self.author, 
                 reference_view=self
@@ -144,12 +142,11 @@ class WaifuMenuView(disnake.ui.View):
     @disnake.ui.button(label="Image", emoji="📸", row=1)
     async def select_image(self, button: disnake.ui.Button, interaction: disnake.MessageInteraction) -> None:
         current_embed = self.embeds[self.embed_index]
-        uuid = utils.extract_uuid(current_embed.footer.text)
+        current_claim = self.harem[self.embed_index]
         
-        claim = await mongo.fetch_claim(uuid)
-        waifu = await mongo.fetch_waifu(claim.slug)
+        waifu = await mongo.fetch_waifu(current_claim.slug)
 
-        if not claim.cached_images_urls:
+        if not current_claim.cached_images_urls:
             # search for 3 extra images
             search_params = {
                 "q": f"{waifu.name} {waifu.series[0] if waifu.series else ''}",
@@ -159,12 +156,12 @@ class WaifuMenuView(disnake.ui.View):
             self.gis.search(search_params)
 
             # store the images in db
-            claim.cached_images_urls = [image.url for image in self.gis.results()]
-            await mongo.update_claim(claim)
+            current_claim.cached_images_urls = [image.url for image in self.gis.results()]
+            await mongo.update_claim(current_claim)
             logger.info(f"{interaction.guild.name}[{interaction.guild.id}] | "
                         f"{interaction.channel.name}[{interaction.channel.id}] | "
                         f"{interaction.author}[{interaction.author.id}] | "
-                        f"Images cached for {claim.slug}[{claim.id}]: {claim.cached_images_urls} ")
+                        f"Images cached for {current_claim.slug}[{current_claim.id}]: {current_claim.cached_images_urls} ")
         
         # get embed with original image
         embed = copy.deepcopy(current_embed)
@@ -172,7 +169,7 @@ class WaifuMenuView(disnake.ui.View):
         
         # create embeds with each image
         im_embeds = [embed]
-        for image_url in claim.cached_images_urls:
+        for image_url in current_claim.cached_images_urls:
             e = copy.deepcopy(current_embed)
             e.set_image(url=image_url)
             im_embeds.append(e)
@@ -181,7 +178,7 @@ class WaifuMenuView(disnake.ui.View):
             embed=im_embeds[0],
             view=WaifuImageSelectView(
                 embeds=im_embeds,
-                claim=claim,
+                claim=current_claim,
                 author=self.author,
                 reference_view=self
             )
@@ -190,14 +187,12 @@ class WaifuMenuView(disnake.ui.View):
     @disnake.ui.button(label="Sell", emoji=Emojis.COINS, row=1)
     async def sell(self, button: disnake.ui.Button, inter: disnake.MessageInteraction) -> None:
         current_embed = self.embeds[self.embed_index]
-        uuid = utils.extract_uuid(current_embed.footer.text)
-
-        claim = await mongo.fetch_claim(uuid)
-        waifu = await mongo.fetch_waifu(claim.slug)
+        current_claim = self.harem[self.embed_index]
+        
         nyah_player = await mongo.fetch_nyah_player(inter.author)
 
         # update the sold waifu in the db
-        await nyah_player.sell_waifu(claim)
+        await nyah_player.sell_waifu(current_claim)
 
         # reindex the database harem
         harem = await mongo.fetch_harem(inter.author)
@@ -205,7 +200,7 @@ class WaifuMenuView(disnake.ui.View):
         
         # create the sold embed
         sold_embed = disnake.Embed(
-            description=f"Sold **__{waifu.name}__** for {claim.price_str}",
+            description=f"Sold **__{current_claim.name}__** for {current_claim.price_str}",
             color=disnake.Color.gold()
         )
 
@@ -246,7 +241,7 @@ class WaifuMenuView(disnake.ui.View):
         logger.info(f"{inter.guild.name}[{inter.guild.id}] | "
                     f"{inter.channel.name}[{inter.channel.id}] | "
                     f"{inter.author}[{inter.author.id}] | "
-                    f"Sold {claim.slug}[{claim.id}]")
+                    f"Sold {current_claim.slug}[{current_claim.id}]")
 
 
 class WaifuImageSelectView(disnake.ui.View):
@@ -366,13 +361,12 @@ class MarryDivorceView(disnake.ui.View):
                 self.claim.marry()
                 await mongo.update_claim(self.claim)
                 
-                self.embed.color = disnake.Color.green()
                 status_field_index = next((i for i, field in enumerate(self.embed.fields) if field.name == "Status"), None)
                 if status_field_index is not None:
                     self.embed.set_field_at(
                         index=status_field_index,
                         name="Status",
-                        value=f"{Emojis.STATE_MARRIED} Married"
+                        value=WAIFUSTATE_TITLE_MAP[self.claim.state]
                     )
 
                 self.marry_divorce_button.label = "Divorce"
@@ -387,13 +381,12 @@ class MarryDivorceView(disnake.ui.View):
                 self.claim.divorce()
                 await mongo.update_claim(self.claim)
 
-                self.embed.color = disnake.Color.red()
                 status_field_index = next((i for i, field in enumerate(self.embed.fields) if field.name == "Status"), None)
                 if status_field_index is not None:
                     self.embed.set_field_at(
                         index=status_field_index,
                         name="Status",
-                        value=f"{Emojis.STATE_UNMARRIED} Unmarried"
+                        value=WAIFUSTATE_TITLE_MAP[self.claim.state]
                     )
                 
                 self.marry_divorce_button.label = "Marry"

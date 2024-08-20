@@ -211,7 +211,7 @@ class Mongo():
             models.Claim.user_id == user.id,
             models.Claim.index != None,
             models.Claim.state != None,
-            NotIn(models.Claim.state, [WaifuState.NULL.value, WaifuState.SOLD.value]),
+            NotIn(models.Claim.state, [WaifuState.NULL, WaifuState.SOLD, WaifuState.FUSED]),
         ).count()
 
     async def fetch_harem_married_count(self, user: Union[disnake.Member, disnake.User, models.NyahPlayer]) -> int:
@@ -219,21 +219,21 @@ class Mongo():
         return await models.Claim.find_many(
             models.Claim.user_id == user_id,
             models.Claim.index != None,
-            models.Claim.state == WaifuState.ACTIVE.value,
+            models.Claim.state == WaifuState.ACTIVE,
         ).count()
     
     async def fetch_harem_unmarried_count(self, user: disnake.Member | disnake.User) -> int:
         return await models.Claim.find_many(
             models.Claim.user_id == user.id,
             models.Claim.index != None,
-            models.Claim.state == WaifuState.INACTIVE.value,
+            models.Claim.state == WaifuState.INACTIVE,
         ).count()
     
     async def fetch_harem_cooldown_count(self, user: disnake.Member | disnake.User) -> int:
         return await models.Claim.find_many(
             models.Claim.user_id == user.id,
             models.Claim.index != None,
-            models.Claim.state == WaifuState.COOLDOWN.value,
+            models.Claim.state == WaifuState.COOLDOWN,
         ).count()
     
     async def fetch_harem(self, user: disnake.Member | disnake.User) -> models.Harem:
@@ -241,7 +241,7 @@ class Mongo():
             models.Claim.user_id == user.id,
             models.Claim.index != None,
             models.Claim.state != None,
-            NotIn(models.Claim.state, [WaifuState.NULL.value, WaifuState.SOLD.value]),
+            NotIn(models.Claim.state, [WaifuState.NULL, WaifuState.SOLD, WaifuState.FUSED]),
         ).sort(
             [(models.Claim.index, pymongo.ASCENDING)]
         ).to_list()
@@ -251,7 +251,7 @@ class Mongo():
         result = await models.Claim.find_many(
             models.Claim.user_id == user.id,
             models.Claim.index != None,
-            models.Claim.state == WaifuState.ACTIVE.value,
+            models.Claim.state == WaifuState.ACTIVE,
         ).sort(
             [(models.Claim.index, pymongo.ASCENDING)]
         ).to_list()
@@ -263,7 +263,7 @@ class Mongo():
                 "user_id": user.id,
                 "index": {"$ne": None},
                 "state": {"$ne": None},
-                "state": WaifuState.ACTIVE.value,
+                "state": WaifuState.ACTIVE,
             }},
             {"$sample": {"size": 1}}
         ]

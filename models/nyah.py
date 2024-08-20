@@ -102,8 +102,10 @@ class NyahPlayer(Document):
             Claim.user_id == self.user_id,
             Claim.index != None,
             Claim.state != None,
-            NotIn(Claim.state, [WaifuState.NULL.value, WaifuState.SOLD.value]),
+            NotIn(Claim.state, [WaifuState.NULL, WaifuState.SOLD, WaifuState.FUSED]),
         ).count() # using query instead of fetch_harem_count() to avoid circular import
+
+        total_characters = await Waifu.count()
         
         claim = Claim(
             slug=waifu.slug,
@@ -115,9 +117,10 @@ class NyahPlayer(Document):
             jump_url=None,
             image_url=waifu.image_url,
             cached_images_urls=[],
-            state=WaifuState.INACTIVE.value,
+            state=WaifuState.INACTIVE,
             index=harem_size + 1,
             price=0,
+            tier=utils.tier_from_rank(total_characters, waifu.popularity_rank),
             attack=0,
             defense=0,
             health=0,
@@ -216,7 +219,7 @@ class NyahPlayer(Document):
         await self.save()
 
     async def sell_waifu(self, claim: Claim) -> None:
-        claim.state = WaifuState.SOLD.value
+        claim.state = WaifuState.SOLD
         claim.index = None
         await claim.save()
         await self.add_user_money(claim.price)

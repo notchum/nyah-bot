@@ -14,8 +14,8 @@ from loguru import logger
 import utils
 from bot import NyahBot
 from models import Claim, Event
-from helpers import ErrorEmbed, WaifuCoreEmbed, WaifuClaimEmbed, WaifuHaremEmbed
-from utils.constants import Emojis, WaifuState, Cooldowns, Experience, Money
+from helpers import ErrorEmbed, WaifuCoreEmbed, WaifuClaimEmbed
+from utils.constants import Emojis, WaifuState, Cooldowns, Experience, Money, Tiers, Fusions, TIER_EMOJI_MAP, TIER_TITLE_MAP, FUSION_TIER_MAP
 from utils.bracket import Bracket
 from utils.items import ItemFactory
 from views import *
@@ -793,7 +793,7 @@ class Waifus(commands.Cog):
             # Update the user's harem that has the losing waifu
             losing_claim = await self.bot.mongo.fetch_claim(vote_info["loser"]["id"])
             losing_claim.index = None
-            losing_claim.state = WaifuState.NULL.value
+            losing_claim.state = WaifuState.NULL
             await self.bot.mongo.update_claim(losing_claim)
             losing_user = self.bot.get_user(int(losing_claim.user_id))
             
@@ -1311,29 +1311,25 @@ class Waifus(commands.Cog):
         )
         embeds = []
         for claim in harem:
-            waifu = await self.bot.mongo.fetch_waifu(claim.slug)
             if claim.index == 1:
                 embed.set_thumbnail(url=claim.image_url)
             
-            embed.description += f"`{claim.index}` "
-            
-            if claim.state == WaifuState.ACTIVE.value:
+            embed.description += f"`{claim.index}` {TIER_EMOJI_MAP[claim.tier]} {claim.name} ({claim.stats_str}) "
+
+            if claim.state == WaifuState.ACTIVE:
                 embed.description += Emojis.STATE_MARRIED
-            elif claim.state == WaifuState.COOLDOWN.value:
+            elif claim.state == WaifuState.COOLDOWN:
                 embed.description += Emojis.STATE_COOLDOWN
-            elif claim.state == WaifuState.INACTIVE.value:
-                embed.description += Emojis.STATE_UNMARRIED
-            
-            embed.description += f" {waifu.name} ({claim.stats_str}) "
-            
-            if claim.trait_common:
-                embed.description += Emojis.TRAIT_COMMON
-            if claim.trait_uncommon:
-                embed.description += Emojis.TRAIT_UNCOMMON
-            if claim.trait_rare:
-                embed.description += Emojis.TRAIT_RARE
-            if claim.trait_legendary:
-                embed.description += Emojis.TRAIT_LEGENDARY
+
+            #TODO show trait in list
+            # if claim.trait_common:
+            #     embed.description += Emojis.TRAIT_COMMON
+            # if claim.trait_uncommon:
+            #     embed.description += Emojis.TRAIT_UNCOMMON
+            # if claim.trait_rare:
+            #     embed.description += Emojis.TRAIT_RARE
+            # if claim.trait_legendary:
+            #     embed.description += Emojis.TRAIT_LEGENDARY
             
             embed.description += "\n"
 
@@ -1394,7 +1390,7 @@ class Waifus(commands.Cog):
         embeds: typing.List[disnake.Embed] = list()
         for claim in harem:
             w = await self.bot.mongo.fetch_waifu(claim.slug)
-            embed = WaifuHaremEmbed(w, claim)
+            embed = WaifuClaimEmbed(w, claim)
             embed.set_footer(text=claim.id)
             embeds.append(embed)
 
@@ -1402,7 +1398,7 @@ class Waifus(commands.Cog):
         if waifu_war_event and waifu_war_event.status == disnake.GuildScheduledEventStatus.active:
             return await inter.edit_original_response(embed=embeds[0], view=None)
         
-        view = WaifuMenuView(embeds, inter.author)
+        view = WaifuMenuView(embeds, inter.author, harem)
         await view.initialize()
         message = await inter.edit_original_response(embed=embeds[0], view=view)
         view.message = message
@@ -1451,6 +1447,65 @@ class Waifus(commands.Cog):
         skill_view = WaifuSkillView(claim, inter.author)
         message = await inter.edit_original_response(embed=embed, view=skill_view)
         skill_view.message = message
+        return
+
+    @commands.slash_command()
+    async def fusemywaifus(self, inter: disnake.ApplicationCommandInteraction):
+        """Fuse lower-tier waifus to create a higher tier one!"""
+        await inter.response.defer()
+        
+        harem = await self.bot.mongo.fetch_harem(inter.author)
+        tier_dict = {tier:[] for tier in Tiers}
+        for claim in harem:
+            tier_dict[claim.tier].append(claim)
+        
+        fusion_count_dict = {}
+        fusion_count_str = ""
+        for fusion in Fusions:
+            required_tier = Tiers(fusion.value)
+            num_fusions = len(tier_dict[required_tier]) // 3
+            fusion_count_dict[fusion] = num_fusions
+            fusion_count_str += f"- {TIER_EMOJI_MAP[FUSION_TIER_MAP[fusion]]} `x{num_fusions}`\n"
+
+        embed = disnake.Embed(
+            title="Fusion Menu",
+            description=f"Combine three (`3`) characters of the same tier to create a stronger one.\n"
+                        f"The resulting character will be one tier higher than the characters you fused.\n\n"
+                        f"__Available fusions:__\n{fusion_count_str}",
+            color=disnake.Color.fuchsia()
+        )
+        view = FusionStageOneView(inter.author, fusion_count_dict)
+        message = await inter.edit_original_response(
+            embed=embed,
+            view=view
+        )
+        view.message = message
+
+        await view.wait()
+
+        if not view.selected_fusion_type:
+            return await inter.edit_original_response(view=None)
+
+        required_tier = Tiers(view.selected_fusion_type.value)
+        fusion_candidates = tier_dict[required_tier]
+
+        if len(fusion_candidates) < 3:
+            return await inter.edit_original_response(
+                embed=ErrorEmbed(f"You don't have `3` {TIER_TITLE_MAP[required_tier]} characters available to fuse!"),
+                view=None
+            )
+
+        embed = disnake.Embed(
+            title=f"{TIER_TITLE_MAP[FUSION_TIER_MAP[view.selected_fusion_type]]} Fusion",
+            description=f"Combine three (`3`) characters of the same tier to create a stronger one.\n",
+            color=disnake.Color.fuchsia()
+        )
+        view = FusionStageTwoView(inter.author, fusion_candidates, view.selected_fusion_type)
+        message = await inter.edit_original_response(
+            embed=embed,
+            view=view
+        )
+        view.message = message
         return
 
     ##*************************************************##

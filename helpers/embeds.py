@@ -2,7 +2,7 @@ import disnake
 
 import models
 from helpers import Mongo
-from utils.constants import WaifuState
+from utils.constants import TIER_COLOR_MAP, TIER_TITLE_MAP, WAIFUSTATE_TITLE_MAP
 
 mongo = Mongo()
 
@@ -22,6 +22,15 @@ class ErrorEmbed(disnake.Embed):
             title="Error! 💢",
             description=description,
             color=disnake.Color.red()
+        )
+
+
+class WarningEmbed(disnake.Embed):
+    def __init__(self, description: str = None):
+        super().__init__(
+            title="Warning! ⚠️",
+            description=description,
+            color=disnake.Color.orange()
         )
 
 
@@ -93,36 +102,17 @@ class WaifuClaimEmbed(WaifuBaseEmbed):
         - Price listed.
         - Skills listed.
         - Traits listed.
-    """
-    def __init__(self, waifu: models.Waifu, claim: models.Claim):
-        super().__init__(waifu)
-        self.add_field(name="Price", value=claim.price_str) \
-            .add_field(name="Traits", value=claim.trait_str) \
-            .add_field(name=f"Skills ({claim.stats_str})", value=claim.skill_str)
-        self.set_footer(text=claim.id)
-        self.set_image(url=claim.image_url)
-
-
-class WaifuHaremEmbed(WaifuClaimEmbed):
-    """Get an embed of a waifu in a harem.
-        - Embed color represents state.
-        - Skills listed.
-        - Price listed.
-        - Traits listed.
+        - Tier.
         - Marriage status.
     """
     def __init__(self, waifu: models.Waifu, claim: models.Claim):
-        if claim.state == WaifuState.ACTIVE.value:
-            color = disnake.Color.green()
-            status = f"💕 Married"
-        elif claim.state == WaifuState.COOLDOWN.value:
-            color = disnake.Color.blue()
-            status = f"❄️ Cooldown"
-        elif claim.state == WaifuState.INACTIVE.value:
-            color = disnake.Color.red()
-            status = f"💔 Unmarried"
-        
-        super().__init__(waifu, claim)
-        self.add_field(name="Status", value=status)
-        self.color = color
+        super().__init__(waifu)
+        self.color = TIER_COLOR_MAP[claim.tier]
+        self.add_field(name="Price", value=claim.price_str) \
+            .add_field(name="Traits", value=claim.trait_str) \
+            .add_field(name=f"Skills ({claim.stats_str})", value=claim.skill_str) \
+            .add_field(name="Tier", value=TIER_TITLE_MAP[claim.tier]) \
+            .add_field(name="Status", value=WAIFUSTATE_TITLE_MAP[claim.state])
+        self.set_footer(text=claim.id)
+        self.set_image(url=claim.image_url)
 # fmt: on

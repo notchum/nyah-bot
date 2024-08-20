@@ -220,7 +220,7 @@ class Owner(commands.Cog):
         harem = await self.bot.mongo.fetch_harem(user)
         embed = disnake.Embed(
             title=f"{user.name}#{user.discriminator}'s Harem",
-            description="\n".join([f"`{claim.index}` `{WaifuState(claim.state).name}` `{claim.slug}` `{claim.id}`" for claim in harem]),
+            description="\n".join([f"`{claim.index}` `{claim.state.name}` `{claim.slug}` `{claim.id}`" for claim in harem]),
             color=disnake.Color.dark_teal()
         )
 
@@ -240,7 +240,7 @@ class Owner(commands.Cog):
         await self.bot.mongo.update_all_nyah_players("timestamp_last_duel", None)
         await self.bot.mongo.update_all_nyah_players("timestamp_last_minigame", None)
 
-        await self.bot.mongo.update_all_claims("state", WaifuState.INACTIVE.value)
+        await self.bot.mongo.update_all_claims("state", WaifuState.INACTIVE)
         await self.bot.mongo.update_all_claims("index", None)
 
         nyah_config = await self.bot.mongo.fetch_nyah_config()
