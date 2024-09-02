@@ -27,8 +27,6 @@ Config = namedtuple(
         "DISCORD_BOT_TOKEN",
         "DATABASE_URI",
         "MAL_CLIENT_ID",
-        "GOOGLE_KEY",
-        "GOOGLE_SEARCH_ID",
     ],
 )
 

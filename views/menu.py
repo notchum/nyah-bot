@@ -3,7 +3,7 @@ import copy
 from typing import List
 
 import disnake
-from google_images_search import GoogleImagesSearch
+from duckduckgo_search import AsyncDDGS
 from loguru import logger
 
 import models
@@ -21,8 +21,7 @@ class WaifuMenuView(disnake.ui.View):
         self.embeds = embeds
         self.author = author
         self.harem = harem
-        
-        self.gis = GoogleImagesSearch(os.environ["GOOGLE_KEY"], os.environ["GOOGLE_SEARCH_ID"])
+
         self.embed_index = 0
         self.prev_page.disabled = True
         if len(self.embeds) == 1:
@@ -148,15 +147,15 @@ class WaifuMenuView(disnake.ui.View):
 
         if not current_claim.cached_images_urls:
             # search for 3 extra images
-            search_params = {
-                "q": f"{waifu.name} {waifu.series[0] if waifu.series else ''}",
-                "num": 3,
-                "fileType": "jpg|gif|png"
-            }
-            self.gis.search(search_params)
+            results = await AsyncDDGS().aimages(
+                keywords=f"{waifu.name} {waifu.series[0] if waifu.series else ''}",
+                safesearch="off",
+                layout="Tall",
+                max_results=100,
+            )
 
             # store the images in db
-            current_claim.cached_images_urls = [image.url for image in self.gis.results()]
+            current_claim.cached_images_urls = [image['image'] for image in results[:3]]
             await mongo.update_claim(current_claim)
             logger.info(f"{interaction.guild.name}[{interaction.guild.id}] | "
                         f"{interaction.channel.name}[{interaction.channel.id}] | "

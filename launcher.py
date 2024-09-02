@@ -20,8 +20,6 @@ async def main():
         DISCORD_BOT_TOKEN=os.environ["DISCORD_BOT_TOKEN"],
         DATABASE_URI=os.environ["DATABASE_URI"],
         MAL_CLIENT_ID=os.environ["MAL_CLIENT_ID"],
-        GOOGLE_KEY=os.environ["GOOGLE_KEY"],
-        GOOGLE_SEARCH_ID=os.environ["GOOGLE_SEARCH_ID"],
     )
 
     # Create logger

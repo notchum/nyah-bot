@@ -6,5 +6,5 @@ aiohttp_client_cache
 python-dotenv
 loguru
 ruff
-Google-Images-Search
+duckduckgo_search
 Pillow
