@@ -28,7 +28,7 @@ class Shop(commands.Cog):
         items_str = "\n".join([item.shop_str for item in utils.items.SHOP_ITEMS])
         embed = disnake.Embed(
             title="ITEM SHOP",
-            description=f"Use `/buy` to purchase any item! Balance: `{nyah_player.money:,}` {Emojis.COINS}\n\n"
+            description=f"Use `/buy` to purchase any item! Balance: `{nyah_player.money:,}` {Emojis.TICKET}\n\n"
                         f"{items_str}",
             color=disnake.Color.og_blurple()
         )
@@ -70,7 +70,7 @@ class Shop(commands.Cog):
 
         return await inter.edit_original_response(
             embed=SuccessEmbed(
-                description=f"You bought `{amount}` {shop_item.name}(s) for `{total_price:,}` {Emojis.COINS}!"
+                description=f"You bought `{amount}` {shop_item.name}(s) for `{total_price:,}` {Emojis.TICKET}!"
             )
         )
 

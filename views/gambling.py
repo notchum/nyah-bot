@@ -127,17 +127,17 @@ class SlotMachine:
     @property
     def current_embed(self) -> disnake.Embed:
         embed = disnake.Embed(description=self.face_str, color=disnake.Color.gold())
-        embed.add_field(name="Current Bet", value=f"`{self.bet:,}` {Emojis.COINS}")
-        embed.add_field(name="Current Balance", value=f"`{self.player.money:,}` {Emojis.COINS}")
-        embed.add_field(name="Last Payout", value=f"`{self.last_payout:,}` {Emojis.COINS}")
+        embed.add_field(name="Current Bet", value=f"`{self.bet:,}` {Emojis.TICKET}")
+        embed.add_field(name="Current Balance", value=f"`{self.player.money:,}` {Emojis.TICKET}")
+        embed.add_field(name="Last Payout", value=f"`{self.last_payout:,}` {Emojis.TICKET}")
         return embed
 
     @property
     def paytable_embed(self) -> disnake.Embed:
         embed = disnake.Embed(
             title="Paytable",
-            description=f"Minimum bet: `{self.min_bet:,}` {Emojis.COINS}\n"
-                        f"Maximum bet: `{self.max_bet:,}` {Emojis.COINS}",
+            description=f"Minimum bet: `{self.min_bet:,}` {Emojis.TICKET}\n"
+                        f"Maximum bet: `{self.max_bet:,}` {Emojis.TICKET}",
             color=disnake.Color.dark_teal()
         )
         

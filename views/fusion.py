@@ -78,7 +78,7 @@ class FusionClaimStringSelect(disnake.ui.StringSelect["FusionStageTwoView"]):
                 label=claim.name,
                 value=str(claim.id),
                 emoji=TIER_EMOJI_MAP[claim.tier],
-                description=claim.stats_str,
+                description=claim.skill_str_short,
             )
             for claim in fusion_candidates
         ]

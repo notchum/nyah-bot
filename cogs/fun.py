@@ -40,7 +40,7 @@ class Fun(commands.Cog):
 
         if nyah_player.money < machine.bet:
             return await inter.response.send_message(
-                embed=ErrorEmbed(f"You don't have enough money to play slots! You need at least `{machine.min_bet:,}` {Emojis.COINS}"),
+                embed=ErrorEmbed(f"You don't have enough money to play slots! You need at least `{machine.min_bet:,}` {Emojis.TICKET}"),
                 ephemeral=True
             )
         

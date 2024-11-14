@@ -24,7 +24,7 @@ class WaifuWishlistView(disnake.ui.View):
         if nyah_player.money < Money.WISHLIST_COST.value:
             price_diff = Money.WISHLIST_COST.value - nyah_player.money
             confirmation_embed = disnake.Embed(
-                description=f"{inter.author.mention}\nYou need `{price_diff:,}` {Emojis.COINS}",
+                description=f"{inter.author.mention}\nYou need `{price_diff:,}` {Emojis.TICKET}",
                 color=disnake.Color.red()
             )
 
@@ -49,7 +49,7 @@ class WaifuWishlistView(disnake.ui.View):
             await mongo.update_nyah_player(nyah_player)
         
             confirmation_embed = disnake.Embed(
-                description=f"{inter.author.mention}\n__**{self.waifu.name}**__ has been wishlisted for `{Money.WISHLIST_COST.value:,}` {Emojis.COINS}.\n"
+                description=f"{inter.author.mention}\n__**{self.waifu.name}**__ has been wishlisted for `{Money.WISHLIST_COST.value:,}` {Emojis.TICKET}.\n"
                             f"You have wishlisted this waifu `{num_wishlists}` times",
                 color=disnake.Color.fuchsia()
             )

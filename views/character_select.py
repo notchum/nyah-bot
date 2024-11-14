@@ -3,7 +3,7 @@ import uuid
 import disnake
 
 import models
-from helpers import Mongo, WaifuClaimEmbed
+from helpers import Mongo, WaifuHaremEmbed
 from utils.constants import Emojis
 
 mongo = Mongo()
@@ -24,11 +24,11 @@ class CharacterDropdown(disnake.ui.StringSelect["CharacterSelectView"]):
             if claim.id == selected_claim_id:
                 self.view.confirm.disabled = False
                 self.view.current_claim = claim
-                self.placeholder = f"Are you sure you want to select {claim.name} [{claim.base_stats} BS]?"
+                self.placeholder = f"Are you sure you want to select {claim.name} [{claim.skill_str_short}]?"
                 
                 waifu = await mongo.fetch_waifu(claim.slug)
                 await inter.response.edit_message(
-                    embeds=[inter.message.embeds[0], WaifuClaimEmbed(waifu, claim)],
+                    embeds=[inter.message.embeds[0], WaifuHaremEmbed(waifu, claim)],
                     view=self.view
                 )
                 

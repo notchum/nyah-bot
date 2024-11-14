@@ -3,7 +3,7 @@ from loguru import logger
 
 from models import Claim
 from helpers import Mongo
-from utils.constants import Emojis
+from utils.constants import Emojis, TIER_PAYOUT_MAP
 
 mongo = Mongo()
 
@@ -21,7 +21,7 @@ class WaifuClaimView(disnake.ui.View):
     async def interaction_check(self, interaction: disnake.MessageInteraction) -> bool:
         return interaction.author.id == self.author.id
 
-    @disnake.ui.button(label="Sell", emoji=Emojis.COINS)
+    @disnake.ui.button(label="Sell", emoji=Emojis.TICKET)
     async def sell(self, button: disnake.ui.Button, inter: disnake.MessageInteraction) -> None:
         nyah_player = await mongo.fetch_nyah_player(inter.author)
         await nyah_player.sell_waifu(self.claim)

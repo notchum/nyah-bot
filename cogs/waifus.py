@@ -14,8 +14,8 @@ from loguru import logger
 import utils
 from bot import NyahBot
 from models import Claim, Event
-from helpers import ErrorEmbed, WaifuCoreEmbed, WaifuClaimEmbed
-from utils.constants import Emojis, WaifuState, Cooldowns, Experience, Money, Tiers, Fusions, TIER_EMOJI_MAP, TIER_TITLE_MAP, FUSION_TIER_MAP
+from helpers import ErrorEmbed, WaifuCoreEmbed, WaifuClaimEmbed, WaifuHaremEmbed
+from utils.constants import Emojis, WaifuState, Cooldowns, Experience, Prices, Tiers, Fusions, TIER_EMOJI_MAP, TIER_TITLE_MAP, FUSION_TIER_MAP
 from utils.bracket import Bracket
 from utils.items import ItemFactory
 from views import *
@@ -899,15 +899,15 @@ class Waifus(commands.Cog):
                     user = await guild.fetch_member(int(user_id))
                     nyah_player = await self.bot.mongo.fetch_nyah_player(user)
                     if user_id == winner_id:
-                        await nyah_player.add_user_money(Money.WAR_FIRST.value)
+                        await nyah_player.add_user_money(Prices.PAYOUT_WAR_FIRST.value)
                         await nyah_player.add_user_xp(Experience.WAR_FIRST.value)
                         ending_embed.title = f"Congratulations to {user.name} for winning the Waifu War!"
-                        ending_embed.description += f"- {user.mention} won `{Money.WAR_FIRST.value:,}` {Money.EMOJI} and `{Experience.WAR_FIRST.value}` XP!"
+                        ending_embed.description += f"- {user.mention} won `{Prices.PAYOUT_WAR_FIRST.value:,}` {Emojis.TICKET} and `{Experience.WAR_FIRST.value}` XP!"
                         ending_embed.set_thumbnail(url=user.display_avatar.url)
                     else:
-                        await nyah_player.add_user_money(Money.WAR_SECOND.value)
+                        await nyah_player.add_user_money(Prices.PAYOUT_WAR_SECOND.value)
                         await nyah_player.add_user_xp(Experience.WAR_SECOND.value)
-                        ending_embed.description += f"- {user.mention} won `{Money.WAR_SECOND.value:,}` {Money.EMOJI} and `{Experience.WAR_SECOND.value}` XP!"
+                        ending_embed.description += f"- {user.mention} won `{Prices.PAYOUT_WAR_SECOND.value:,}` {Emojis.TICKET} and `{Experience.WAR_SECOND.value}` XP!"
                 # TODO test this
                 await waifu_war_channel.send(embed=ending_embed)
 
@@ -980,7 +980,7 @@ class Waifus(commands.Cog):
         .set_author(name=f"{inter.author.name}'s Profile", icon_url=inter.author.display_avatar.url) \
         .add_field(name="Level", value=f"{nyah_player.level}") \
         .add_field(name="XP", value=f"{nyah_player.xp}/{utils.calculate_accumulated_xp(nyah_player.level + 1)}") \
-        .add_field(name=f"Balance", value=f"`{nyah_player.money:,}` {Emojis.COINS}") \
+        .add_field(name=f"Balance", value=f"`{nyah_player.money:,}` {Emojis.TICKET}") \
         .add_field(name="Inventory", value=fmt_inventory) \
         .add_field(name="Cooldowns:", value="", inline=False) \
         .add_field(name=f"{Emojis.CLAIM} Drop", value=fmt_claim_times, inline=False) \
@@ -993,7 +993,7 @@ class Waifus(commands.Cog):
     async def minigame(
         self,
         inter: disnake.ApplicationCommandInteraction,
-        bet: commands.Range[int, 0, 5000] = 0
+        bet: commands.Range[int, 0, 50] = 0
     ):
         """ Play a random waifu minigame for money!
         
@@ -1114,8 +1114,8 @@ class Waifus(commands.Cog):
             win_amount = bet
             lose_amount = bet * -1
         else:
-            win_amount = Money.MINIGAME_WIN.value
-            lose_amount = Money.MINIGAME_LOSS.value
+            win_amount = Prices.PAYOUT_MINIGAME_WIN.value
+            lose_amount = 0
 
         # Create the embed with the result of the user's answer
         if minigame_view.author_won:
@@ -1123,7 +1123,7 @@ class Waifus(commands.Cog):
             result_embed = disnake.Embed(
                 title="Correct!",
                 description=correct_description + 
-                            f"- You won `{win_amount:,}` {Emojis.COINS} "
+                            f"- You won `{win_amount:,}` {Emojis.TICKET} "
                             f"and `{Experience.MINIGAME_WIN.value}` XP",
                 color=disnake.Color.green(),
             )
@@ -1134,12 +1134,10 @@ class Waifus(commands.Cog):
             result_embed = disnake.Embed(
                 title="Wrong!",
                 description=wrong_description +
-                            f"- You lost `{lose_amount:,}` {Emojis.COINS} "
-                            f"and earned `{Experience.MINIGAME_LOSS.value}` XP",
+                            f"- You lost `{lose_amount:,}` {Emojis.TICKET}",
                 color=disnake.Color.red(),
             )
             await nyah_player.add_user_money(lose_amount)
-            await nyah_player.add_user_xp(Experience.MINIGAME_LOSS.value, inter.author, inter.channel)
 
         return await inter.edit_original_response(embeds=[embed, result_embed], view=None)
 
@@ -1228,7 +1226,8 @@ class Waifus(commands.Cog):
             next_claim_at = await nyah_player.user_cooldown_expiration_time(Cooldowns.CLAIM)
             return await inter.response.send_message(
                 content=f"Whoa now! That's too many waifus right now - this isn't a hanime, big guy.\n"
-                        f"Try again {disnake.utils.format_dt(next_claim_at, "R")} ({disnake.utils.format_dt(next_claim_at, "t")})",
+                        f"Next waifu available at {disnake.utils.format_dt(next_claim_at, "R")} ({disnake.utils.format_dt(next_claim_at, "t")})\n"
+                        f"{'🟩' * int(divmod((next_claim_at - disnake.utils.utcnow()).total_seconds(), 3600)[0]):⬜<6}", #TODO fix this shit
                 ephemeral=True
             )
         
@@ -1241,21 +1240,9 @@ class Waifus(commands.Cog):
             )
         
         await inter.response.defer()
-
-        # Check the user's wishlist to see if they get lucky
-        wishlist_slug = await nyah_player.check_wishlist()
-        if wishlist_slug:
-            new_waifu = await self.bot.mongo.fetch_waifu(wishlist_slug)
-            #!!! REMOVE ONCE RANKS ARE FIXED
-            if not new_waifu.popularity_rank:
-                new_waifu.popularity_rank = random.randint(1000, 5000)
-                new_waifu.like_rank = random.randint(1000, 5000)
-                new_waifu.trash_rank = random.randint(1000, 5000)
-            #!!! REMOVE ONCE RANKS ARE FIXED
         
-        # Get a fully random waifu from the db
-        else:
-            new_waifu = await self.bot.mongo.fetch_random_waifu()
+        # Get a random waifu from the db
+        new_waifu = await self.bot.mongo.fetch_random_waifu()
         
         # Create the claim
         claim = await nyah_player.generate_claim(new_waifu)
@@ -1294,6 +1281,19 @@ class Waifus(commands.Cog):
         return
 
     @commands.slash_command()
+    async def buymywaifu(self, inter: disnake.ApplicationCommandInteraction, name: str):
+        return await inter.response.send_message(
+            """Not implemented yet.\n
+            Expected Character Purchase Prices:\n
+            Bronze: 3\n
+            Silver: 12\n
+            Gold: 45\n
+            Emerald: 160\n
+            Ruby: 600\n
+            Diamond: 2250\n"""
+        )
+
+    @commands.slash_command()
     async def listmywaifus(self, inter: disnake.ApplicationCommandInteraction):
         """ List your harem! """
         await inter.response.defer()
@@ -1314,7 +1314,7 @@ class Waifus(commands.Cog):
             if claim.index == 1:
                 embed.set_thumbnail(url=claim.image_url)
             
-            embed.description += f"`{claim.index}` {TIER_EMOJI_MAP[claim.tier]} {claim.name} ({claim.stats_str}) "
+            embed.description += f"`{claim.index}` {TIER_EMOJI_MAP[claim.tier]} {claim.name} ({claim.skill_str_short}) "
 
             if claim.state == WaifuState.ACTIVE:
                 embed.description += Emojis.STATE_MARRIED
@@ -1390,7 +1390,7 @@ class Waifus(commands.Cog):
         embeds: typing.List[disnake.Embed] = list()
         for claim in harem:
             w = await self.bot.mongo.fetch_waifu(claim.slug)
-            embed = WaifuClaimEmbed(w, claim)
+            embed = WaifuHaremEmbed(w, claim)
             embed.set_footer(text=claim.id)
             embeds.append(embed)
 
@@ -1402,51 +1402,6 @@ class Waifus(commands.Cog):
         await view.initialize()
         message = await inter.edit_original_response(embed=embeds[0], view=view)
         view.message = message
-        return
-
-    @commands.slash_command()
-    async def skillmywaifu(
-        self,
-        inter: disnake.ApplicationCommandInteraction,
-        waifu: str
-    ):
-        """ View/modify your waifu's skills!
-
-            Parameters
-            ----------
-            waifu: `str`
-                The waifu to skill.
-        """
-        # Parse string input for waifu select
-        try:
-            index = int(waifu.split(".")[0])
-        except:
-            return await inter.response.send_message(
-                embed=ErrorEmbed(f"`{waifu}` is not a valid waifu!"),
-                ephemeral=True
-            )
-
-        harem_size = await self.bot.mongo.fetch_harem_count(inter.author)
-        if index > harem_size or index <= 0:
-            return await inter.response.send_message(
-                embed=ErrorEmbed(f"`{waifu}` does not have a valid index!"),
-                ephemeral=True
-            )
-        
-        await inter.response.defer()
-
-        # Get claim from db
-        claim = await self.bot.mongo.fetch_claim_by_index(inter.author, index)
-
-        # Get waifu
-        waifu = await self.bot.mongo.fetch_waifu(claim.slug)
-
-        # Send message with waifu and new skill points
-        embed = WaifuClaimEmbed(waifu, claim)
-        embed.description = f"Reroll **__{waifu.name}'s__** skills for `{Money.SKILL_COST.value:,}` {Emojis.COINS}?"
-        skill_view = WaifuSkillView(claim, inter.author)
-        message = await inter.edit_original_response(embed=embed, view=skill_view)
-        skill_view.message = message
         return
 
     @commands.slash_command()
@@ -1512,7 +1467,6 @@ class Waifus(commands.Cog):
     ##********          AUTOCOMPLETES           *******##
     ##*************************************************##
 
-    @skillmywaifu.autocomplete("waifu")
     @managemywaifus.autocomplete("waifu")
     async def harem_autocomplete(
         self,
@@ -1535,11 +1489,12 @@ class Waifus(commands.Cog):
             waifu_names = []
             for claim in harem:
                 waifu = await self.bot.mongo.fetch_waifu(claim.slug)
-                formatted_name = f"{claim.index}. {waifu.name} ({claim.stats_str})"
+                formatted_name = f"{claim.index}. {waifu.name} ({claim.skill_str_short})"
                 waifu_names.append(formatted_name)
         
         return deque(waifu_names, maxlen=25)
 
+    @buymywaifu.autocomplete("name")
     @waifudex.autocomplete("name")
     async def waifu_name_autocomplete(
         self,

@@ -10,7 +10,8 @@ from pydantic import BaseModel, Field
 
 import utils
 from models import Waifu, Claim
-from utils.constants import Emojis, WaifuState, Cooldowns, Money
+from utils.traits import TraitTypes
+from utils.constants import Emojis, WaifuState, Cooldowns, Prices, TIER_PAYOUT_MAP
 
 
 cooldown_attribute_map = {
@@ -86,7 +87,6 @@ class NyahPlayer(Document):
     xp: int
     level: int
     
-    wishlist: List[str]
     inventory: List[InventoryItem]
 
     last_command_name: Optional[str] = None
@@ -110,61 +110,17 @@ class NyahPlayer(Document):
         claim = Claim(
             slug=waifu.slug,
             name=waifu.name,
-            guild_id=None,
-            channel_id=None,
-            message_id=None,
             user_id=self.user_id,
-            jump_url=None,
             image_url=waifu.image_url,
             cached_images_urls=[],
             state=WaifuState.INACTIVE,
             index=harem_size + 1,
-            price=0,
             tier=utils.tier_from_rank(total_characters, waifu.popularity_rank),
-            attack=0,
-            defense=0,
-            health=0,
-            speed=0,
-            magic=0,
-            attack_mod=0,
-            defense_mod=0,
-            health_mod=0,
-            speed_mod=0,
-            magic_mod=0,
-            trait_common=None,
-            trait_uncommon=None,
-            trait_rare=None,
-            trait_legendary=None,
-            timestamp=None,
-            timestamp_cooldown=None
         )
 
         await claim.roll_skills()
-        await claim.roll_traits()
-        await claim.calculate_price()
         
         return claim
-    
-    async def check_wishlist(self) -> str | None:
-        rand_num = random.random()
-        cumulative_chance = 0
-
-        # Iterate through the slugs in the wishlist to determine the selected slug
-        for slug in set(self.wishlist):
-            # Calculate the chance for the current slug
-            slug_chance = 0.05 * self.wishlist.count(slug)
-            
-            # Check if the random number falls within the chance range for this slug
-            if rand_num >= cumulative_chance and rand_num < cumulative_chance + slug_chance:
-                # Slug selected, remove it from the wishlist and return it
-                self.wishlist = [item for item in self.wishlist if item != slug]
-                return slug
-            
-            # Update the cumulative chance
-            cumulative_chance += slug_chance
-
-        # If no slug was selected
-        return None
 
     async def add_user_xp(self, xp: int, user: disnake.Member | disnake.User = None, channel: disnake.TextChannel = None) -> None:
         self.xp += xp
@@ -172,12 +128,11 @@ class NyahPlayer(Document):
         # check if they leveled up
         if self.xp >= utils.calculate_accumulated_xp(self.level + 1):
             self.level += 1
-            level_money = Money.PER_LEVEL.value * self.level
-            self.money += level_money
+            self.money += Prices.PAYOUT_LEVEL_UP.value
             if channel and user:
                 level_up_embed = disnake.Embed(
                     description=f"### ㊗️ Congratulations {user.mention}! You are now level {self.level}!\n\n"
-                                f"You have been awarded `{level_money:,}` {Emojis.COINS}",
+                                f"You have been awarded `{Prices.PAYOUT_LEVEL_UP.value:,}` {Emojis.TICKET}",
                     color=disnake.Color.dark_teal()
                 ).set_thumbnail(url=user.avatar.url)
                 await channel.send(embed=level_up_embed)
@@ -222,7 +177,7 @@ class NyahPlayer(Document):
         claim.state = WaifuState.SOLD
         claim.index = None
         await claim.save()
-        await self.add_user_money(claim.price)
+        await self.add_user_money(TIER_PAYOUT_MAP[claim.tier].value)
 
     async def user_is_on_cooldown(self, cooldown_type: Cooldowns) -> bool:
         result = await NyahConfig.find().limit(1).to_list() # using query instead of fetch_nyah_config() to avoid circular import

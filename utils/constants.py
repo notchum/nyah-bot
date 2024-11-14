@@ -10,7 +10,7 @@ class Emojis:
     RED_BOX  = "🟥"
     BLUE_BOX = "🟦"
 
-    COINS      = "<:coins:1158472639413764178>"
+    TICKET     = "<:nyah_ticket:1306531129016188979>"
     SWAP       = "<:replace:1158888082343477258>"
     PREV_PAGE  = "<:leftWaifu:1158460793063477420>"
     NEXT_PAGE  = "<:rightWaifu:1158460837359538186>"
@@ -24,18 +24,16 @@ class Emojis:
     ITEM_CHEST_KEY    = "🗝️"
     ITEM_TRAIT_SCROLL = "📜"
     ITEM_SHONEN_STONE = "💎"
-    ITEM_ENERGY_BOOST = "⚡"
+    ITEM_HEALTH_TEA   = "🍵"
 
     SKILL_ATTACK  = "🗡️"
     SKILL_DEFENSE = "🛡️"
     SKILL_HEALTH  = "❤️"
     SKILL_SPEED   = "🌀"
     SKILL_MAGIC   = "✨"
-    
-    TRAIT_COMMON    = "🟢"
-    TRAIT_UNCOMMON  = "🔵"
-    TRAIT_RARE      = "🟣"
-    TRAIT_LEGENDARY = "🟠"
+    SKILL_TOTAL   = "🎯"
+
+    TRAIT_STAR = "🌟"
 
     TIER_BRONZE  = "<:tier_bronze:1274833983812669511>"
     TIER_SILVER  = "<:tier_silver:1274833982273618002>"
@@ -49,32 +47,39 @@ class Emojis:
     STATE_UNMARRIED = "💔"
 
 class Experience(Enum):
-    BASE_LEVEL = 100 # base amount of XP per level
-    CLAIM      = 5  # gained from claiming a waifu
-    DUEL_WIN   = 12 # gained from winning a duel
-    DUEL_LOSS  = 8  # gained from losing a duel
-    MINIGAME_WIN  = 4  # gained from beating a minigame
-    MINIGAME_LOSS = 2  # gained from losting a minigame
-    WAR_ROUND  = 15 # gained from each round of a war
-    WAR_FIRST  = 50 # gained from winning a war
-    WAR_SECOND = 25 # gained from being runner-up in a war
+    BASE_LEVEL   = 100 # base amount of XP per level
+    CLAIM        = 5   # gained from claiming a character
+    DUEL_WIN     = 15  # gained from winning a duel
+    MINIGAME_WIN = 5   # gained from beating a minigame
+    WAR_ROUND    = 25  # gained from each round of a war
+    WAR_FIRST    = 75  # gained from winning a war
+    WAR_SECOND   = 50  # gained from being runner-up in a war
 
-class Money(Enum):
-    PER_LEVEL     = 1000  # gained from leveling up (multiplied by the new level)
-    MINIGAME_WIN  = 100   # gained from beating a minigame
-    MINIGAME_LOSS = 0     # gained from losing a minigame
-    WAR_FIRST     = 10000 # given for winning a war
-    WAR_SECOND    = 5000  # given for being runner-up in a war
+class Prices(Enum):
+    COST_ITEM_CHEST_KEY    = 100
+    COST_ITEM_TRAIT_SCROLL = 100
+    COST_ITEM_SHONEN_STONE = 100
+    COST_ITEM_HEALTH_TEA   = 10
 
-    SKILL_COST    = 1000 # cost to reroll a waifu's skills
-    WISHLIST_COST = 5000 # cost to add a waifu to wishlist
+    COST_CHARACTER_BRONZE  = 3
+    COST_CHARACTER_SILVER  = 12
+    COST_CHARACTER_GOLD    = 45
+    COST_CHARACTER_EMERALD = 160
+    COST_CHARACTER_RUBY    = 600
+    COST_CHARACTER_DIAMOND = 2250
 
-    WAIFU_PRICE   = 100
+    PAYOUT_CHARACTER_BRONZE  = 1
+    PAYOUT_CHARACTER_SILVER  = 4
+    PAYOUT_CHARACTER_GOLD    = 15
+    PAYOUT_CHARACTER_EMERALD = 55
+    PAYOUT_CHARACTER_RUBY    = 200
+    PAYOUT_CHARACTER_DIAMOND = 750
 
-    COMMON_TRAIT_PRICE = 100
-    UNCOMMON_TRAIT_PRICE = 250
-    RARE_TRAIT_PRICE = 500
-    LEGENDARY_TRAIT_PRICE = 1000
+    PAYOUT_LEVEL_UP          = 50
+    PAYOUT_MINIGAME_WIN      = 2
+    PAYOUT_WAR_FIRST         = 500
+    PAYOUT_WAR_SECOND        = 250
+    PAYOUT_WAR_PARTICIPATE   = 125
 
 class Cooldowns(Enum):
     CLAIM    = 0
@@ -151,6 +156,15 @@ TIER_EMOJI_MAP = {
     Tiers.EMERALD: Emojis.TIER_EMERALD,
     Tiers.RUBY: Emojis.TIER_RUBY,
     Tiers.DIAMOND: Emojis.TIER_DIAMOND,
+}
+
+TIER_PAYOUT_MAP = {
+    Tiers.BRONZE: Prices.PAYOUT_CHARACTER_BRONZE,
+    Tiers.SILVER: Prices.PAYOUT_CHARACTER_SILVER,
+    Tiers.GOLD: Prices.PAYOUT_CHARACTER_GOLD,
+    Tiers.EMERALD: Prices.PAYOUT_CHARACTER_EMERALD,
+    Tiers.RUBY: Prices.PAYOUT_CHARACTER_RUBY,
+    Tiers.DIAMOND: Prices.PAYOUT_CHARACTER_DIAMOND,
 }
 
 FUSION_TIER_MAP = {

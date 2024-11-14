@@ -99,6 +99,22 @@ class WaifuCoreEmbed(WaifuBaseEmbed):
 
 class WaifuClaimEmbed(WaifuBaseEmbed):
     """Get an embed of a claimed waifu.
+        - Tier
+        - Skill Value
+        - Marriage status
+    """
+    def __init__(self, waifu: models.Waifu, claim: models.Claim):
+        super().__init__(waifu)
+        self.color = TIER_COLOR_MAP[claim.tier]
+        self.add_field(name="Tier", value=TIER_TITLE_MAP[claim.tier], inline=False) \
+            .add_field(name="Skill Points", value=claim.skill_str_short, inline=False) \
+            .add_field(name="Status", value=WAIFUSTATE_TITLE_MAP[claim.state], inline=False)
+        self.set_footer(text=claim.id)
+        self.set_image(url=claim.image_url)
+
+
+class WaifuHaremEmbed(WaifuBaseEmbed):
+    """Get an embed of a claimed waifu.
         - Price listed.
         - Skills listed.
         - Traits listed.
@@ -108,10 +124,9 @@ class WaifuClaimEmbed(WaifuBaseEmbed):
     def __init__(self, waifu: models.Waifu, claim: models.Claim):
         super().__init__(waifu)
         self.color = TIER_COLOR_MAP[claim.tier]
-        self.add_field(name="Price", value=claim.price_str) \
-            .add_field(name="Traits", value=claim.trait_str) \
-            .add_field(name=f"Skills ({claim.stats_str})", value=claim.skill_str) \
-            .add_field(name="Tier", value=TIER_TITLE_MAP[claim.tier]) \
+        self.add_field(name="Tier", value=TIER_TITLE_MAP[claim.tier]) \
+            .add_field(name="Trait", value=claim.trait_str) \
+            .add_field(name=f"Skills ({claim.skill_str_short})", value=claim.skill_str_long) \
             .add_field(name="Status", value=WAIFUSTATE_TITLE_MAP[claim.state])
         self.set_footer(text=claim.id)
         self.set_image(url=claim.image_url)

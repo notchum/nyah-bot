@@ -198,7 +198,7 @@ class Multiplayer(commands.Cog):
 
         # Select both user's waifus
         if opponent.id == self.bot.user.id:
-            opps_claim = await self.generate_bot_claim(users_claim.total_stats)
+            opps_claim = await self.generate_bot_claim(users_claim.total_skill_points)
         else:
             opps_married_harem = await self.bot.mongo.fetch_harem_married(opponent)
             opps_claim = random.choice(opps_married_harem)
@@ -218,12 +218,12 @@ class Multiplayer(commands.Cog):
         ) \
         .set_image(url=duel_image_url) \
         .add_field(
-            name=f"{red_waifu.name} ({users_claim.stats_str})",
-            value=users_claim.skill_str
+            name=f"{red_waifu.name} ({users_claim.skill_str_short})",
+            value=users_claim.skill_str_long
         ) \
         .add_field(
-            name=f"{blue_waifu.name} ({opps_claim.stats_str})",
-            value=opps_claim.skill_str
+            name=f"{blue_waifu.name} ({opps_claim.skill_str_short})",
+            value=opps_claim.skill_str_long
         )
         
         # Set timestamp in db
@@ -372,12 +372,12 @@ class Multiplayer(commands.Cog):
         ) \
         .set_image(url=duel_image_url) \
         .add_field(
-            name=f"{red_waifu.name} ({users_claim.stats_str})",
-            value=users_claim.skill_str
+            name=f"{red_waifu.name} ({users_claim.skill_str_short})",
+            value=users_claim.skill_str_long
         ) \
         .add_field(
-            name=f"{blue_waifu.name} ({opps_claim.stats_str})",
-            value=opps_claim.skill_str
+            name=f"{blue_waifu.name} ({opps_claim.skill_str_short})",
+            value=opps_claim.skill_str_long
         )
         
         # Set timestamp in db TODO
@@ -459,7 +459,7 @@ class Multiplayer(commands.Cog):
             waifu_names = []
             for claim in harem:
                 waifu = await self.bot.mongo.fetch_waifu(claim.slug)
-                formatted_name = f"{claim.index}. {waifu.name} ({claim.stats_str})"
+                formatted_name = f"{claim.index}. {waifu.name} ({claim.skill_str_short})"
                 waifu_names.append(formatted_name)
         
         return deque(waifu_names, maxlen=25)

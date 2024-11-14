@@ -4,8 +4,8 @@ from typing import List
 import disnake
 
 import models
-from helpers import Mongo, WaifuClaimEmbed
-from utils.constants import Emojis
+from helpers import Mongo, WaifuHaremEmbed
+from utils.constants import Emojis, TIER_TITLE_MAP
 from views import CharacterSelectView
 
 mongo = Mongo()
@@ -14,13 +14,13 @@ class ItemTypes(Enum):
     ITEM_CHEST_KEY    = 1
     ITEM_TRAIT_SCROLL = 2
     ITEM_SHONEN_STONE = 3
-    ITEM_ENERGY_BOOST = 4
+    ITEM_HEALTH_TEA = 4
 
 class Prices(Enum):
-    ITEM_CHEST_KEY    = 10000
-    ITEM_TRAIT_SCROLL = 10000
-    ITEM_SHONEN_STONE = 10000
-    ITEM_ENERGY_BOOST = 10000
+    ITEM_CHEST_KEY    = 100
+    ITEM_TRAIT_SCROLL = 100
+    ITEM_SHONEN_STONE = 100
+    ITEM_HEALTH_TEA = 10000
 
 ##*************************************************##
 ##********            SHOP ITEMS            *******##
@@ -41,7 +41,7 @@ class ShopBaseItem():
 
     @property
     def shop_str(self):
-        return f"`{self.emoji}` **__{self.name}__** - `{self.price:,}` {Emojis.COINS}"
+        return f"`{self.emoji}` **__{self.name}__** - `{self.price:,}` {Emojis.TICKET}"
 
     @property
     def buy_str(self):
@@ -145,7 +145,7 @@ class PlayerChestItem(PlayerBaseItem):
             embed.set_image(url=waifu.image_url)
             embeds.append(embed)
             
-            description += f"- __**{waifu.name}**__ ({claim.stats_str}) | {claim.price_str}\n"
+            description += f"- __**{waifu.name}**__ ({claim.skill_str_short}) | {TIER_TITLE_MAP[claim.tier]}\n"
         
         for embed in embeds:
             embed.description = description
@@ -192,7 +192,7 @@ class PlayerTraitScrollItem(PlayerBaseItem):
         
         if isinstance(waifu_dropdown.selected_claim, models.Claim):
             claim = waifu_dropdown.selected_claim
-            await claim.roll_traits()
+            await claim.roll_trait()
             await mongo.update_claim(claim)
             waifu = await mongo.fetch_waifu(claim.slug)
 
@@ -205,7 +205,7 @@ class PlayerTraitScrollItem(PlayerBaseItem):
                 color=disnake.Color.green()
             )
             await inter.edit_original_response(
-                embeds=[embed, WaifuClaimEmbed(waifu, claim)]
+                embeds=[embed, WaifuHaremEmbed(waifu, claim)]
             )
 
 
@@ -249,7 +249,7 @@ class ItemFactory:
                 return PlayerTraitScrollItem(owner, amount)
             case ItemTypes.ITEM_SHONEN_STONE:
                 return PlayerShonenStoneItem(owner, amount)
-            case ItemTypes.ITEM_ENERGY_BOOST:
+            case ItemTypes.ITEM_HEALTH_TEA:
                 return PlayerEnergyBoostItem(owner, amount)
             case _:
                 raise ValueError(f"Unsupported item type: {item_type}")

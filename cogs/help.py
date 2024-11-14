@@ -5,7 +5,7 @@ from disnake.ext import commands
 
 import utils
 from bot import NyahBot
-from utils.constants import Money, Emojis
+from utils.constants import Emojis, Prices
 import utils.traits as traits
 from views import WaifuPaginator
 
@@ -85,8 +85,8 @@ class Help(commands.Cog):
                         f"- To advance to the next round, your harem will have to defeat all waifus in your opponent's harem.\n"
                         f"- Participating in a Waifu War will always give you XP; but the further you make it, the more XP you recieve!\n"
                         f"- Rewards for making the grand finals are:\n"
-                        f"  - `{Money.WAR_FIRST.value:,}` {Emojis.COINS} for first place\n"
-                        f"  - `{Money.WAR_SECOND.value:,}` {Emojis.COINS} for runner-up\n",
+                        f"  - `{Prices.PAYOUT_WAR_FIRST.value:,}` {Emojis.TICKET} for first place\n"
+                        f"  - `{Prices.PAYOUT_WAR_SECOND.value:,}` {Emojis.TICKET} for runner-up\n",
         )
         
         embed4 = disnake.Embed(
@@ -106,8 +106,8 @@ class Help(commands.Cog):
                         f" Traits that increase certain skills make it possible to increase any single skill beyond the base cap of `100`.\n"
                         f"  - Use `/traits` to view all possible traits.\n"
                         f"- **What do I spend my coins on?**\n"
-                        f"  - Rerolling the SP of any one of your waifus (as mentioned above) will cost `{Money.SKILL_COST.value:,}` {Emojis.COINS} each time.\n"
-                        f"  - Wishlisting a waifu with `/wishlist add` will cost `{Money.WISHLIST_COST.value:,}` {Emojis.COINS} for an extra 5% chance to pull that waifu.\n"
+                        f"  - Buy items with /item buy and buy characters directly with /buymywaifu.\n"
+                        f"  - You can also spend your money on reducing cooldown times for the /getmywaifu command.\n"
                         f"- **Can I wishlist a waifu more than once?**\n"
                         f"  - Yes, wishlist the same waifu multiple times for even better odds you get them!\n"
                         f"  - If you pull a waifu from your wishlist, that waifu is removed from your wishlist.\n"

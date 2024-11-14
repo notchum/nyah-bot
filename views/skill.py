@@ -28,7 +28,7 @@ class WaifuSkillView(disnake.ui.View):
         if nyah_player.money < Money.SKILL_COST.value:
             price_diff = Money.SKILL_COST.value - nyah_player.money
             confirmation_embed = disnake.Embed(
-                description=f"{inter.author.mention}\nYou need `{price_diff:,}` {Emojis.COINS}",
+                description=f"{inter.author.mention}\nYou need `{price_diff:,}` {Emojis.TICKET}",
                 color=disnake.Color.fuchsia()
             )
 
@@ -49,10 +49,10 @@ class WaifuSkillView(disnake.ui.View):
 
             confirmation_embed = disnake.Embed(
                 description=f"Successfully rerolled skills for **__{waifu.name}__**!\n"
-                            f"Your balance is now `{nyah_player.money:,}` {Emojis.COINS}",
+                            f"Your balance is now `{nyah_player.money:,}` {Emojis.TICKET}",
                 color=disnake.Color.green()
             )
-            confirmation_embed.add_field(name=f"New Skills ({self.claim.stats_str})", value=self.claim.skill_str)
+            confirmation_embed.add_field(name=f"New Skills ({self.claim.skill_str_short})", value=self.claim.skill_str_long)
 
             logger.info(f"{inter.guild.name}[{inter.guild.id}] | "
                         f"{inter.channel.name}[{inter.channel.id}] | "

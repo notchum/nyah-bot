@@ -7,4 +7,5 @@ from .embeds import (
     WaifuBaseEmbed,
     WaifuCoreEmbed,
     WaifuClaimEmbed,
+    WaifuHaremEmbed,
 )

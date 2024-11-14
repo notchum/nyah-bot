@@ -183,7 +183,7 @@ class WaifuMenuView(disnake.ui.View):
             )
         )
     
-    @disnake.ui.button(label="Sell", emoji=Emojis.COINS, row=1)
+    @disnake.ui.button(label="Sell", emoji=Emojis.TICKET, row=1)
     async def sell(self, button: disnake.ui.Button, inter: disnake.MessageInteraction) -> None:
         current_embed = self.embeds[self.embed_index]
         current_claim = self.harem[self.embed_index]
