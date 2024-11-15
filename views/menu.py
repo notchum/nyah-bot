@@ -196,6 +196,7 @@ class WaifuMenuView(disnake.ui.View):
         # reindex the database harem
         harem = await mongo.fetch_harem(inter.author)
         await harem.reindex()
+        self.harem = harem
         
         # create the sold embed
         sold_embed = disnake.Embed(
