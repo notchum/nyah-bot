@@ -5,22 +5,10 @@ import disnake
 
 import models
 from helpers import Mongo, WaifuHaremEmbed
-from utils.constants import Emojis, TIER_TITLE_MAP
+from utils.constants import Emojis, Prices, ItemTypes, TIER_TITLE_MAP
 from views import CharacterSelectView
 
 mongo = Mongo()
-
-class ItemTypes(Enum):
-    ITEM_CHEST_KEY    = 1
-    ITEM_TRAIT_SCROLL = 2
-    ITEM_SHONEN_STONE = 3
-    ITEM_HEALTH_TEA = 4
-
-class Prices(Enum):
-    ITEM_CHEST_KEY    = 100
-    ITEM_TRAIT_SCROLL = 100
-    ITEM_SHONEN_STONE = 100
-    ITEM_HEALTH_TEA = 10000
 
 ##*************************************************##
 ##********            SHOP ITEMS            *******##
@@ -30,13 +18,13 @@ class ShopBaseItem():
     def __init__(
         self,
         name: str,
-        type: ItemTypes,
-        price: int,
+        type_: ItemTypes,
+        price: Prices,
         emoji: str
     ):
         self.name = name
-        self.type = type
-        self.price = price
+        self.type = type_
+        self.price = price.value
         self.emoji = emoji
 
     @property
@@ -52,8 +40,8 @@ class ShopChestItem(ShopBaseItem):
     def __init__(self):
         super().__init__(
             name="Chest",
-            type=ItemTypes.ITEM_CHEST_KEY,
-            price=Prices.ITEM_CHEST_KEY.value,
+            type_=ItemTypes.ITEM_CHEST_KEY,
+            price=Prices.COST_ITEM_CHEST_KEY,
             emoji=Emojis.ITEM_CHEST_KEY,
         )
 
@@ -62,20 +50,40 @@ class ShopTraitScrollItem(ShopBaseItem):
     def __init__(self):
         super().__init__(
             name="Trait Scroll",
-            type=ItemTypes.ITEM_TRAIT_SCROLL,
-            price=Prices.ITEM_TRAIT_SCROLL.value,
+            type_=ItemTypes.ITEM_TRAIT_SCROLL,
+            price=Prices.COST_ITEM_TRAIT_SCROLL,
             emoji=Emojis.ITEM_TRAIT_SCROLL,
+        )
+
+
+class ShopShonenStoneItem(ShopBaseItem):
+    def __init__(self):
+        super().__init__(
+            name="Shonen Stone",
+            type_=ItemTypes.ITEM_SHONEN_STONE,
+            price=Prices.COST_ITEM_SHONEN_STONE,
+            emoji=Emojis.ITEM_SHONEN_STONE,
+        )
+
+
+class ShopHealthTeaItem(ShopBaseItem):
+    def __init__(self):
+        super().__init__(
+            name="Health Tea",
+            type_=ItemTypes.ITEM_HEALTH_TEA,
+            price=Prices.COST_ITEM_HEALTH_TEA,
+            emoji=Emojis.ITEM_HEALTH_TEA,
         )
 
 
 SHOP_ITEMS: List[ShopBaseItem] = [
     ShopChestItem(),
     ShopTraitScrollItem(),
+    ShopShonenStoneItem(),
+    ShopHealthTeaItem(),
 ]
 
-def get_shop_item(item_type: ItemTypes | int) -> ShopBaseItem:
-    if isinstance(item_type, int):
-        item_type = ItemTypes(item_type)
+def get_shop_item(item_type: ItemTypes) -> ShopBaseItem:
     for item in SHOP_ITEMS:
         if item.type == item_type:
             return item
@@ -89,13 +97,13 @@ class PlayerBaseItem():
     def __init__(
         self,
         name: str,
-        type: ItemTypes,
+        type_: ItemTypes,
         emoji: str,
         owner: models.NyahPlayer,
         amount: int
     ):
         self.name = name
-        self.type = type
+        self.type = type_
         self.emoji = emoji
         self.owner = owner
         self.amount = amount
@@ -104,21 +112,64 @@ class PlayerBaseItem():
     def inv_str(self):
         return f"{self.emoji} x{self.amount}"
 
-    async def use(self) -> None:
-        await self.owner.remove_inventory_item(self.type.value, 1)
+    async def use(self, inter: disnake.ApplicationCommandInteraction):
+        harem = await mongo.fetch_harem(inter.author)
+
+        embed = disnake.Embed(
+            title=f"{self.name} {self.emoji}",
+            description=f"You have `x{self.amount}` {self.name}s available to use.\n\n"
+                        f"Please select a character to use the {self.name} on.\n\n"
+                        f"Once your desired character is selected, click **Confirm** {Emojis.CHECK_MARK}.",
+            color=disnake.Color.fuchsia()
+        )
+        waifu_dropdown = CharacterSelectView(inter.author, harem)
+        message = await inter.edit_original_response(embed=embed, view=waifu_dropdown)
+        waifu_dropdown.message = message
+        waifu_dropdown.selected_claim = None
+
+        await waifu_dropdown.wait()
+
+        if isinstance(waifu_dropdown.selected_claim, models.Claim):
+            claim = waifu_dropdown.selected_claim
+
+            match self.type:
+                case ItemTypes.ITEM_TRAIT_SCROLL:
+                    claim.roll_trait()
+                case ItemTypes.ITEM_SHONEN_STONE:
+                    claim.roll_skills()
+                case ItemTypes.ITEM_HEALTH_TEA:
+                    claim.reset_hp()
+                case _:
+                    raise ValueError(f"Unsupported item type: {self.type}")
+            
+            await mongo.update_claim(claim)
+            waifu = await mongo.fetch_waifu(claim.slug)
+
+            await self.owner.remove_inventory_item(self.type, 1)
+            self.amount -= 1
+
+            embed = disnake.Embed(
+                title=f"{self.name} {self.emoji}",
+                description=f"{self.name} successfully applied to **__{claim.name}__**.\n\n"
+                            f"You now have `x{self.amount}` {self.name}s available to use.",
+                color=disnake.Color.green()
+            )
+            await inter.edit_original_response(
+                embeds=[embed, WaifuHaremEmbed(waifu, claim)]
+            )
 
 
 class PlayerChestItem(PlayerBaseItem):
     def __init__(self, owner: models.NyahPlayer, amount: int):
         super().__init__(
             name="Chest",
-            type=ItemTypes.ITEM_CHEST_KEY,
+            type_=ItemTypes.ITEM_CHEST_KEY,
             emoji=Emojis.ITEM_CHEST_KEY,
             owner=owner,
             amount=amount
         )
 
-    async def use(self, inter: disnake.ApplicationCommandInteraction) -> None:
+    async def use(self, inter: disnake.ApplicationCommandInteraction):
         chest_size = 3
         result = await mongo.fetch_random_waifus(
             number=chest_size,
@@ -160,89 +211,56 @@ class PlayerChestItem(PlayerBaseItem):
             claim.timestamp=message.created_at
             await mongo.update_claim(claim)
         
-        await super().use()
+        await self.owner.remove_inventory_item(self.type, 1)
+        self.amount -= 1
 
 
 class PlayerTraitScrollItem(PlayerBaseItem):
     def __init__(self, owner: models.NyahPlayer, amount: int):
         super().__init__(
             name="Trait Scroll",
-            type=ItemTypes.ITEM_TRAIT_SCROLL,
+            type_=ItemTypes.ITEM_TRAIT_SCROLL,
             emoji=Emojis.ITEM_TRAIT_SCROLL,
             owner=owner,
             amount=amount
         )
 
     async def use(self, inter: disnake.ApplicationCommandInteraction):
-        harem = await mongo.fetch_harem(inter.author)
-
-        embed = disnake.Embed(
-            title=f"Trait Scroll {Emojis.ITEM_TRAIT_SCROLL}",
-            description=f"You have `x{self.amount}` Trait Scrolls available to use.\n\n"
-                        f"Please select a character to use the Trait Scroll on.\n\n"
-                        f"Once your desired character is selected, click **Confirm** {Emojis.CHECK_MARK}.",
-            color=disnake.Color.fuchsia()
-        )
-        waifu_dropdown = CharacterSelectView(inter.author, harem)
-        message = await inter.edit_original_response(embed=embed, view=waifu_dropdown)
-        waifu_dropdown.message = message
-        waifu_dropdown.selected_claim = None
-
-        await waifu_dropdown.wait()
-        
-        if isinstance(waifu_dropdown.selected_claim, models.Claim):
-            claim = waifu_dropdown.selected_claim
-            await claim.roll_trait()
-            await mongo.update_claim(claim)
-            waifu = await mongo.fetch_waifu(claim.slug)
-
-            await super().use()
-
-            embed = disnake.Embed(
-                title=f"Trait Scroll {Emojis.ITEM_TRAIT_SCROLL}",
-                description=f"Trait scroll successfully applied to **__{claim.name}__**.\n\n"
-                            f"You now have `x{self.amount}` Trait Scrolls available to use.",
-                color=disnake.Color.green()
-            )
-            await inter.edit_original_response(
-                embeds=[embed, WaifuHaremEmbed(waifu, claim)]
-            )
+        await super().use(inter)
 
 
 class PlayerShonenStoneItem(PlayerBaseItem):
     def __init__(self, owner: models.NyahPlayer, amount: int):
         super().__init__(
-            name="Trait Scroll",
-            type=ItemTypes.ITEM_TRAIT_SCROLL,
-            emoji=Emojis.ITEM_TRAIT_SCROLL,
+            name="Shonen Stone",
+            type_=ItemTypes.ITEM_SHONEN_STONE,
+            emoji=Emojis.ITEM_SHONEN_STONE,
             owner=owner,
             amount=amount
         )
 
     async def use(self, inter: disnake.ApplicationCommandInteraction):
-        return
-        await super().use()
+        await super().use(inter)
 
 
-class PlayerEnergyBoostItem(PlayerBaseItem):
+class PlayerHealthTeaItem(PlayerBaseItem):
     def __init__(self, owner: models.NyahPlayer, amount: int):
         super().__init__(
-            name="Trait Scroll",
-            type=ItemTypes.ITEM_TRAIT_SCROLL,
-            emoji=Emojis.ITEM_TRAIT_SCROLL,
+            name="Health Tea",
+            type_=ItemTypes.ITEM_HEALTH_TEA,
+            emoji=Emojis.ITEM_HEALTH_TEA,
             owner=owner,
             amount=amount
         )
 
     async def use(self, inter: disnake.ApplicationCommandInteraction):
-        return
-        await super().use()
+        await super().use(inter)
 
 
 class ItemFactory:
     @staticmethod
-    def create_item(item_type: int, owner: models.NyahPlayer, amount: int):
-        match ItemTypes(item_type):
+    def create_item(item_type: ItemTypes, owner: models.NyahPlayer, amount: int):
+        match item_type:
             case ItemTypes.ITEM_CHEST_KEY:
                 return PlayerChestItem(owner, amount)
             case ItemTypes.ITEM_TRAIT_SCROLL:
@@ -250,6 +268,6 @@ class ItemFactory:
             case ItemTypes.ITEM_SHONEN_STONE:
                 return PlayerShonenStoneItem(owner, amount)
             case ItemTypes.ITEM_HEALTH_TEA:
-                return PlayerEnergyBoostItem(owner, amount)
+                return PlayerHealthTeaItem(owner, amount)
             case _:
                 raise ValueError(f"Unsupported item type: {item_type}")

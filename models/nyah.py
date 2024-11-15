@@ -10,8 +10,7 @@ from pydantic import BaseModel, Field
 
 import utils
 from models import Waifu, Claim
-from utils.traits import TraitTypes
-from utils.constants import Emojis, WaifuState, Cooldowns, Prices, TIER_PAYOUT_MAP
+from utils.constants import Emojis, WaifuState, Cooldowns, Prices, ItemTypes, TIER_PAYOUT_MAP
 
 
 cooldown_attribute_map = {
@@ -64,7 +63,7 @@ class NyahGuild(Document):
 
 
 class InventoryItem(BaseModel):
-    type: int
+    type: ItemTypes = Field()
     amount: int
 
 
@@ -118,7 +117,7 @@ class NyahPlayer(Document):
             tier=utils.tier_from_rank(total_characters, waifu.popularity_rank),
         )
 
-        await claim.roll_skills()
+        claim.roll_skills()
         
         return claim
 
@@ -153,7 +152,7 @@ class NyahPlayer(Document):
             self.money += money
         await self.save()
     
-    async def add_inventory_item(self, item_type: int, item_amount: int) -> None:
+    async def add_inventory_item(self, item_type: ItemTypes, item_amount: int) -> None:
         for i in self.inventory:
             if i.type == item_type:
                 i.amount += item_amount
@@ -163,7 +162,7 @@ class NyahPlayer(Document):
 
         await self.save()
     
-    async def remove_inventory_item(self, item_type: int, item_amount: int) -> None:
+    async def remove_inventory_item(self, item_type: ItemTypes, item_amount: int) -> None:
         for i in self.inventory:
             if i.type == item_type:
                 i.amount -= item_amount

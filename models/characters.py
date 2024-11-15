@@ -92,6 +92,8 @@ class Claim(Document):
 
     trait: TraitTypes = Field(TraitTypes.NONE) # TODO, keep storing the same but on object creation just create the `Trait` object
 
+    health_points: Optional[int] = None
+
     timestamp: Optional[datetime] = None
     timestamp_cooldown: Optional[datetime] = None
 
@@ -104,7 +106,7 @@ class Claim(Document):
     def cooldown(self) -> None:
         self.state = WaifuState.COOLDOWN
     
-    async def roll_skills(self) -> None:
+    def roll_skills(self) -> None:
         random_stat = lambda: random.randint(0, 100)
         self.attack = random_stat()
         self.defense = random_stat()
@@ -112,8 +114,14 @@ class Claim(Document):
         self.speed = random_stat()
         self.magic = random_stat()
     
-    async def roll_trait(self) -> None:
+    def roll_trait(self) -> None:
         self.trait = random.choice([t for t in list(TraitTypes) if t != TraitTypes.NONE])
+    
+    def add_hp(self, amount: int) -> None:
+        self.health_points += amount
+
+    def reset_hp(self) -> None:
+        self.health_points = self.health
 
     @property
     def is_married(self) -> bool:

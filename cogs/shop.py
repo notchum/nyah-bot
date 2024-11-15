@@ -4,10 +4,11 @@ from typing import List
 import disnake
 from disnake.ext import commands
 
+import utils
 from bot import NyahBot
 from helpers import SuccessEmbed, ErrorEmbed
-from utils.constants import Emojis
-import utils.items
+from utils.constants import Emojis, ItemTypes
+from utils.items import ItemFactory, PlayerBaseItem, get_shop_item, SHOP_ITEMS
 
 class Shop(commands.Cog):
     def __init__(self, bot: commands.Bot):
@@ -25,10 +26,10 @@ class Shop(commands.Cog):
 
         nyah_player = await self.bot.mongo.fetch_nyah_player(inter.author)
 
-        items_str = "\n".join([item.shop_str for item in utils.items.SHOP_ITEMS])
+        items_str = "\n".join([item.shop_str for item in SHOP_ITEMS])
         embed = disnake.Embed(
             title="ITEM SHOP",
-            description=f"Use `/buy` to purchase any item! Balance: `{nyah_player.money:,}` {Emojis.TICKET}\n\n"
+            description=f"Use {utils.slash_command_mention('item buy', 1171329819041083452)} to purchase any item! Balance: `{nyah_player.money:,}` {Emojis.TICKET}\n\n"
                         f"{items_str}",
             color=disnake.Color.og_blurple()
         )
@@ -39,7 +40,7 @@ class Shop(commands.Cog):
     async def buy(
         self,
         inter: disnake.ApplicationCommandInteraction,
-        item: utils.items.ItemTypes,
+        item: str = commands.Param(choices={x.buy_str: str(x.type.value) for x in SHOP_ITEMS}),
         amount: int = 1
     ):
         """ Buy an item from the shop!
@@ -55,7 +56,9 @@ class Shop(commands.Cog):
 
         nyah_player = await self.bot.mongo.fetch_nyah_player(inter.author)
 
-        shop_item = utils.items.get_shop_item(item)
+        item_type = ItemTypes(int(item))
+
+        shop_item = get_shop_item(item_type)
         total_price = shop_item.price * amount
 
         if total_price > nyah_player.money:
@@ -66,7 +69,7 @@ class Shop(commands.Cog):
             )
 
         await nyah_player.add_user_money(-total_price)
-        await nyah_player.add_inventory_item(shop_item.type.value, amount)
+        await nyah_player.add_inventory_item(shop_item.type, amount)
 
         return await inter.edit_original_response(
             embed=SuccessEmbed(
@@ -88,7 +91,7 @@ class Shop(commands.Cog):
                 The item you want to use.
         """
         try:
-            selected_item_type = int(item.split(".")[0])
+            selected_item_type = ItemTypes(int(item.split(".")[0]))
         except:
             return await inter.response.send_message(
                 embed=ErrorEmbed(f"`{item}` is not valid!"),
@@ -108,7 +111,7 @@ class Shop(commands.Cog):
                     embed=ErrorEmbed(f"You don't have `{item}` in your inventory!")
                 )
             
-            player_item = utils.items.ItemFactory.create_item(inventory_item.type, nyah_player, inventory_item.amount)
+            player_item = ItemFactory.create_item(inventory_item.type, nyah_player, inventory_item.amount)
             await player_item.use(inter)
             return
         
@@ -126,11 +129,11 @@ class Shop(commands.Cog):
         if len(nyah_player.inventory) == 0:
             return [f"Your inventory is empty!"]
 
-        player_inventory: List[utils.items.PlayerBaseItem] = []
+        player_inventory: List[PlayerBaseItem] = []
         for inv_item in nyah_player.inventory:
             if inv_item.amount == 0:
                 continue
-            item = utils.items.ItemFactory.create_item(inv_item.type, nyah_player, inv_item.amount)
+            item = ItemFactory.create_item(inv_item.type, nyah_player, inv_item.amount)
             player_inventory.append(item)
         if len(player_inventory) == 0:
             return [f"Your inventory is empty!"]

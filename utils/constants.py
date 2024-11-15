@@ -46,6 +46,12 @@ class Emojis:
     STATE_COOLDOWN  = "❄️"
     STATE_UNMARRIED = "💔"
 
+class ItemTypes(Enum):
+    ITEM_CHEST_KEY    = 1
+    ITEM_TRAIT_SCROLL = 2
+    ITEM_SHONEN_STONE = 3
+    ITEM_HEALTH_TEA   = 4
+
 class Experience(Enum):
     BASE_LEVEL   = 100 # base amount of XP per level
     CLAIM        = 5   # gained from claiming a character
