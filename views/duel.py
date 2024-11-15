@@ -1,7 +1,10 @@
 import random
 from typing import List
+from enum import Enum
 
 import disnake
+import models
+from utils.constants import Emojis
 
 embed_colors = {
     -3: disnake.Color.dark_red(),
@@ -157,3 +160,89 @@ class WaifuDuelView(disnake.ui.View):
         if random_child:
             random_child.style = disnake.ButtonStyle.red
         await self.message.edit(view=self)
+
+
+class MoveTypes(Enum):
+    MOVE_ATTACK  = 1
+    MOVE_DEFEND  = 2
+    MOVE_SPECIAL = 3
+    MOVE_SWAP    = 4
+
+
+class DuelView(disnake.ui.View):
+    message: disnake.Message
+
+    def __init__(self, author: disnake.User | disnake.Member, player_harem: models.Harem, opponent_harem: models.Harem) -> None:
+        super().__init__()
+        self.author = author
+        self.player_harem = player_harem
+        self.opponent_harem = opponent_harem
+
+        self.turn_num = 1
+        self.player_active_claim = random.choice(self.player_harem)
+        self.opponent_active_claim = random.choice(self.opponent_harem)
+        self.player_move = None
+        self.opponent_move = None
+        self.player_goes_first = False
+        if self.check_speed():
+            self.player_goes_first = True
+
+    
+    async def interaction_check(self, interaction: disnake.MessageInteraction) -> bool:
+        return interaction.author.id == self.author.id
+
+    async def on_timeout(self) -> None:
+        return await super().on_timeout()
+    
+    async def check_speed(self) -> bool:
+        """Returns true if player is faster"""
+        if self.player_active_claim.speed >= self.opponent_active_claim:
+            return True
+        return False
+    
+    async def choose_opponent_action(self):
+        # if self.opponent_active_claim.trait and oppenent_trait_available:
+            # add trait move to selection pool
+        # random.choice(move_types)
+        return
+    
+    async def calculate_damage(self):
+        match self.player_move:
+            case MoveTypes.MOVE_ATTACK:
+                return
+            case MoveTypes.MOVE_DEFEND:
+                return
+            case MoveTypes.MOVE_SPECIAL:
+                return
+            case MoveTypes.MOVE_SWAP:
+                return
+            case _:
+                raise ValueError("TODO: put an error message here")
+
+    async def check_faint(self):
+        if self.player_active_claim.health_points = 0:
+            self.player_active_claim = self.pick_random_claim(self.player_harem)
+        return
+    
+    async def check_remaining_claims(self):
+        return
+    
+    async def pick_random_claim(self, harem: models.Harem):
+        # pick a claim from the harem that hasnt fainted at random
+        return
+
+    @disnake.ui.button(label="Attack", emoji=Emojis.SKILL_ATTACK)
+    async def attack(self, button: disnake.ui.Button, inter: disnake.MessageInteraction) -> None:
+        await inter.edit_original_response(content="attack pressed")
+    
+    @disnake.ui.button(label="Defend", emoji=Emojis.SKILL_DEFENSE)
+    async def defend(self, button: disnake.ui.Button, inter: disnake.MessageInteraction) -> None:
+        await inter.edit_original_response(content="defend pressed")
+    
+    @disnake.ui.button(label="Special", emoji=Emojis.SKILL_MAGIC, row=1)
+    async def special(self, button: disnake.ui.Button, inter: disnake.MessageInteraction) -> None:
+        await inter.edit_original_response(content="special pressed")
+
+    @disnake.ui.button(label="Swap", emoji=Emojis.SWAP, row=1)
+    async def swap(self, button: disnake.ui.Button, inter: disnake.MessageInteraction) -> None:
+        await inter.edit_original_response(content="swap pressed")
