@@ -1,5 +1,5 @@
 import random
-from typing import List
+from typing import List, Optional
 from enum import Enum
 
 import disnake
@@ -169,80 +169,260 @@ class MoveTypes(Enum):
     MOVE_SWAP    = 4
 
 
+class BattleResult:
+    def __init__(self, damage: int, description: str):
+        self.damage = damage
+        self.description = description
+
 class DuelView(disnake.ui.View):
     message: disnake.Message
 
     def __init__(self, author: disnake.User | disnake.Member, player_harem: models.Harem, opponent_harem: models.Harem) -> None:
-        super().__init__()
+        super().__init__(timeout=180)  # 3 minute timeout
         self.author = author
         self.player_harem = player_harem
         self.opponent_harem = opponent_harem
-
+        
+        # Battle state
         self.turn_num = 1
-        self.player_active_claim = random.choice(self.player_harem)
-        self.opponent_active_claim = random.choice(self.opponent_harem)
+        self.player_active_claim = random.choice([claim for claim in self.player_harem if claim.health_points > 0])
+        self.opponent_active_claim = random.choice([claim for claim in self.opponent_harem if claim.health_points > 0])
         self.player_move = None
         self.opponent_move = None
-        self.player_goes_first = False
-        if self.check_speed():
-            self.player_goes_first = True
+        self.player_goes_first = self.check_speed()
+        
+        # Track special move usage
+        self.used_specials = set()  # Store character IDs that have used their special
 
-    
     async def interaction_check(self, interaction: disnake.MessageInteraction) -> bool:
         return interaction.author.id == self.author.id
 
     async def on_timeout(self) -> None:
-        return await super().on_timeout()
-    
-    async def check_speed(self) -> bool:
-        """Returns true if player is faster"""
-        if self.player_active_claim.speed >= self.opponent_active_claim:
-            return True
-        return False
-    
-    async def choose_opponent_action(self):
-        # if self.opponent_active_claim.trait and oppenent_trait_available:
-            # add trait move to selection pool
-        # random.choice(move_types)
-        return
-    
-    async def calculate_damage(self):
-        match self.player_move:
-            case MoveTypes.MOVE_ATTACK:
-                return
-            case MoveTypes.MOVE_DEFEND:
-                return
-            case MoveTypes.MOVE_SPECIAL:
-                return
-            case MoveTypes.MOVE_SWAP:
-                return
-            case _:
-                raise ValueError("TODO: put an error message here")
+        # Disable all buttons when the view times out
+        for button in self.children:
+            button.disabled = True
+        if self.message:
+            await self.message.edit(view=self)
 
-    async def check_faint(self):
-        if self.player_active_claim.health_points = 0:
-            self.player_active_claim = self.pick_random_claim(self.player_harem)
-        return
+    def check_speed(self) -> bool:
+        """Returns true if player is faster"""
+        return self.player_active_claim.speed >= self.opponent_active_claim.speed
     
-    async def check_remaining_claims(self):
-        return
-    
-    async def pick_random_claim(self, harem: models.Harem):
-        # pick a claim from the harem that hasnt fainted at random
-        return
+    async def choose_opponent_action(self) -> MoveTypes:
+        """Choose a random valid move for the AI opponent"""
+        available_moves = [MoveTypes.MOVE_ATTACK, MoveTypes.MOVE_DEFEND]
+        
+        # Add MOVE_SPECIAL if the character has a trait and hasn't used it
+        if (self.opponent_active_claim.trait and 
+            self.opponent_active_claim.id not in self.used_specials):
+            available_moves.append(MoveTypes.MOVE_SPECIAL)
+        
+        # Add MOVE_SWAP if there are other available characters
+        available_claims = [c for c in self.opponent_harem if c.health_points > 0 and c != self.opponent_active_claim]
+        if available_claims:
+            available_moves.append(MoveTypes.MOVE_SWAP)
+        
+        return random.choice(available_moves)
+
+    async def calculate_damage(self, attacker, defender, move_type: MoveTypes) -> BattleResult:
+        """Calculate damage and return a battle result with damage and description"""
+        damage = 0
+        description = ""
+        
+        match move_type:
+            case MoveTypes.MOVE_ATTACK:
+                base_damage = attacker.attack - (defender.defense // 2)
+                damage = max(base_damage, 1)  # Ensure at least 1 damage
+                description = f"{attacker.name} attacks for {damage} damage!"
+                
+            case MoveTypes.MOVE_DEFEND:
+                # Increase defense for next turn
+                attacker.defense *= 1.5  # Temporary buff
+                description = f"{attacker.name} takes a defensive stance!"
+                
+            case MoveTypes.MOVE_SPECIAL:
+                if attacker.trait:
+                    damage = attacker.magic * 2
+                    self.used_specials.add(attacker.id)
+                    description = f"{attacker.name} uses their special ability for {damage} damage!"
+                
+            case MoveTypes.MOVE_SWAP:
+                if move_type == MoveTypes.MOVE_SWAP:
+                    available_claims = [c for c in (self.opponent_harem if attacker == self.opponent_active_claim else self.player_harem)
+                                    if c.health_points > 0 and c != attacker]
+                    if available_claims:
+                        if attacker == self.opponent_active_claim:
+                            self.opponent_active_claim = random.choice(available_claims)
+                            description = f"Opponent swaps to {self.opponent_active_claim.name}!"
+                        else:
+                            # Player swap is handled in the swap button
+                            description = f"You swap to {self.player_active_claim.name}!"
+        
+        return BattleResult(damage, description)
+
+    async def apply_damage(self, target, damage: int):
+        """Apply damage to a character and ensure HP doesn't go below 0"""
+        target.health_points = max(0, target.health_points - damage)
+
+    async def check_faint(self) -> bool:
+        """Check if either active character has fainted and handle switching"""
+        if self.player_active_claim.health_points <= 0:
+            available_claims = [c for c in self.player_harem if c.health_points > 0]
+            if available_claims:
+                self.player_active_claim = random.choice(available_claims)
+                return True
+        
+        if self.opponent_active_claim.health_points <= 0:
+            available_claims = [c for c in self.opponent_harem if c.health_points > 0]
+            if available_claims:
+                self.opponent_active_claim = random.choice(available_claims)
+                return True
+        
+        return False
+
+    async def check_battle_end(self) -> Optional[str]:
+        """Check if the battle has ended and return the result message if it has"""
+        player_alive = any(c.health_points > 0 for c in self.player_harem)
+        opponent_alive = any(c.health_points > 0 for c in self.opponent_harem)
+        
+        if not player_alive:
+            return "You have been defeated!"
+        elif not opponent_alive:
+            return "Victory! You have defeated your opponent!"
+        return None
+
+    async def update_battle_display(self, inter: disnake.MessageInteraction, action_text: str):
+        """Update the battle display with current state"""
+        embed = disnake.Embed(title="Battle!", description=action_text)
+        
+        # Player's active character
+        embed.add_field(
+            name=f"Your Active Character: {self.player_active_claim.name}",
+            value=f"HP: {self.player_active_claim.health_points}\n"
+                  f"Attack: {self.player_active_claim.attack}\n"
+                  f"Defense: {self.player_active_claim.defense}\n"
+                  f"Speed: {self.player_active_claim.speed}\n"
+                  f"Magic: {self.player_active_claim.magic}",
+            inline=True
+        )
+        
+        # Opponent's active character
+        embed.add_field(
+            name=f"Opponent's Active Character: {self.opponent_active_claim.name}",
+            value=f"HP: {self.opponent_active_claim.health_points}\n"
+                  f"Attack: {self.opponent_active_claim.attack}\n"
+                  f"Defense: {self.opponent_active_claim.defense}\n"
+                  f"Speed: {self.opponent_active_claim.speed}\n"
+                  f"Magic: {self.opponent_active_claim.magic}",
+            inline=True
+        )
+        
+        # Add remaining characters field
+        player_remaining = [c for c in self.player_harem if c.health_points > 0 and c != self.player_active_claim]
+        opponent_remaining = [c for c in self.opponent_harem if c.health_points > 0 and c != self.opponent_active_claim]
+        
+        embed.add_field(
+            name="Remaining Characters",
+            value=f"Your team: {len(player_remaining)} | Opponent's team: {len(opponent_remaining)}",
+            inline=False
+        )
+        
+        await inter.response.edit_message(embed=embed, view=self)
+
+    async def process_turn(self, player_move: MoveTypes, inter: disnake.MessageInteraction):
+        """Process a full turn of combat"""
+        self.player_move = player_move
+        self.opponent_move = await self.choose_opponent_action()
+        
+        # Determine order and process moves
+        first = self.player_active_claim if self.player_goes_first else self.opponent_active_claim
+        second = self.opponent_active_claim if self.player_goes_first else self.player_active_claim
+        first_move = self.player_move if self.player_goes_first else self.opponent_move
+        second_move = self.opponent_move if self.player_goes_first else self.player_move
+        
+        # Process first move
+        result1 = await self.calculate_damage(first, second, first_move)
+        await self.apply_damage(second, result1.damage)
+        
+        # Check if battle ended after first move
+        if await self.check_faint():
+            await self.update_battle_display(inter, result1.description + "\nA character has fainted!")
+            if battle_end := await self.check_battle_end():
+                return await self.end_battle(inter, battle_end)
+        
+        # Process second move if second character is still alive
+        if second.health_points > 0:
+            result2 = await self.calculate_damage(second, first, second_move)
+            await self.apply_damage(first, result2.damage)
+            
+            # Check if battle ended after second move
+            if await self.check_faint():
+                await self.update_battle_display(inter, 
+                    f"{result1.description}\n{result2.description}\nA character has fainted!")
+                if battle_end := await self.check_battle_end():
+                    return await self.end_battle(inter, battle_end)
+        
+        # Update display with results
+        await self.update_battle_display(inter, 
+            f"{result1.description}\n{result2.description if second.health_points > 0 else ''}")
+        
+        self.turn_num += 1
+
+    async def end_battle(self, inter: disnake.MessageInteraction, result_message: str):
+        """End the battle and clean up"""
+        for button in self.children:
+            button.disabled = True
+        await self.update_battle_display(inter, result_message)
+        self.stop()
 
     @disnake.ui.button(label="Attack", emoji=Emojis.SKILL_ATTACK)
     async def attack(self, button: disnake.ui.Button, inter: disnake.MessageInteraction) -> None:
-        await inter.edit_original_response(content="attack pressed")
+        await self.process_turn(MoveTypes.MOVE_ATTACK, inter)
     
     @disnake.ui.button(label="Defend", emoji=Emojis.SKILL_DEFENSE)
     async def defend(self, button: disnake.ui.Button, inter: disnake.MessageInteraction) -> None:
-        await inter.edit_original_response(content="defend pressed")
+        await self.process_turn(MoveTypes.MOVE_DEFEND, inter)
     
     @disnake.ui.button(label="Special", emoji=Emojis.SKILL_MAGIC, row=1)
     async def special(self, button: disnake.ui.Button, inter: disnake.MessageInteraction) -> None:
-        await inter.edit_original_response(content="special pressed")
+        if not self.player_active_claim.trait:
+            await inter.response.send_message("This character doesn't have a special ability!", ephemeral=True)
+            return
+        if self.player_active_claim.id in self.used_specials:
+            await inter.response.send_message("This character has already used their special ability!", ephemeral=True)
+            return
+        await self.process_turn(MoveTypes.MOVE_SPECIAL, inter)
 
     @disnake.ui.button(label="Swap", emoji=Emojis.SWAP, row=1)
     async def swap(self, button: disnake.ui.Button, inter: disnake.MessageInteraction) -> None:
-        await inter.edit_original_response(content="swap pressed")
+        available_claims = [c for c in self.player_harem 
+                          if c.health_points > 0 and c != self.player_active_claim]
+        
+        if not available_claims:
+            await inter.response.send_message("No available characters to swap to!", ephemeral=True)
+            return
+        
+        # Create a select menu for choosing the swap target
+        options = [
+            disnake.SelectOption(
+                label=claim.name,
+                description=f"HP: {claim.health_points}",
+                value=str(claim.id)
+            ) for claim in available_claims
+        ]
+        
+        select = disnake.ui.Select(
+            placeholder="Choose a character to swap to",
+            options=options
+        )
+        
+        async def select_callback(select_inter: disnake.MessageInteraction):
+            selected_claim = next(c for c in self.player_harem 
+                                if str(c.id) == select_inter.values[0])
+            self.player_active_claim = selected_claim
+            await self.process_turn(MoveTypes.MOVE_SWAP, select_inter)
+        
+        select.callback = select_callback
+        view = disnake.ui.View()
+        view.add_item(select)
+        await inter.response.send_message("Choose a character to swap to:", view=view, ephemeral=True)
