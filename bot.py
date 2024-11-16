@@ -3,6 +3,7 @@ import shutil
 import tempfile
 import platform
 from collections import namedtuple
+from typing import Dict
 
 import aiohttp_client_cache
 import disnake
@@ -11,6 +12,7 @@ from disnake.ext import commands
 from loguru import logger
 from beanie import init_beanie
 from motor.motor_asyncio import AsyncIOMotorClient
+from PIL import Image
 
 import models
 import utils
@@ -168,3 +170,148 @@ class NyahBot(commands.InteractionBot):
             nyah_player.last_command_message_id = message.id
         
         await nyah_player.save()
+
+    async def create_waifu_vs_img(self, red_waifu: models.Claim, blue_waifu: models.Claim) -> str:
+        """ Create a waifu war round versus thumbnail image.
+            Red is on the left and blue is on the right.
+
+            Get ready to see the worst code ever written.
+
+            Parameters
+            ----------
+            red_waifu: `Claim`
+                The waifu to place on the red side of the versus image.
+            blue_waifu: `Claim`
+                The waifu to place on the blue side of the versus image.
+
+            Returns
+            -------
+            `str`
+                The URL of the versus image.
+        """
+        UPPER_LEFT_INX = 0
+        LOWER_RIGHT_INX = 1
+        X_COORD_INX = 0
+        Y_COORD_INX = 1
+
+        def scale_image(img: Image.Image, scale_percent: float) -> Image.Image:
+            """ Scales an image to `scale_percent`. """
+            dim = (int(img.width * scale_percent), int(img.height * scale_percent))
+            return img.resize(dim, resample=Image.Resampling.BICUBIC)
+
+        def get_bounding_box_coords(img: Image.Image) -> list:
+            """ Returns the coordinates of two boxes.  """
+            return [
+                # (x0, y0), (x1, y1)
+                [(int(img.width*0.10), int(img.height*0.10)), (int(img.width*0.40), int(img.height*0.90))], # left side
+                # (x2, y2), (x3, y3)
+                [(int(img.width*0.60), int(img.height*0.10)), (int(img.width*0.90), int(img.height*0.90))]  # right side
+            ]
+
+        def center_place(img: Image.Image, bb_coords: list) -> tuple:
+            """ Calculate upper-left coordinate to place an image in center of bounding box. """
+            bb_width = bb_coords[LOWER_RIGHT_INX][X_COORD_INX] - bb_coords[UPPER_LEFT_INX][X_COORD_INX]
+            bb_height = bb_coords[LOWER_RIGHT_INX][Y_COORD_INX] - bb_coords[UPPER_LEFT_INX][Y_COORD_INX]
+            center_x = bb_coords[UPPER_LEFT_INX][X_COORD_INX] + bb_width//2
+            center_y = bb_coords[UPPER_LEFT_INX][Y_COORD_INX] + bb_height//2
+
+            return (center_x - img.width//2, center_y - img.height//2)
+
+        # load background
+        bg_img = Image.open("assets/vs.jpg") # "https://external-content.duckduckgo.com/iu/?u=https%3A%2F%2Fstatic.vecteezy.com%2Fsystem%2Fresources%2Fpreviews%2F000%2F544%2F945%2Foriginal%2Fcomic-fighting-cartoon-background-blue-vs-red-vector-illustration-design.jpg&f=1&nofb=1&ipt=d7b1d0d9bb512e200148263e80ad893ee95f011cf44cfc20417a2da90f94642a&ipo=images"
+        if (bg_img.mode != "RGBA"):
+            bg_img = bg_img.convert("RGBA")
+
+        # get initial bounding box coords [upper-left, lower-right]
+        bb = get_bounding_box_coords(bg_img)
+
+        # load 2 foreground images
+        waifus: Dict[str, Dict[str, Image.Image | models.Claim | int]] = {
+            "red": {
+                "object": red_waifu,
+                "image": None,
+                "long_inx": None
+            },
+            "blue": {
+                "object": blue_waifu,
+                "image": None,
+                "long_inx": None
+            },
+        }
+        for waifu_color, waifu_value in waifus.items():
+            # get claim
+            claim = waifu_value["object"]
+
+            # download image
+            image_path = await self.api.download_image(claim.image_url)
+
+            # load fg image
+            load_img = Image.open(image_path)
+            if (load_img.mode != "RGBA"):
+                load_img = load_img.convert("RGBA")
+            
+            # save the image
+            waifus[waifu_color]["image"] = load_img
+
+            # determine longer side of each fg image
+            if waifus[waifu_color]["image"].height > waifus[waifu_color]["image"].width:
+                waifus[waifu_color]["long_inx"] = 1 # 1=height in .size
+            else:
+                waifus[waifu_color]["long_inx"] = 0 # 0=width in .size
+        
+        # determine the smaller image of the two using total pixels
+        if (waifus["red"]["image"].width * waifus["red"]["image"].height) < (waifus["blue"]["image"].width * waifus["blue"]["image"].height):
+            small_img_key = "red"
+            large_img_key = "blue"
+        else:
+            small_img_key = "blue"
+            large_img_key = "red"
+        
+        # get length of bb side-of-interest
+        bb_long = bb[0][LOWER_RIGHT_INX][waifus[small_img_key]["long_inx"]] - bb[0][UPPER_LEFT_INX][waifus[small_img_key]["long_inx"]]
+        if waifus[small_img_key]["image"].size[waifus[small_img_key]["long_inx"]] < bb_long: # if the smaller fg is smaller than the bb
+            # scale the bg image
+            scale_percent = waifus[small_img_key]["image"].size[waifus[small_img_key]["long_inx"]] / bb_long
+            bg_img = scale_image(bg_img, scale_percent)
+
+            # scale the bb to the new bg size
+            bb = get_bounding_box_coords(bg_img)
+
+            # scale the larger fg to the new bb size
+            bb_long = bb[0][LOWER_RIGHT_INX][waifus[large_img_key]["long_inx"]] - bb[0][UPPER_LEFT_INX][waifus[large_img_key]["long_inx"]]
+            scale_percent = bb_long / waifus[large_img_key]["image"].size[waifus[large_img_key]["long_inx"]]
+            waifus[large_img_key]["image"] = scale_image(waifus[large_img_key]["image"], scale_percent)
+        else: # if the bb is smaller than the smaller fg
+            # scale both fg images to the bb
+            for key, waifu_value in waifus.items():
+                fg_img = waifu_value["image"]
+                long_inx = waifu_value["long_inx"]
+                bb_long = bb[0][LOWER_RIGHT_INX][long_inx] - bb[0][UPPER_LEFT_INX][long_inx]
+                scale_percent = bb_long / fg_img.size[long_inx]
+                waifus[key]["image"] = scale_image(fg_img, scale_percent)
+
+        # final scaling and overlaying
+        for bb_inx, (_, waifu_value) in enumerate(waifus.items()):
+            fg_img = waifu_value["image"]
+            # in case a fg image's width is too wide for the bb, scale once more
+            bb_width = bb[bb_inx][LOWER_RIGHT_INX][X_COORD_INX] - bb[bb_inx][UPPER_LEFT_INX][X_COORD_INX]
+            if fg_img.width > bb_width:
+                scale_percent = bb_width / fg_img.width
+                fg_img = scale_image(fg_img, scale_percent)
+
+            # overlay fg images onto bg
+            bg_img.paste(fg_img, box=center_place(fg_img, bb[bb_inx]), mask=fg_img)
+
+        # save the image
+        output_path = os.path.join(self.temp_dir, f"{red_waifu.id}.vs.{blue_waifu.id}.png")
+
+        bg_img.save(output_path)
+        logger.info(f"Created image {output_path}")
+
+        # upload the image to discord (free image hosting)
+        image_host_channel = await self.fetch_channel(1164613880538992760)
+        image_host_msg = await image_host_channel.send(file=disnake.File(output_path))
+        logger.info(f"Uploaded image {image_host_msg.attachments[0].url}")
+
+        # return the URL of the image
+        return image_host_msg.attachments[0].url

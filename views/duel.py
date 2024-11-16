@@ -6,6 +6,8 @@ import disnake
 import models
 from utils.constants import Emojis
 
+from bot import NyahBot
+
 embed_colors = {
     -3: disnake.Color.dark_red(),
     -2: disnake.Color.red(),
@@ -177,8 +179,9 @@ class BattleResult:
 class DuelView(disnake.ui.View):
     message: disnake.Message
 
-    def __init__(self, author: disnake.User | disnake.Member, player_harem: models.Harem, opponent_harem: models.Harem) -> None:
+    def __init__(self, bot: NyahBot, author: disnake.User | disnake.Member, player_harem: models.Harem, opponent_harem: models.Harem) -> None:
         super().__init__(timeout=180)  # 3 minute timeout
+        self.bot = bot
         self.author = author
         self.player_harem = player_harem
         self.opponent_harem = opponent_harem
@@ -194,9 +197,6 @@ class DuelView(disnake.ui.View):
         # Track special move usage
         self.used_specials = set()  # Store character IDs that have used their special
 
-    async def interaction_check(self, interaction: disnake.MessageInteraction) -> bool:
-        return interaction.author.id == self.author.id
-
     async def on_timeout(self) -> None:
         # Disable all buttons when the view times out
         for button in self.children:
@@ -204,9 +204,26 @@ class DuelView(disnake.ui.View):
         if self.message:
             await self.message.edit(view=self)
 
+    async def interaction_check(self, interaction: disnake.MessageInteraction) -> bool:
+        return interaction.author.id == self.author.id
+
+    async def initialize(self):
+        await self.update_battle_display()
+        
+        self.attack.disabled = False
+        self.defend.disabled = False
+        self.swap.disabled = False
+        self.update_special_button_state()
+
+        await self.message.edit(view=self)
+
     def check_speed(self) -> bool:
         """Returns true if player is faster"""
         return self.player_active_claim.speed >= self.opponent_active_claim.speed
+
+    def update_special_button_state(self):
+        """Update the special button's enabled/disabled state based on active character's trait"""
+        self.special.disabled = not bool(self.player_active_claim.trait)
     
     async def choose_opponent_action(self) -> MoveTypes:
         """Choose a random valid move for the AI opponent"""
@@ -224,7 +241,7 @@ class DuelView(disnake.ui.View):
         
         return random.choice(available_moves)
 
-    async def calculate_damage(self, attacker, defender, move_type: MoveTypes) -> BattleResult:
+    async def calculate_damage(self, attacker: models.Claim, defender: models.Claim, move_type: MoveTypes) -> BattleResult:
         """Calculate damage and return a battle result with damage and description"""
         damage = 0
         description = ""
@@ -267,12 +284,27 @@ class DuelView(disnake.ui.View):
     async def check_faint(self) -> bool:
         """Check if either active character has fainted and handle switching"""
         if self.player_active_claim.health_points <= 0:
+            await self.update_battle_display(
+                disnake.Embed(
+                    description=f"**{self.player_active_claim.name}** has fainted!",
+                    color=disnake.Color.yellow()
+                )
+            )
+
             available_claims = [c for c in self.player_harem if c.health_points > 0]
             if available_claims:
                 self.player_active_claim = random.choice(available_claims)
+                self.update_special_button_state()  # Update button state after forced swap
                 return True
         
         if self.opponent_active_claim.health_points <= 0:
+            await self.update_battle_display(
+                disnake.Embed(
+                    description=f"**{self.opponent_active_claim.name}** has fainted!",
+                    color=disnake.Color.yellow()
+                )
+            )
+
             available_claims = [c for c in self.opponent_harem if c.health_points > 0]
             if available_claims:
                 self.opponent_active_claim = random.choice(available_claims)
@@ -291,43 +323,33 @@ class DuelView(disnake.ui.View):
             return "Victory! You have defeated your opponent!"
         return None
 
-    async def update_battle_display(self, inter: disnake.MessageInteraction, action_text: str):
+    async def update_battle_display(self, extra_embed: disnake.Embed = None):
         """Update the battle display with current state"""
-        embed = disnake.Embed(title="Battle!", description=action_text)
-        
-        # Player's active character
-        embed.add_field(
-            name=f"Your Active Character: {self.player_active_claim.name}",
-            value=f"HP: {self.player_active_claim.health_points}\n"
-                  f"Attack: {self.player_active_claim.attack}\n"
-                  f"Defense: {self.player_active_claim.defense}\n"
-                  f"Speed: {self.player_active_claim.speed}\n"
-                  f"Magic: {self.player_active_claim.magic}",
-            inline=True
-        )
-        
-        # Opponent's active character
-        embed.add_field(
-            name=f"Opponent's Active Character: {self.opponent_active_claim.name}",
-            value=f"HP: {self.opponent_active_claim.health_points}\n"
-                  f"Attack: {self.opponent_active_claim.attack}\n"
-                  f"Defense: {self.opponent_active_claim.defense}\n"
-                  f"Speed: {self.opponent_active_claim.speed}\n"
-                  f"Magic: {self.opponent_active_claim.magic}",
-            inline=True
-        )
-        
-        # Add remaining characters field
         player_remaining = [c for c in self.player_harem if c.health_points > 0 and c != self.player_active_claim]
         opponent_remaining = [c for c in self.opponent_harem if c.health_points > 0 and c != self.opponent_active_claim]
+
+        # Create embed
+        duel_image_url = await self.bot.create_waifu_vs_img(self.player_active_claim, self.opponent_active_claim)
+        embed = disnake.Embed(
+            description=f"### {self.author.mention} vs. <@{self.opponent_active_claim.user_id}>\n",
+            color=disnake.Color.yellow()
+        ) \
+        .set_image(url=duel_image_url) \
+        .add_field(
+            name=f"{self.player_active_claim.name} ({self.player_active_claim.skill_str_short})",
+            value=f"HP: {self.player_active_claim.health_points}"
+        ) \
+        .add_field(
+            name=f"{self.opponent_active_claim.name} ({self.opponent_active_claim.skill_str_short})",
+            value=f"HP: {self.opponent_active_claim.health_points}"
+        ) \
+        .set_footer(text=f"Remaining Charaters | Your team: {len(player_remaining)} | Opponent's team: {len(opponent_remaining)}")
         
-        embed.add_field(
-            name="Remaining Characters",
-            value=f"Your team: {len(player_remaining)} | Opponent's team: {len(opponent_remaining)}",
-            inline=False
-        )
-        
-        await inter.response.edit_message(embed=embed, view=self)
+        embeds = [embed]
+        if extra_embed:
+            embeds.append(extra_embed)
+
+        await self.message.edit(content=None, embeds=embeds, view=self)
 
     async def process_turn(self, player_move: MoveTypes, inter: disnake.MessageInteraction):
         """Process a full turn of combat"""
@@ -346,9 +368,8 @@ class DuelView(disnake.ui.View):
         
         # Check if battle ended after first move
         if await self.check_faint():
-            await self.update_battle_display(inter, result1.description + "\nA character has fainted!")
             if battle_end := await self.check_battle_end():
-                return await self.end_battle(inter, battle_end)
+                return await self.end_battle(battle_end)
         
         # Process second move if second character is still alive
         if second.health_points > 0:
@@ -357,34 +378,34 @@ class DuelView(disnake.ui.View):
             
             # Check if battle ended after second move
             if await self.check_faint():
-                await self.update_battle_display(inter, 
-                    f"{result1.description}\n{result2.description}\nA character has fainted!")
                 if battle_end := await self.check_battle_end():
-                    return await self.end_battle(inter, battle_end)
+                    return await self.end_battle(battle_end)
         
         # Update display with results
-        await self.update_battle_display(inter, 
-            f"{result1.description}\n{result2.description if second.health_points > 0 else ''}")
+        await self.update_battle_display()
         
         self.turn_num += 1
 
-    async def end_battle(self, inter: disnake.MessageInteraction, result_message: str):
+    async def end_battle(self, result_message: str):
         """End the battle and clean up"""
         for button in self.children:
             button.disabled = True
-        await self.update_battle_display(inter, result_message)
+        await self.update_battle_display()
         self.stop()
 
-    @disnake.ui.button(label="Attack", emoji=Emojis.SKILL_ATTACK)
+    @disnake.ui.button(label="Attack", emoji=Emojis.SKILL_ATTACK, disabled=True)
     async def attack(self, button: disnake.ui.Button, inter: disnake.MessageInteraction) -> None:
+        await inter.response.defer()
         await self.process_turn(MoveTypes.MOVE_ATTACK, inter)
     
-    @disnake.ui.button(label="Defend", emoji=Emojis.SKILL_DEFENSE)
+    @disnake.ui.button(label="Defend", emoji=Emojis.SKILL_DEFENSE, disabled=True)
     async def defend(self, button: disnake.ui.Button, inter: disnake.MessageInteraction) -> None:
+        await inter.response.defer()
         await self.process_turn(MoveTypes.MOVE_DEFEND, inter)
     
-    @disnake.ui.button(label="Special", emoji=Emojis.SKILL_MAGIC, row=1)
+    @disnake.ui.button(label="Special", emoji=Emojis.SKILL_MAGIC, disabled=True, row=1)
     async def special(self, button: disnake.ui.Button, inter: disnake.MessageInteraction) -> None:
+        await inter.response.defer()
         if not self.player_active_claim.trait:
             await inter.response.send_message("This character doesn't have a special ability!", ephemeral=True)
             return
@@ -393,8 +414,9 @@ class DuelView(disnake.ui.View):
             return
         await self.process_turn(MoveTypes.MOVE_SPECIAL, inter)
 
-    @disnake.ui.button(label="Swap", emoji=Emojis.SWAP, row=1)
+    @disnake.ui.button(label="Swap", emoji=Emojis.SWAP, disabled=True, row=1)
     async def swap(self, button: disnake.ui.Button, inter: disnake.MessageInteraction) -> None:
+        await inter.response.defer()
         available_claims = [c for c in self.player_harem 
                           if c.health_points > 0 and c != self.player_active_claim]
         
@@ -417,9 +439,10 @@ class DuelView(disnake.ui.View):
         )
         
         async def select_callback(select_inter: disnake.MessageInteraction):
-            selected_claim = next(c for c in self.player_harem 
-                                if str(c.id) == select_inter.values[0])
+            await select_inter.response.defer()
+            selected_claim = next(c for c in self.player_harem if str(c.id) == select_inter.values[0])
             self.player_active_claim = selected_claim
+            self.update_special_button_state()  # Update button state after swap
             await self.process_turn(MoveTypes.MOVE_SWAP, select_inter)
         
         select.callback = select_callback

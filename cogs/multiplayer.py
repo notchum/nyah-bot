@@ -13,12 +13,12 @@ import utils
 from bot import NyahBot
 from helpers import ErrorEmbed
 from utils.constants import Cooldowns, Experience
-from views import WaifuDuelView
+from views import WaifuDuelView, DuelView
 
 
 class Multiplayer(commands.Cog):
-    def __init__(self, bot: commands.Bot):
-        self.bot: NyahBot = bot
+    def __init__(self, bot: NyahBot):
+        self.bot = bot
 
     async def find_duel_opponent(self, guild: disnake.Guild, user: disnake.User | disnake.Member) -> Tuple[disnake.User, int]:
         nyah_players = await self.bot.mongo.fetch_all_nyah_players()
@@ -81,18 +81,13 @@ class Multiplayer(commands.Cog):
             user_id=self.bot.user.id,
             image_url=waifu.image_url,
             cached_images_urls=[],
-            price=0,
             tier=1,
             attack=skills[0],
             defense=skills[1],
             health=skills[2],
             speed=skills[3],
             magic=skills[4],
-            attack_mod=0,
-            defense_mod=0,
-            health_mod=0,
-            speed_mod=0,
-            magic_mod=0,
+            health_points=skills[2]
         )
 
     def calculate_total_score(self, claim: models.Claim) -> float:
@@ -185,10 +180,6 @@ class Multiplayer(commands.Cog):
         
         await inter.response.defer()
         
-        # Get one of the user's married waifus
-        users_harem = await self.bot.mongo.fetch_harem_married(inter.author)
-        users_claim = random.choice(users_harem)
-        
         # Find opponent
         opponent, opponent_rating = await self.find_duel_opponent(inter.guild, inter.author)
         if not opponent:
@@ -196,73 +187,34 @@ class Multiplayer(commands.Cog):
         logger.debug(f"Duel created: {nyah_player.score}.{inter.author.name}[{inter.author.id}] vs "
                               f"{opponent_rating}.{opponent.name}[{opponent.id}]")
 
-        # Select both user's waifus
+        # Get player's harem
+        player_married_harem = await self.bot.mongo.fetch_harem_married(inter.author)
+        
+        # Get opponent's harem
         if opponent.id == self.bot.user.id:
-            opps_claim = await self.generate_bot_claim(users_claim.total_skill_points)
+            opponent_married_harem = [await self.generate_bot_claim(500) for _ in range(3)]
         else:
-            opps_married_harem = await self.bot.mongo.fetch_harem_married(opponent)
-            opps_claim = random.choice(opps_married_harem)
-        
-        # Create the duel VS image
-        duel_image_url = await self.bot.waifus_cog.create_waifu_vs_img(users_claim, opps_claim)
-        
-        # Create the embed for the duel
-        red_waifu = await self.bot.mongo.fetch_waifu(users_claim.slug)
-        blue_waifu = await self.bot.mongo.fetch_waifu(opps_claim.slug)
-        end_at = disnake.utils.utcnow() + datetime.timedelta(seconds=20)
-        duel_embed = disnake.Embed(
-            description=f"### {inter.author.mention} vs. {opponent.mention}\n"
-                        f"- Choose your fate by selecting __**three**__ moves below!\n"
-                        f"- Duel ends {disnake.utils.format_dt(end_at, "R")}",
-            color=disnake.Color.yellow()
-        ) \
-        .set_image(url=duel_image_url) \
-        .add_field(
-            name=f"{red_waifu.name} ({users_claim.skill_str_short})",
-            value=users_claim.skill_str_long
-        ) \
-        .add_field(
-            name=f"{blue_waifu.name} ({opps_claim.skill_str_short})",
-            value=opps_claim.skill_str_long
-        )
-        
+            opponent_married_harem = await self.bot.mongo.fetch_harem_married(opponent)
+
         # Set timestamp in db
-        nyah_player.timestamp_last_duel = disnake.utils.utcnow()
-        await self.bot.mongo.update_nyah_player(nyah_player)
+        # nyah_player.timestamp_last_duel = disnake.utils.utcnow()
+        # await self.bot.mongo.update_nyah_player(nyah_player)
 
-        # Generate the results of the duel for the user to choose from
-        duel_choices = []
-        for _ in range(6): #TODO move magic number somewhere else
-            user_score = self.calculate_total_score(users_claim)
-            opps_score = self.calculate_total_score(opps_claim)
-            if user_score > opps_score:
-                duel_choices.append(True)
-            elif user_score < opps_score:
-                duel_choices.append(False)
-            else:
-                if random.random() < 0.5:
-                    duel_choices.append(True)
-                else:
-                    duel_choices.append(False)
-        logger.debug(duel_choices)
-
-        # Send the message
-        message = await inter.edit_original_response(embed=duel_embed)
-        
-        # Create our view
-        duel_view = WaifuDuelView(
-            embed=duel_embed,
+        # Create the message
+        duel_view = DuelView(
+            bot=self.bot,
             author=inter.author,
-            duel_choices=duel_choices
+            player_harem=player_married_harem,
+            opponent_harem=opponent_married_harem,
         )
-        duel_view.message = message
+        duel_view.message = await inter.edit_original_response(content="Creating duel...", view=duel_view)
+        await duel_view.initialize()
         
-        # Add the view to the message
-        await inter.edit_original_response(view=duel_view)
-        
-        # Give the user some time to make selections
-        await asyncio.sleep(20)
-        await duel_view.on_timeout()
+        # Wait for the battle to finish
+        await duel_view.wait()
+
+        await inter.edit_original_response("finished")
+        return
 
         # Calculate and update user's MMR
         rating_change = self.calculate_new_rating(nyah_player.score, opponent_rating, duel_view.author_won)
@@ -358,7 +310,7 @@ class Multiplayer(commands.Cog):
         opps_claim = random.choice(opps_married_harem)
         
         # Create the duel VS image
-        duel_image_url = await self.bot.waifus_cog.create_waifu_vs_img(users_claim, opps_claim)
+        duel_image_url = await self.bot.create_waifu_vs_img(users_claim, opps_claim)
         
         # Create the embed for the duel
         red_waifu = await self.bot.mongo.fetch_waifu(users_claim.slug)

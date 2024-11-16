@@ -107,7 +107,7 @@ class Claim(Document):
         self.state = WaifuState.COOLDOWN
     
     def roll_skills(self) -> None:
-        random_stat = lambda: random.randint(0, 100)
+        random_stat = lambda: random.randint(range(10, 101, 10))
         self.attack = random_stat()
         self.defense = random_stat()
         self.health = random_stat()
