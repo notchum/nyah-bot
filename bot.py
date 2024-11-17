@@ -171,6 +171,18 @@ class NyahBot(commands.InteractionBot):
         
         await nyah_player.save()
 
+    async def upload_image_to_discord(self, path_file: os.PathLike | str | disnake.File) -> disnake.Attachment:
+        """Upload the image to discord (free image hosting)"""
+        image_host_channel = await self.fetch_channel(1164613880538992760)
+        if isinstance(path_file, (os.PathLike, str)):
+            image_host_msg = await image_host_channel.send(file=disnake.File(path_file))
+        elif isinstance(path_file, disnake.File):
+            image_host_msg = await image_host_channel.send(file=path_file)
+        else:
+            raise TypeError(f"{path_file} must be of type os.PathLike or disnake.File")
+        logger.info(f"Uploaded image {image_host_msg.attachments[0].url}")
+        return image_host_msg.attachments[0]
+
     async def create_waifu_vs_img(self, red_waifu: models.Claim, blue_waifu: models.Claim) -> str:
         """ Create a waifu war round versus thumbnail image.
             Red is on the left and blue is on the right.
@@ -216,6 +228,14 @@ class NyahBot(commands.InteractionBot):
             center_y = bb_coords[UPPER_LEFT_INX][Y_COORD_INX] + bb_height//2
 
             return (center_x - img.width//2, center_y - img.height//2)
+
+        # create the output path
+        output_path = os.path.join(self.temp_dir, f"{red_waifu.id}.vs.{blue_waifu.id}.png")
+
+        # check if the image already exists
+        if os.path.exists(output_path):
+            attachment = await self.upload_image_to_discord(output_path)
+            return attachment.url
 
         # load background
         bg_img = Image.open("assets/vs.jpg") # "https://external-content.duckduckgo.com/iu/?u=https%3A%2F%2Fstatic.vecteezy.com%2Fsystem%2Fresources%2Fpreviews%2F000%2F544%2F945%2Foriginal%2Fcomic-fighting-cartoon-background-blue-vs-red-vector-illustration-design.jpg&f=1&nofb=1&ipt=d7b1d0d9bb512e200148263e80ad893ee95f011cf44cfc20417a2da90f94642a&ipo=images"
@@ -303,15 +323,11 @@ class NyahBot(commands.InteractionBot):
             bg_img.paste(fg_img, box=center_place(fg_img, bb[bb_inx]), mask=fg_img)
 
         # save the image
-        output_path = os.path.join(self.temp_dir, f"{red_waifu.id}.vs.{blue_waifu.id}.png")
-
         bg_img.save(output_path)
         logger.info(f"Created image {output_path}")
 
-        # upload the image to discord (free image hosting)
-        image_host_channel = await self.fetch_channel(1164613880538992760)
-        image_host_msg = await image_host_channel.send(file=disnake.File(output_path))
-        logger.info(f"Uploaded image {image_host_msg.attachments[0].url}")
+        # upload the image
+        attachment = await self.upload_image_to_discord(output_path)
 
         # return the URL of the image
-        return image_host_msg.attachments[0].url
+        return attachment.url
