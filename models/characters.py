@@ -105,9 +105,9 @@ class Claim(Document):
         self.state = WaifuState.COOLDOWN
     
     def roll_skills(self) -> None:
-        self.attack = random.randint(range(10, 101, 10)) # 10 - 100, step 10
-        self.health = random.randint(range(50, 251, 10)) # 50 - 250, step 10
-        self.speed = random.randint(range(10, 101, 10)) # 10 - 100, step 10
+        self.attack = random.choice(range(10, 101, 10)) # 10 - 100, step 10
+        self.health = random.choice(range(50, 251, 10)) # 50 - 250, step 10
+        self.speed = random.choice(range(10, 101, 10)) # 10 - 100, step 10
     
     def roll_trait(self) -> None:
         self.trait = random.choice([t for t in list(TraitTypes) if t != TraitTypes.NONE])
@@ -149,14 +149,13 @@ class Claim(Document):
     
     @property
     def health_bar_str(self) -> str:
-        max_hp = 250
         segments = 10
-        self.health_points = max(0, min(self.health_points, max_hp))
-        health_percent = self.health_points / max_hp
+        self.health_points = max(0, min(self.health_points, self.health))
+        health_percent = self.health_points / self.health
         filled = round(health_percent * segments)
         empty = segments - filled
         health_bar = "❤️" * filled + "🖤" * empty
-        return f"{health_bar} [{self.health_points}/{max_hp}]"
+        return f"{health_bar} [{self.health_points}/{self.health}]"
 
 
 class Harem(List[Claim]):
