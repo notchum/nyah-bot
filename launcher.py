@@ -39,6 +39,7 @@ async def main():
         config=config,
         test_guilds=[776929597567795247, 759514108625682473, 1169450511133589604],
         intents=intents,
+        reload=config.DEBUG,
     )
     await bot.setup_hook()
     await bot.start(config.DISCORD_BOT_TOKEN)
