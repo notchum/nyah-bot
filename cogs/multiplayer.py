@@ -9,11 +9,10 @@ from disnake.ext import commands
 from loguru import logger
 
 import models
-import utils
 from bot import NyahBot
 from helpers import ErrorEmbed
 from utils.constants import Cooldowns, Experience
-from views import WaifuDuelView, DuelView
+from views import DuelView
 
 
 class Multiplayer(commands.Cog):
@@ -356,7 +355,7 @@ class Multiplayer(commands.Cog):
         message = await inter.edit_original_response(embed=duel_embed)
         
         # Create our view
-        duel_view = WaifuDuelView(
+        duel_view = DuelView(
             embed=duel_embed,
             author=inter.author,
             duel_choices=duel_choices

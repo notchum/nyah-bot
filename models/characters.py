@@ -85,10 +85,8 @@ class Claim(Document):
     tier: Tiers = Field()
 
     attack: Optional[int] = None
-    defense: Optional[int] = None
     health: Optional[int] = None
     speed: Optional[int] = None
-    magic: Optional[int] = None
 
     trait: TraitTypes = Field(TraitTypes.NONE) # TODO, keep storing the same but on object creation just create the `Trait` object
 
@@ -107,12 +105,9 @@ class Claim(Document):
         self.state = WaifuState.COOLDOWN
     
     def roll_skills(self) -> None:
-        random_stat = lambda: random.randint(range(10, 101, 10))
-        self.attack = random_stat()
-        self.defense = random_stat()
-        self.health = random_stat()
-        self.speed = random_stat()
-        self.magic = random_stat()
+        self.attack = random.randint(range(10, 101, 10)) # 10 - 100, step 10
+        self.health = random.randint(range(50, 251, 10)) # 50 - 250, step 10
+        self.speed = random.randint(range(10, 101, 10)) # 10 - 100, step 10
     
     def roll_trait(self) -> None:
         self.trait = random.choice([t for t in list(TraitTypes) if t != TraitTypes.NONE])
@@ -129,19 +124,17 @@ class Claim(Document):
 
     @property
     def total_skill_points(self) -> int:
-        return self.attack + self.defense + self.health + self.speed + self.magic
+        return self.attack + self.health + self.speed
     
     @property
     def skill_str_short(self) -> str:
-        return f"{Emojis.SKILL_TOTAL} {(self.total_skill_points / 500) * 100:.1f}%"
+        return f"{Emojis.SKILL_TOTAL} {(self.total_skill_points / 450) * 100:.1f}%"
 
     @property
     def skill_str_long(self) -> str:
         return f"{Emojis.SKILL_ATTACK}`Attack  {self.attack: >5}`\n" \
-               f"{Emojis.SKILL_DEFENSE}`Defense {self.defense: >5}`\n" \
                f"{Emojis.SKILL_HEALTH}`Health  {self.health: >5}`\n" \
                f"{Emojis.SKILL_SPEED}`Speed   {self.speed: >5}`\n" \
-               f"{Emojis.SKILL_MAGIC}`Magic   {self.magic: >5}`\n"
 
     @property
     def price_str(self) -> str:
@@ -153,6 +146,17 @@ class Claim(Document):
             return f"{Emojis.TRAIT_STAR}`{self.trait.name.replace('_', ' ').title()}`\n"
         else:
             return "None"
+    
+    @property
+    def health_bar_str(self) -> str:
+        max_hp = 250
+        segments = 10
+        self.health_points = max(0, min(self.health_points, max_hp))
+        health_percent = self.health_points / max_hp
+        filled = round(health_percent * segments)
+        empty = segments - filled
+        health_bar = "❤️" * filled + "🖤" * empty
+        return f"{health_bar} [{self.health_points}/{max_hp}]"
 
 
 class Harem(List[Claim]):
