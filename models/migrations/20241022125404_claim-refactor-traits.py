@@ -20,24 +20,28 @@ print(f"Collection name: {db.name}.{claims.name}")
 
 result = claims.update_many(
     {},
-    {
-        "$unset": {
-            "price": "",
-            "attack_mod": "",
-            "defense_mod": "",
-            "health_mod": "",
-            "speed_mod": "",
-            "magic_mod": "",
-            "trait_common": "",
-            "trait_uncommon": "",
-            "trait_rare": "",
-            "trait_legendary": "",
+    [
+        {
+            "$unset": [
+                "price",
+                "attack_mod",
+                "defense_mod",
+                "health_mod",
+                "speed_mod",
+                "magic_mod",
+                "trait_common",
+                "trait_uncommon",
+                "trait_rare",
+                "trait_legendary"
+            ]
         },
-        "$set": {
-            "trait": 0,
-            "health_points": 0,
+        {
+            "$set": {
+                "trait": 0,
+                "health_points": "$health"
+            }
         }
-    }
+    ]
 )
 
 print(result)
