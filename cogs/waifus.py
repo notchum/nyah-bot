@@ -12,8 +12,8 @@ from loguru import logger
 import utils
 from bot import NyahBot
 from models import Claim, Event
-from helpers import ErrorEmbed, WaifuCoreEmbed, WaifuClaimEmbed, WaifuHaremEmbed
-from utils.constants import Emojis, WaifuState, Cooldowns, Experience, Prices, Tiers, Fusions, TIER_EMOJI_MAP, TIER_TITLE_MAP, FUSION_TIER_MAP
+from helpers import ErrorEmbed, WaifuCoreEmbed, WaifuClaimEmbed, WaifuHaremEmbed, WaifuBaseEmbed
+from utils.constants import Emojis, WaifuState, Cooldowns, Experience, Prices, Tiers, Fusions, TIER_EMOJI_MAP, TIER_TITLE_MAP, TIER_COST_MAP,FUSION_TIER_MAP
 from utils.bracket import Bracket
 from utils.items import ItemFactory
 from views import *
@@ -1136,16 +1136,45 @@ class Waifus(commands.Cog):
 
     @commands.slash_command()
     async def buymywaifu(self, inter: disnake.ApplicationCommandInteraction, name: str):
-        return await inter.response.send_message(
-            """Not implemented yet.\n
-            Expected Character Purchase Prices:\n
-            Bronze: 3\n
-            Silver: 12\n
-            Gold: 45\n
-            Emerald: 160\n
-            Ruby: 600\n
-            Diamond: 2250\n"""
+        """Buy a waifu!
+        
+            Parameters
+            ----------
+            name: `str`
+                The waifu to buy.
+        """
+        await inter.response.defer()
+
+        if re.search(r"\[.*\]", name):
+            match = re.match(r"^(.*?)\s*\[(.*?)\]$", name)
+            name = match.group(1).strip()
+            series = match.group(2).strip()
+
+            result = await self.bot.mongo.fetch_waifus_by_name_and_series(name, series)
+        else:
+            result = await self.bot.mongo.fetch_waifus_by_name(name)
+        waifu = result[0]
+
+        if not result:
+            return await inter.edit_original_response(
+                embed=ErrorEmbed(f"Couldn't find `{name}` in the waifu database!")
+            )
+        
+        total_character = await self.bot.mongo.fetch_waifu_count()
+        tier = utils.tier_from_rank(total_character, waifu.popularity_rank)
+        cost = TIER_COST_MAP[tier].value
+        
+        embed = WaifuBaseEmbed(waifu)
+        embed.description = f"Buy __**{waifu.name}**__ for `{cost:,}` {Emojis.COINS}?"
+        
+        purchase_view = WaifuPurchaseView(
+            embed=embed,
+            waifu=waifu,
+            author=inter.author,
+            cost=cost
         )
+        message = await inter.edit_original_response(embed=embed, view=purchase_view)
+        purchase_view.message = message
 
     @commands.slash_command()
     async def listmywaifus(self, inter: disnake.ApplicationCommandInteraction):

@@ -11,6 +11,7 @@ class Emojis:
     BLUE_BOX = "🟦"
 
     TICKET     = "<:nyah_ticket:1306531129016188979>"
+    COINS      = "<:coins:1158472639413764178>"
     SWAP       = "<:replace:1158888082343477258>"
     PREV_PAGE  = "<:leftWaifu:1158460793063477420>"
     NEXT_PAGE  = "<:rightWaifu:1158460837359538186>"
@@ -34,6 +35,8 @@ class Emojis:
     SKILL_TOTAL   = "🎯"
 
     TRAIT_STAR = "🌟"
+
+    SHOPPING_CART = "🛒"
 
     TIER_BRONZE  = "<:tier_bronze:1274833983812669511>"
     TIER_SILVER  = "<:tier_silver:1274833982273618002>"
@@ -162,6 +165,15 @@ TIER_EMOJI_MAP = {
     Tiers.EMERALD: Emojis.TIER_EMERALD,
     Tiers.RUBY: Emojis.TIER_RUBY,
     Tiers.DIAMOND: Emojis.TIER_DIAMOND,
+}
+
+TIER_COST_MAP = {
+    Tiers.BRONZE: Prices.COST_CHARACTER_BRONZE,
+    Tiers.SILVER: Prices.COST_CHARACTER_SILVER,
+    Tiers.GOLD: Prices.COST_CHARACTER_GOLD,
+    Tiers.EMERALD: Prices.COST_CHARACTER_EMERALD,
+    Tiers.RUBY: Prices.COST_CHARACTER_RUBY,
+    Tiers.DIAMOND: Prices.COST_CHARACTER_DIAMOND,
 }
 
 TIER_PAYOUT_MAP = {
