@@ -127,7 +127,8 @@ class WaifuHaremEmbed(WaifuBaseEmbed):
         self.add_field(name="Tier", value=TIER_TITLE_MAP[claim.tier]) \
             .add_field(name="Trait", value=claim.trait_str) \
             .add_field(name=f"Skills ({claim.skill_str_short})", value=claim.skill_str_long) \
-            .add_field(name="Status", value=WAIFUSTATE_TITLE_MAP[claim.state])
+            .add_field(name="Status", value=WAIFUSTATE_TITLE_MAP[claim.state]) \
+            .add_field(name="HP", value=claim.health_bar_str)
         self.set_footer(text=claim.id)
         self.set_image(url=claim.image_url)
 # fmt: on
