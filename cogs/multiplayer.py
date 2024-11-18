@@ -196,8 +196,8 @@ class Multiplayer(commands.Cog):
             opponent_married_harem = await self.bot.mongo.fetch_harem_married(opponent)
 
         # Set timestamp in db
-        # nyah_player.timestamp_last_duel = disnake.utils.utcnow()
-        # await self.bot.mongo.update_nyah_player(nyah_player)
+        nyah_player.timestamp_last_duel = disnake.utils.utcnow()
+        await self.bot.mongo.update_nyah_player(nyah_player)
 
         # Create the message
         duel_view = DuelView(
@@ -212,24 +212,20 @@ class Multiplayer(commands.Cog):
         # Wait for the battle to finish
         await duel_view.wait()
 
-        await inter.edit_original_response("finished")
-        return
-
         # Calculate and update user's MMR
-        rating_change = self.calculate_new_rating(nyah_player.score, opponent_rating, duel_view.author_won)
+        rating_change = self.calculate_new_rating(nyah_player.score, opponent_rating, duel_view.player_won)
         await nyah_player.add_user_mmr(rating_change)
 
         # Opponents lose a slight amount of MMR to discourage inactivity
-        if opponent.id != self.bot.user.id and duel_view.author_won:
+        if opponent.id != self.bot.user.id and duel_view.player_won:
             opps_nyah_player = await self.bot.mongo.fetch_nyah_player(opponent)
             await opps_nyah_player.add_user_mmr(-int(rating_change * 0.35))
 
         # If user won
-        if duel_view.author_won:
+        if duel_view.player_won:
             result_embed = disnake.Embed(
                 title="Ranked Win",
-                description=f"- {inter.author.mention}'s __**{red_waifu.name}**__ defeated {opponent.mention}'s __**{blue_waifu.name}**__\n"
-                            f"- You gained `{rating_change}` MMR and earned `{Experience.DUEL_WIN.value}` XP",
+                description=f"You gained `{rating_change}` MMR and earned `{Experience.DUEL_WIN.value}` XP",
                 color=disnake.Color.green()
             )
             await nyah_player.add_user_xp(Experience.DUEL_WIN.value, inter.author, inter.channel)
@@ -238,16 +234,14 @@ class Multiplayer(commands.Cog):
         else:
             result_embed = disnake.Embed(
                 title="Ranked Loss",
-                description=f"- {inter.author.mention}'s __**{red_waifu.name}**__ lost to {opponent.mention}'s __**{blue_waifu.name}**__\n"
-                            f"- You lost `{rating_change}` MMR and earned `{Experience.DUEL_LOSS.value}` XP",
+                description=f"You lost `{rating_change}` MMR",
                 color=disnake.Color.red()
             )
-            await nyah_player.add_user_xp(Experience.DUEL_LOSS.value, inter.author, inter.channel)
 
         logger.debug(f"{inter.author.name}'s new rating: {nyah_player.score}")
 
         # Edit message to add embed with the result of the match
-        return await inter.edit_original_response(embeds=[duel_embed, result_embed])
+        return await inter.edit_original_response(embeds=[duel_view.message.embeds[0], result_embed])
 
     @commands.slash_command()
     async def casual(
