@@ -10,7 +10,7 @@ load_dotenv()
 print(f"Database URI: {os.getenv('DATABASE_URI')}")
 client = MongoClient(os.getenv("DATABASE_URI"))
 print("Connected to MongoDB Atlas!")
-if os.getenv("TEST_MODE"):
+if os.environ["TEST_MODE"] in ("1", "True", "true"):
     db = client['_waifus']
 else:
     db = client['waifus']
