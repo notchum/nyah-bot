@@ -1,4 +1,4 @@
-FROM python:latest
+FROM python:3.12.6
 RUN apt-get -y update
 RUN mkdir -p /app/nyah-bot
 WORKDIR /app/nyah-bot
