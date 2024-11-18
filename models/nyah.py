@@ -118,6 +118,7 @@ class NyahPlayer(Document):
         )
 
         claim.roll_skills()
+        claim.reset_hp()
         
         return claim
 
