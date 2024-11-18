@@ -266,7 +266,10 @@ class NyahBot(commands.InteractionBot):
             image_path = await self.api.download_image(claim.image_url)
 
             # load fg image
-            load_img = Image.open(image_path)
+            if image_path:
+                load_img = Image.open(image_path)
+            else:
+                load_img = Image.open("assets/waifu_404.png")
             if (load_img.mode != "RGBA"):
                 load_img = load_img.convert("RGBA")
             
