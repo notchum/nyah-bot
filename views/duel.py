@@ -51,7 +51,7 @@ class DuelView(disnake.ui.View):
 
     async def initialize(self):
         await self.update_battle_display()
-        await self.update_button_states(False)
+        await self.update_button_states(disabled=False)
         self.message = await self.message.edit(view=self)
 
     def check_speed(self) -> bool:
@@ -310,7 +310,7 @@ class DuelView(disnake.ui.View):
         logger.info(f"Processing turn {self.turn_num}")
 
         # Update button states
-        await self.update_button_states(True)
+        await self.update_button_states(disabled=True)
         
         # Select opponent move
         self.player_move = player_move
@@ -346,13 +346,12 @@ class DuelView(disnake.ui.View):
                     return await self.end_battle()
         
         # Advance turn
+        logger.debug(f"Turn {self.turn_num} completed")
         self.turn_num += 1
         
         # Update display with results
         await self.update_battle_display()
-        await self.update_button_states(False)
-
-        logger.debug(f"Turn {self.turn_num - 1} completed")
+        await self.update_button_states(disabled=False)
 
     async def end_battle(self):
         """End the battle and clean up"""

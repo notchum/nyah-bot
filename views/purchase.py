@@ -28,7 +28,7 @@ class WaifuPurchaseView(disnake.ui.View):
         if nyah_player.money < self.cost:
             price_diff = self.cost - nyah_player.money
             confirmation_embed = disnake.Embed(
-                description=f"{inter.author.mention}\nYou need `{price_diff:,}` {Emojis.TICKET}",
+                description=f"{inter.author.mention}\nYou need `{price_diff:,}` {Emojis.COINS}",
                 color=disnake.Color.red()
             )
 
@@ -65,7 +65,7 @@ class WaifuPurchaseView(disnake.ui.View):
             await harem.reindex()
         
             confirmation_embed = disnake.Embed(
-                description=f"{inter.author.mention}\n__**{self.waifu.name}**__ has been bought for `{self.cost:,}` {Emojis.TICKET}.\n",
+                description=f"{inter.author.mention}\n__**{self.waifu.name}**__ has been bought for `{self.cost:,}` {Emojis.COINS}.\n",
                 color=disnake.Color.fuchsia()
             )
 

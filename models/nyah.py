@@ -132,7 +132,7 @@ class NyahPlayer(Document):
             if channel and user:
                 level_up_embed = disnake.Embed(
                     description=f"### ㊗️ Congratulations {user.mention}! You are now level {self.level}!\n\n"
-                                f"You have been awarded `{Prices.PAYOUT_LEVEL_UP.value:,}` {Emojis.TICKET}",
+                                f"You have been awarded `{Prices.PAYOUT_LEVEL_UP.value:,}` {Emojis.COINS}",
                     color=disnake.Color.dark_teal()
                 ).set_thumbnail(url=user.avatar.url)
                 await channel.send(embed=level_up_embed)

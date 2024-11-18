@@ -138,7 +138,7 @@ class Claim(Document):
 
     @property
     def price_str(self) -> str:
-        return f"`{TIER_PAYOUT_MAP[self.tier].value:,}` {Emojis.TICKET}"
+        return f"`{TIER_PAYOUT_MAP[self.tier].value:,}` {Emojis.COINS}"
     
     @property
     def trait_str(self) -> str:

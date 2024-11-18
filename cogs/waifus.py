@@ -756,12 +756,12 @@ class Waifus(commands.Cog):
                         await nyah_player.add_user_money(Prices.PAYOUT_WAR_FIRST.value)
                         await nyah_player.add_user_xp(Experience.WAR_FIRST.value)
                         ending_embed.title = f"Congratulations to {user.name} for winning the Waifu War!"
-                        ending_embed.description += f"- {user.mention} won `{Prices.PAYOUT_WAR_FIRST.value:,}` {Emojis.TICKET} and `{Experience.WAR_FIRST.value}` XP!"
+                        ending_embed.description += f"- {user.mention} won `{Prices.PAYOUT_WAR_FIRST.value:,}` {Emojis.COINS} and `{Experience.WAR_FIRST.value}` XP!"
                         ending_embed.set_thumbnail(url=user.display_avatar.url)
                     else:
                         await nyah_player.add_user_money(Prices.PAYOUT_WAR_SECOND.value)
                         await nyah_player.add_user_xp(Experience.WAR_SECOND.value)
-                        ending_embed.description += f"- {user.mention} won `{Prices.PAYOUT_WAR_SECOND.value:,}` {Emojis.TICKET} and `{Experience.WAR_SECOND.value}` XP!"
+                        ending_embed.description += f"- {user.mention} won `{Prices.PAYOUT_WAR_SECOND.value:,}` {Emojis.COINS} and `{Experience.WAR_SECOND.value}` XP!"
                 # TODO test this
                 await waifu_war_channel.send(embed=ending_embed)
 
@@ -834,7 +834,7 @@ class Waifus(commands.Cog):
         .set_author(name=f"{inter.author.name}'s Profile", icon_url=inter.author.display_avatar.url) \
         .add_field(name="Level", value=f"{nyah_player.level}") \
         .add_field(name="XP", value=f"{nyah_player.xp}/{utils.calculate_accumulated_xp(nyah_player.level + 1)}") \
-        .add_field(name=f"Balance", value=f"`{nyah_player.money:,}` {Emojis.TICKET}") \
+        .add_field(name=f"Balance", value=f"`{nyah_player.money:,}` {Emojis.COINS}") \
         .add_field(name="Inventory", value=fmt_inventory) \
         .add_field(name="Cooldowns:", value="", inline=False) \
         .add_field(name=f"{Emojis.CLAIM} Drop", value=fmt_claim_times, inline=False) \
@@ -977,7 +977,7 @@ class Waifus(commands.Cog):
             result_embed = disnake.Embed(
                 title="Correct!",
                 description=correct_description + 
-                            f"- You won `{win_amount:,}` {Emojis.TICKET} "
+                            f"- You won `{win_amount:,}` {Emojis.COINS} "
                             f"and `{Experience.MINIGAME_WIN.value}` XP",
                 color=disnake.Color.green(),
             )
@@ -988,7 +988,7 @@ class Waifus(commands.Cog):
             result_embed = disnake.Embed(
                 title="Wrong!",
                 description=wrong_description +
-                            f"- You lost `{lose_amount:,}` {Emojis.TICKET}",
+                            f"- You lost `{lose_amount:,}` {Emojis.COINS}",
                 color=disnake.Color.red(),
             )
             await nyah_player.add_user_money(lose_amount)

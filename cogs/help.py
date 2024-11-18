@@ -85,8 +85,8 @@ class Help(commands.Cog):
                         f"- To advance to the next round, your harem will have to defeat all waifus in your opponent's harem.\n"
                         f"- Participating in a Waifu War will always give you XP; but the further you make it, the more XP you recieve!\n"
                         f"- Rewards for making the grand finals are:\n"
-                        f"  - `{Prices.PAYOUT_WAR_FIRST.value:,}` {Emojis.TICKET} for first place\n"
-                        f"  - `{Prices.PAYOUT_WAR_SECOND.value:,}` {Emojis.TICKET} for runner-up\n",
+                        f"  - `{Prices.PAYOUT_WAR_FIRST.value:,}` {Emojis.COINS} for first place\n"
+                        f"  - `{Prices.PAYOUT_WAR_SECOND.value:,}` {Emojis.COINS} for runner-up\n",
         )
         
         embed4 = disnake.Embed(

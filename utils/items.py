@@ -29,7 +29,7 @@ class ShopBaseItem():
 
     @property
     def shop_str(self):
-        return f"`{self.emoji}` **__{self.name}__** - `{self.price:,}` {Emojis.TICKET}"
+        return f"`{self.emoji}` **__{self.name}__** - `{self.price:,}` {Emojis.COINS}"
 
     @property
     def buy_str(self):
