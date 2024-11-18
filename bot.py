@@ -18,7 +18,7 @@ import models
 import utils
 from helpers import Mongo, API
 
-VERSION = "0.9.0"
+VERSION = "0.10.0"
 
 Config = namedtuple(
     "Config",
