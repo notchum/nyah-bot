@@ -71,15 +71,16 @@ class Multiplayer(commands.Cog):
             claim = models.Claim(
                 slug=waifu.slug,
                 name=waifu.name,
-                user_id=self.user_id,
+                user_id=self.bot.user.id,
                 image_url=waifu.image_url,
                 cached_images_urls=[],
-                state=0,
+                state=1,
                 index=0,
                 tier=utils.tier_from_rank(total_characters, waifu.popularity_rank),
             )
 
             claim.roll_skills()
+            claim.reset_hp()
 
             bot_harem.append(claim)
 
