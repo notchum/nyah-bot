@@ -170,15 +170,7 @@ class PlayerChestItem(PlayerBaseItem):
         )
 
     async def use(self, inter: disnake.ApplicationCommandInteraction):
-        chest_size = 3
-        result = await mongo.fetch_random_waifus(
-            number=chest_size,
-            aggregations=[
-                {"$match": {
-                    "popularity_rank": {"$lt": 3000}
-                }}
-            ]
-        )
+        result = await mongo.fetch_random_waifus(number=3)
 
         description = ""
         embeds = []
