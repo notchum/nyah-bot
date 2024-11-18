@@ -1,6 +1,5 @@
 import asyncio
 import random
-from typing import List, Optional
 from enum import Enum
 
 import disnake
@@ -37,8 +36,13 @@ class DuelView(disnake.ui.View):
         
         # Track special move usage
         self.used_specials = set()  # Store character IDs that have used their special
+        
+        logger.info(f"Initializing duel between {author} and AI opponent")
+        logger.debug(f"Initial player character: {self.player_active_claim.name}")
+        logger.debug(f"Initial opponent character: {self.opponent_active_claim.name}")
 
     async def on_timeout(self) -> None:
+        logger.info(f"Duel timed out for player {self.author}")
         self.player_won = False
         await self.end_battle()
 
@@ -52,7 +56,9 @@ class DuelView(disnake.ui.View):
 
     def check_speed(self) -> bool:
         """Returns true if player is faster"""
-        return self.player_active_claim.speed >= self.opponent_active_claim.speed
+        is_faster = self.player_active_claim.speed >= self.opponent_active_claim.speed
+        logger.debug(f"Speed check: player ({self.player_active_claim.speed}) vs opponent ({self.opponent_active_claim.speed})")
+        return is_faster
 
     def update_button_states(self, disabled: bool) -> None:
         """
@@ -72,11 +78,20 @@ class DuelView(disnake.ui.View):
             self.special.disabled = not bool(self.player_active_claim.trait) or self.player_active_claim.id in self.used_specials
             player_remaining = [c for c in self.player_harem if c.health_points > 0 and c != self.player_active_claim]
             self.swap.disabled = not bool(len(player_remaining))
+        
+        logger.debug(f"Updated button states: attack={not self.attack.disabled}, special={not self.special.disabled}, swap={not self.swap.disabled}")
     
     async def handle_character_select(self) -> None:
-        available_claims = [c for c in self.player_harem if c.health_points > 0 and c != self.player_active_claim]
+        # Store the event that will be set when selection is made
+        self.character_selected_event = asyncio.Event()
         
-        # Create a select menu for choosing the swap target
+        # Get available characters
+        available_claims = [
+            c for c in self.player_harem 
+            if c.health_points > 0 and c != self.player_active_claim
+        ]
+        
+        # Create select menu options
         options = [
             disnake.SelectOption(
                 label=claim.name,
@@ -85,29 +100,40 @@ class DuelView(disnake.ui.View):
             ) for claim in available_claims
         ]
         
+        # Create the select menu
         select = disnake.ui.Select(
             placeholder="Choose a character to swap to",
             options=options
         )
-
-        character_selected = False
         
         async def select_callback(select_inter: disnake.MessageInteraction):
             await select_inter.response.defer()
-            selected_claim = next(c for c in self.player_harem if str(c.id) == select_inter.values[0])
+            
+            # Find the selected character
+            selected_claim = next(
+                c for c in self.player_harem 
+                if str(c.id) == select_inter.values[0]
+            )
+            
+            # Update the active claim
             self.player_active_claim = selected_claim
+            
+            # Remove the select menu
             self.remove_item(select)
             self.message = await self.message.edit(view=self)
-            character_selected = True
+            
+            # Signal that selection is complete
+            self.character_selected_event.set()
         
+        # Set up the select menu
         select.callback = select_callback
         select.row = 2
         self.add_item(select)
         self.update_button_states(True)
         self.message = await self.message.edit(view=self)
         
-        while not character_selected:
-            await asyncio.sleep(1)
+        # Wait for selection to complete
+        await self.character_selected_event.wait()
 
     async def choose_opponent_action(self) -> MoveTypes:
         """Choose a random valid move for the AI opponent"""
@@ -123,12 +149,15 @@ class DuelView(disnake.ui.View):
         if available_claims:
             available_moves.append(MoveTypes.MOVE_SWAP)
         
-        return random.choice(available_moves)
+        chosen_move = random.choice(available_moves)
+        logger.debug(f"AI opponent chose move: {chosen_move}")
+        return chosen_move
 
     async def check_faint(self) -> bool:
         """Check if either active character has fainted and handle switching"""
         await self.update_battle_display()
         if self.player_active_claim.health_points <= 0:
+            logger.info(f"Player character {self.player_active_claim.name} has fainted")
             await self.send_notification(
                 description=f"**{self.player_active_claim.name}** has fainted!",
             )
@@ -139,6 +168,7 @@ class DuelView(disnake.ui.View):
                 return True
         
         if self.opponent_active_claim.health_points <= 0:
+            logger.info(f"Opponent character {self.opponent_active_claim.name} has fainted")
             await self.send_notification(
                 description=f"**{self.opponent_active_claim.name}** has fainted!",
             )
@@ -151,21 +181,25 @@ class DuelView(disnake.ui.View):
         return False
 
     async def check_battle_end(self) -> bool:
-        """Check if the battle has ended and return the result message if it has"""
+        """Check if the battle has ended"""
         player_alive = any(c.health_points > 0 for c in self.player_harem)
         opponent_alive = any(c.health_points > 0 for c in self.opponent_harem)
         
-        if not player_alive:
-            self.player_won = False
-            return True
-        elif not opponent_alive:
-            self.player_won = True
+        if not player_alive or not opponent_alive:
+            logger.info(f"Battle ended. Winner: {'player' if opponent_alive else 'opponent'}")
+            logger.debug(f"Final state - Player alive: {player_alive}, Opponent alive: {opponent_alive}")
+            
+            if not player_alive:
+                self.player_won = False
+            elif not opponent_alive:
+                self.player_won = True
             return True
         return False
 
     async def update_battle_display(self):
-        """Update the battle display with the current state of the duel."""
-        # Create embed
+        """Update the battle display with the current state"""
+        logger.debug(f"Updating battle display for turn {self.turn_num}")
+        
         duel_image_url = await self.bot.create_waifu_vs_img(self.player_active_claim, self.opponent_active_claim)
         embed = disnake.Embed(
             description=f"### {self.author.mention} vs. <@{self.opponent_active_claim.user_id}>\n",
@@ -185,6 +219,8 @@ class DuelView(disnake.ui.View):
         # Get remaining characters
         player_remaining = [c for c in self.player_harem if c.health_points > 0 and c != self.player_active_claim]
         opponent_remaining = [c for c in self.opponent_harem if c.health_points > 0 and c != self.opponent_active_claim]
+        logger.debug(f"Remaining characters - Player: {len(player_remaining)}, Opponent: {len(opponent_remaining)}")
+        
         self.red.label = f"{len(player_remaining)} remaining"
         self.blue.label = f"{len(opponent_remaining)} remaining"
         
@@ -217,10 +253,13 @@ class DuelView(disnake.ui.View):
 
     async def process_move(self, attacker: models.Claim, defender: models.Claim, move_type: MoveTypes) -> None:
         """Process a single move of a turn"""
+        logger.info(f"Processing move: {attacker.name} using {move_type} against {defender.name}")
+        
         match move_type:
             case MoveTypes.MOVE_ATTACK:
                 damage = attacker.attack
                 defender.health_points = max(0, defender.health_points - damage)
+                logger.debug(f"Attack dealt {damage} damage. {defender.name} HP: {defender.health_points}")
                 await self.send_notification(
                     description=f"{attacker.name} attacks for {damage} damage!"
                 )
@@ -230,11 +269,12 @@ class DuelView(disnake.ui.View):
                     damage = attacker.attack * 2 # TODO: Make this dynamic once traits are implemented
                     defender.health_points = max(0, defender.health_points - damage)
                     self.used_specials.add(attacker.id)
+                    logger.debug(f"Special attack dealt {damage} damage. {defender.name} HP: {defender.health_points}")
                     await self.send_notification(
                         description=f"{attacker.name} uses their special ability for {damage} damage!"
                     )
                 else:
-                    logger.error("Tried to use special move without a trait")
+                    logger.error(f"Attempted to use special move for {attacker.name} without a trait")
                 
             case MoveTypes.MOVE_SWAP:
                 available_claims = [c for c in (self.opponent_harem if attacker == self.opponent_active_claim else self.player_harem)
@@ -242,27 +282,35 @@ class DuelView(disnake.ui.View):
                 if available_claims:
                     if attacker == self.opponent_active_claim:
                         self.opponent_active_claim = random.choice(available_claims)
+                        logger.info(f"Opponent swapped to {self.opponent_active_claim.name}")
                         await self.send_notification(
                             description=f"Opponent swaps to {self.opponent_active_claim.name}!"
                         )
                     else:
                         await self.handle_character_select()
+                        logger.info(f"Player swapped to {self.player_active_claim.name}")
                         await self.send_notification(
                             description=f"You swap to {self.player_active_claim.name}!"
                         )
                 else:
-                    logger.error("Tried to swap without available claims")
+                    logger.error(f"Attempted to swap with no available claims for {attacker.name}")
 
     async def process_turn(self, player_move: MoveTypes):
         """Process a full turn of combat"""
+        logger.info(f"Processing turn {self.turn_num}")
+        
         self.player_move = player_move
         self.opponent_move = await self.choose_opponent_action()
+        
+        logger.debug(f"Moves selected - Player: {self.player_move}, Opponent: {self.opponent_move}")
         
         # Determine order and process moves
         first = self.player_active_claim if self.check_speed() else self.opponent_active_claim
         second = self.opponent_active_claim if self.check_speed() else self.player_active_claim
         first_move = self.player_move if self.check_speed() else self.opponent_move
         second_move = self.opponent_move if self.check_speed() else self.player_move
+        
+        logger.debug(f"Turn order: {first.name} ({first_move}) -> {second.name} ({second_move})")
         
         # Process first move
         await self.process_move(first, second, first_move)
@@ -283,16 +331,19 @@ class DuelView(disnake.ui.View):
         
         # Update display with results
         await self.update_battle_display()
-        
+        await self.update_button_states(False)
+
+        # Advance turn
         self.turn_num += 1
+        logger.debug(f"Turn {self.turn_num - 1} completed")
 
     async def end_battle(self):
         """End the battle and clean up"""
+        logger.info(f"Battle ended. Winner: {'player' if self.player_won else 'opponent'}")
         self.message = await self.message.edit(view=None)
         await self.send_notification(
             description='You won!' if self.player_won else 'You lost!'
         )
-        await self.update_battle_display()
         self.stop()
 
     @disnake.ui.button(label="2 remaining", style=disnake.ButtonStyle.red, disabled=True)
